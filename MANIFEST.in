@@ -1,0 +1,7 @@
+include README.md
+include requirements*
+include docs/*.txt
+include scab/integrate/*
+include scab/pl/*
+include scab/pp/*
+include scab/tl/*

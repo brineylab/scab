@@ -1,0 +1,12 @@
+biopython>=1.78
+matplotlib
+natsort
+numpy
+pandas
+pytest
+pyyaml
+scanpy
+scanorama
+scrublet
+scvelo
+seaborn>=0.11
