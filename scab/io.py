@@ -36,7 +36,7 @@ from abutils.core.sequence import read_csv, read_fasta, read_json
 
 def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv', vdj_delimiter='\t',
                  vdj_id_key='sequence_id', vdj_sequence_key='sequence', vdj_id_delimiter='_', vdj_id_delimiter_num=1,
-                 h_selection_func=None, l_selection_func=None,
+                 h_selection_func=None, l_selection_func=None, abstar_output_format='airr',
                  gex_only=False, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
                  log_transform_cellhashes=True, ignore_zero_median_cellhashes=True, rename_cellhashes=None,
                  log_transform_features=True, ignore_zero_median_features=True, rename_features=None, feature_suffix='_FBC',
@@ -156,7 +156,7 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
             raw_seqs = read_fasta(vdj_file)
             if verbose:
                 print('annotating VDJ sequences with abstar...')
-            sequences = abstar.run(raw_seqs, output_type=vdj_format)
+            sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
         pairs = assign_pairs(sequences, name=vdj_id_key,
                              delim=vdj_id_delimiter, delim_occurance=vdj_id_delimiter_num,
                              h_selection_func=h_selection_func, l_selection_func=l_selection_func,
