@@ -34,7 +34,7 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
                          n_genes_by_counts=2500, percent_mito=10, hvg_batch_key=None,
                          remove_ig=True, ig_removal_pattern='IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]',
                          target_sum=None, n_top_genes=None, normalization_flavor='cell_ranger', log=True,
-                         scale_max_value=None, doublet_removal=True, save_raw=True, verbose=True):
+                         scale_max_value=None, save_raw=True, verbose=True):
     '''
     performs quality filtering and normalization of 10x Genomics count data
 
@@ -146,10 +146,6 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
     if verbose:
         print('scaling...')
     sc.pp.scale(adata, max_value=scale_max_value)
-    if remove_doublets:
-        if verbose:
-            print('removing doublets...')
-        adata = remove_doublets(adata, verbose=verbose)
     return adata
 
 
