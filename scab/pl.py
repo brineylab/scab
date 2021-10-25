@@ -25,6 +25,7 @@
 
 from collections import Counter
 import itertools
+import os
 import re
 import sys
 
@@ -54,7 +55,7 @@ from abstar.core.germline import get_germlines
 # ===========================
 
 
-def qc_metrics(adata):
+def qc_metrics(adata, fig_dir=None, fig_prefix=None):
     if 'ig' not in adata.var:
         pattern = re.compile('IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]')
         adata.var['ig'] = [False if re.match(pattern, a) is None else True for a in adata.var.index]
@@ -62,9 +63,57 @@ def qc_metrics(adata):
         adata.var['mt'] = adata.var_names.str.startswith('MT-')
     sc.pp.calculate_qc_metrics(adata, qc_vars=['ig', 'mt'],
                                percent_top=None, log1p=False, inplace=True)
-    sc.pl.scatter(adata, x='total_counts', y='pct_counts_ig')
-    sc.pl.scatter(adata, x='total_counts', y='pct_counts_mt')
-    sc.pl.scatter(adata, x='total_counts', y='n_genes_by_counts')
+
+    # plot Ig
+    g = sns.JointGrid(data=adata.obs, x='total_counts', y='pct_counts_ig')
+    g.plot_joint(sns.scatterplot, s=10, fc='grey', linewidth=0)
+    g.plot_marginals(sns.kdeplot, shade=True, color='#404040')
+    g.ax_joint.set_xlabel('total counts', fontsize=16)
+    g.ax_joint.set_ylabel('Ig counts (%)', fontsize=16)
+    g.ax_joint.tick_params(axis='both', labelsize=13)
+    if fig_dir is not None:
+        plt.tight_layout()
+        if fig_prefix is not None:
+            fig_name = f'{fig_prefix}_pct-counts-ig.pdf'
+        else:
+            fig_name = 'pct_counts_ig.pdf'
+        plt.savefig(os.path.join(fig_dir, fig_name))
+    else:
+        plt.show()
+
+    # plot mito
+    g = sns.JointGrid(data=adata.obs, x='total_counts', y='pct_counts_mt')
+    g.plot_joint(sns.scatterplot, s=10, fc='grey', linewidth=0)
+    g.plot_marginals(sns.kdeplot, shade=True, color='#404040')
+    g.ax_joint.set_xlabel('total counts', fontsize=16)
+    g.ax_joint.set_ylabel('mitochondrial counts (%)', fontsize=16)
+    g.ax_joint.tick_params(axis='both', labelsize=13)
+    if fig_dir is not None:
+        plt.tight_layout()
+        if fig_prefix is not None:
+            fig_name = f'{fig_prefix}_pct-counts-mt.pdf'
+        else:
+            fig_name = 'pct_counts_mt.pdf'
+        plt.savefig(os.path.join(fig_dir, fig_name))
+    else:
+        plt.show()
+
+    # plot N genes by counts
+    g = sns.JointGrid(data=adata.obs, x='total_counts', y='n_genes_by_counts')
+    g.plot_joint(sns.scatterplot, s=10, fc='grey', linewidth=0)
+    g.plot_marginals(sns.kdeplot, shade=True, color='#404040')
+    g.ax_joint.set_xlabel('total counts', fontsize=16)
+    g.ax_joint.set_ylabel('number of genes', fontsize=16)
+    g.ax_joint.tick_params(axis='both', labelsize=13)
+    if fig_dir is not None:
+        plt.tight_layout()
+        if fig_prefix is not None:
+            fig_name = f'{fig_prefix}_n-genes-by-counts.pdf'
+        else:
+            fig_name = 'n_genes_by_counts.pdf'
+        plt.savefig(os.path.join(fig_dir, fig_name))
+    else:
+        plt.show()
 
 
 
