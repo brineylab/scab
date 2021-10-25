@@ -9,10 +9,9 @@
 Single cell analysis of B cells.
 scab is a core component of the ab\[x\] toolkit for antibody sequence analysis.
   
-  - Source code: [github.com/briney/abutils](https://github.com/briney/abutils)  
-  - Documentation: [abutils.readthedocs.org](http://abutils.readthedocs.org)  
-  - Download: [pypi.python.org/pypi/abutils](https://pypi.python.org/pypi/abutils)  
-  - Docker: [hub.docker.com/r/briney/abstar/](https://hub.docker.com/r/briney/abstar/)  
+  - Source code: [github.com/briney/scab](https://github.com/briney/scab)  
+  - Documentation: [scab.readthedocs.org](http://scab.readthedocs.org)  
+  - Download: [pypi.python.org/pypi/scab](https://pypi.python.org/pypi/scab)  
   
 ### install  
 `pip install scab`  
@@ -28,19 +27,23 @@ To run the test suite, clone or download the repository and run `pytest ./` from
 
 ### requirements  
 Python 3.6+  
-biopython  
-celery  
-ete3  
-matplotlib  
-numpy  
-nwalign3  
-pandas  
-paramiko  
-pymongo  
-pytest  
-scikit bio  
-seaborn   
+abstar
+abutils
+anndata
+harmonypy
+leidenalg
+matplotlib
+natsort
+numpy
+pandas
+pytest
+scanpy
+scanorama
+scrublet
+scvelo
+seaborn
+umap-learn 
   
-All of the above dependencies can be installed with pip, and will be installed automatically when installing abstar with pip.  
+All of the above dependencies can be installed with pip, and will be installed automatically when installing scab with pip.  
 If you're new to Python, a great way to get started is to install the [Anaconda Python distribution](https://www.continuum.io/downloads), which includes pip as well as a ton of useful scientific Python packages.
   
