@@ -21,10 +21,7 @@ if os.environ.get('READTHEDOCS', None):
     # Set empty install_requires to get install to work on readthedocs
     install_requires = []
 else:
-    if sys.version_info[0] > 2:
-        req_file = 'requirements.txt'
-    else:
-        req_file = 'requirements2.txt'
+    req_file = 'requirements.txt'
     try:
         reqs = parse_requirements(req_file, session=False)
     except TypeError:
@@ -35,18 +32,18 @@ else:
         install_requires = [str(r.requirement) for r in reqs]
 
 # read version
-exec(open('abutils/version.py').read())
+exec(open('scab/version.py').read())
 
 config = {
-    'description': 'Utilities for analysis of antibody NGS data',
+    'description': 'Single cell analysis of B cells',
     'author': 'Bryan Briney',
-    'url': 'https://www.github.com/briney/abutils',
+    'url': 'https://www.github.com/briney/scab',
     'author_email': 'briney@scripps.edu',
     'version': __version__,
     'install_requires': install_requires,
-    'packages': ['abutils'],
-    'scripts': ['bin/batch_cellranger'],
-    'name': 'abutils',
+    'packages': ['scab'],
+    'scripts': [],
+    'name': 'scab',
     'include_package_data': True,
     'classifiers': ['License :: OSI Approved :: MIT License',
                     'Programming Language :: Python :: 3.6',
