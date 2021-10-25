@@ -53,7 +53,7 @@ def dimensionality_reduction(adata, solver='arpack', n_neighbors=20, n_pcs=40,
         use_rna_velocity (bool): If ``True``, uses RNA velocity information to compute PAGA.
                                  If ``paga`` is ``False``, this option is ignored. Default is ``False``.
 
-        rep (str): Representation to use with computing neighbors with ``sc.pp.neignbors``.
+        rep (str): Representation to use when computing neighbors with ``sc.pp.neignbors``.
                    Default is ``None``.
 
         random_state (int): Seed for the random state used by ``sc.tl.umap``. Default is ``None``.
