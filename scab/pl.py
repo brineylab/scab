@@ -25,6 +25,7 @@
 
 from collections import Counter
 import itertools
+import re
 import sys
 
 import numpy as np
@@ -33,6 +34,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+
+import scanpy as sc
 
 import seaborn as sns
 
@@ -46,10 +49,31 @@ from abstar.core.germline import get_germlines
 
 # ===========================
 
-#         FEATURES
+#      QUALITY CONTROL
 
 # ===========================
 
+
+def qc_metrics(adata):
+    if 'ig' not in adata.var:
+        pattern = re.compile('IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]')
+        adata.var['ig'] = [False if re.match(pattern, a) is None else True for a in adata.var.index]
+    if 'mt' not in adata.var:
+        adata.var['mt'] = adata.var_names.str.startswith('MT-')
+    sc.pp.calculate_qc_metrics(adata, qc_vars=['ig', 'mt'],
+                               percent_top=None, log1p=False, inplace=True)
+    sc.pl.scatter(adata, x='total_counts', y='pct_counts_ig')
+    sc.pl.scatter(adata, x='total_counts', y='pct_counts_mt')
+    sc.pl.scatter(adata, x='total_counts', y='n_genes_by_counts')
+
+
+
+
+# ===========================
+
+#         FEATURES
+
+# ===========================
 
 
 def feature_kde(data, x, y, hue=None, hue_order=None, colors=None, thresh=0.1,
@@ -632,6 +656,13 @@ def feature_ridge(data, features, colors=None, rename=None,
         plt.show()
 
 
+
+
+# ===========================
+
+#           VDJ
+
+# ===========================
 
 
 def germline_use_barplot(adata, fig_file=None, gene='V', species='human', chain='heavy',
