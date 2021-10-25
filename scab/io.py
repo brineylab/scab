@@ -186,7 +186,7 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         hash_df = hash_df.apply(np.log2)
     if rename_cellhashes is None:
         rename_cellhashes = {}
-    for h in hashes.var_names:
+    for h in hash_df:
         gex.obs[rename_cellhashes.get(h, h)] = hash_df[h]
     
     # make feature dataframe
@@ -200,7 +200,7 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         feature_df = feature_df.apply(np.log2)
     if rename_features is None:
         rename_features = {f: f'{f}{feature_suffix}' for f in feature_df.var_names}
-    for f in features.var_names:
+    for f in feature_df:
         gex.obs[rename_features.get(f, f)] = feature_df[f]
     return gex
 
