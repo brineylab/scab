@@ -69,7 +69,7 @@ def qc_metrics(adata, fig_dir=None, fig_prefix=None):
     g.plot_joint(sns.scatterplot, s=10, fc='grey', linewidth=0)
     g.plot_marginals(sns.kdeplot, shade=True, color='#404040')
     g.ax_joint.set_xlabel('total counts', fontsize=16)
-    g.ax_joint.set_ylabel('Ig counts (%)', fontsize=16)
+    g.ax_joint.set_ylabel('immunoglobulin counts (%)', fontsize=16)
     g.ax_joint.tick_params(axis='both', labelsize=13)
     if fig_dir is not None:
         plt.tight_layout()
