@@ -24,7 +24,10 @@
 
 
 import numpy as np
+import pandas as pd
 import scanpy as sc
+from scipy import stats
+import statsmodels.api as sm
 
 
 def dimensionality_reduction(adata, solver='arpack', n_neighbors=20, n_pcs=40,
@@ -53,8 +56,10 @@ def dimensionality_reduction(adata, solver='arpack', n_neighbors=20, n_pcs=40,
         use_rna_velocity (bool): If ``True``, uses RNA velocity information to compute PAGA.
                                  If ``paga`` is ``False``, this option is ignored. Default is ``False``.
 
-        rep (str): Representation to use when computing neighbors with ``sc.pp.neignbors``.
-                   Default is ``None``.
+        rep (str): Representation to use when computing neighbors with ``sc.pp.neignbors``. For 
+                   example, if data have been batch normalized with ``scanorama``, the representation
+                   should be ``'Scanorama'``. Default is ``None``, which uses ``scanpy``'s default 
+                   representation.
 
         random_state (int): Seed for the random state used by ``sc.tl.umap``. Default is ``None``.
 
@@ -205,4 +210,58 @@ def scanorama(adata, batch_key='sample', dim_red=True):
     if dim_red:
         adata_scanorama = dimensionality_reduction(adata_scanorama, rep="Scanorama")
     return adata_scanorama
+
+
+
+def calculate_agbc_confidence(adata, control_adata, agbcs, update=True):
+    '''
+    Computes AgBC confidence using a control dataset.
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): ``AnnData`` object with AgBC count data (log2 transformed) located in ``adata.obs``.
+
+        control_adata (anndata.AnnData): ``AnnData`` object with AgBC count data (log2 transformed) located in 
+            ``control_adata.obs``. Should contain data from control cells (not antigen sorted) which will be used to 
+            compute the confidence values
+
+        agbcs (list): List of AgBC names. Each AgBC name must be present in both ``adata.obs`` and ``control_adata.obs``.
+
+        update (bool): If ``True``, ``adata.obs`` is updated with confidence values (column names are ``f'{agbc}_confidence'``).
+            If ``False``, a ``DataFrame`` is returned containing the confidence values. Default is ``True``.
+
+    
+    Returns:
+    --------
+    Updated ``adata`` if ``update`` is ``True`` or a ``pandas.DataFrame`` if ``update`` is ``False``.
+    
+    '''
+    conf_data = {}
+    for barcode in agbcs:
+        # get the fit parameters
+        y = np.exp2(control_adata.obs[barcode]) - 1
+        x = np.ones(y.shape)
+        res = sm.NegativeBinomial(y, x).fit(start_params=[0.1, 0.1], disp=False)
+        mu = np.exp(res.params[0])
+        alpha = res.params[1]
+        size = 1. / alpha
+        prob = size / (size + mu)
+        # estimate the distribution
+        dist = stats.nbinom(size, prob)
+        # calculate confidences
+        confidence = [dist.cdf(np.exp2(v) - 1) for v in adata.obs[barcode]]
+        if update:
+            adata.obs[f'{barcode}_confidence'] = confidence
+        else:
+            conf_data[f'{barcode}_confidence'] = confidence
+    if update:
+        return adata
+    else:
+        return pd.DataFrame(conf_data, index=adata.obs_names)
+
+
+
+
+
 
