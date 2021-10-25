@@ -1,5 +1,5 @@
 abstar
-abutils
+abutils>=0.2.5
 anndata
 harmonypy
 leidenalg
