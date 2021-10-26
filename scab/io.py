@@ -38,7 +38,9 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
                  vdj_id_key='sequence_id', vdj_sequence_key='sequence', vdj_id_delimiter='_', vdj_id_delimiter_num=1,
                  h_selection_func=None, l_selection_func=None, abstar_output_format='airr',
                  gex_only=False, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
+                 agbc_regex='agbc', ignore_agbc_case=True,
                  log_transform_cellhashes=True, ignore_zero_median_cellhashes=True, rename_cellhashes=None,
+                 log_transform_agbcs=True, ignore_zero_median_agbcs=True, rename_agbcs=None,
                  log_transform_features=True, ignore_zero_median_features=True, rename_features=None, feature_suffix='_FBC',
                  verbose=True):
 
@@ -94,7 +96,18 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         ignore_cellhash_regex_case (bool): If ``True``, searching for ``hash_regex`` will ignore case.
             Default is ``True``.
 
+        agbc_regex (str): A regular expression (regex) string used to identify AgBCs. The regex 
+            must be found in all AgBC names. The default is ``'agbc'``, which combined with the
+            default setting for ``ignore_hash_regex_case``, will match ``'agbc'``
+            in any combination of upper and lower case letters.
+
+        ignore_agbc_regex_case (bool): If ``True``, searching for ``agbcregex`` will ignore case.
+            Default is ``True``.
+
         log_transform_cellhashes (bool): If ``True``, cellhash UMI counts will be log2 transformed 
+            (after adding 1 to the raw count). Default is ``True``.
+
+        log_transform_agbcs (bool): If ``True``, AgBC UMI counts will be log2 transformed 
             (after adding 1 to the raw count). Default is ``True``.
         
         log_transform_features (bool): If ``True``, feature UMI counts will be log2 transformed 
@@ -104,6 +117,10 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
             count of ``0`` will be ignored and not returned in the hash dataframe. Default
             is ``True``.
         
+        ignore_zero_median_agbcs (bool): If ``True``, any AgBCs containing a meadian
+            count of ``0`` will be ignored and not returned in the AgBC dataframe. Default
+            is ``True``.
+
         ignore_zero_median_features (bool): If ``True``, any features containing a meadian
             count of ``0`` will be ignored and not returned in the feature dataframe. Default
             is ``True``.
@@ -111,6 +128,11 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         rename_cellhashes (dict): A dictionary with keys and values corresponding to the existing and 
             new cellhash names, respectively. For example, ``{'CellHash1': 'donorABC}`` would result in the 
             renaming of ``'CellHash1'`` to ``'donorABC'``. Cellhashes not found in the ``rename_cellhashes`` 
+            dictionary will not be renamed.
+
+        rename_agbcs (dict): A dictionary with keys and values corresponding to the existing and 
+            new AgBC names, respectively. For example, ``{'AgBC1': 'Lassa_GPC}`` would result in the 
+            renaming of ``'AgBC1'`` to ``'LassaGPC'``. AgBCs not found in the ``rename_agbcs`` 
             dictionary will not be renamed.
 
         rename_features (dict): A dictionary with keys and values corresponding to the existing and 
@@ -169,11 +191,17 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
     # parse out features and cellhashes
     non_gex = adata[:, adata.var.feature_types != 'Gene Expression']
     if ignore_cellhash_case:
-        pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
+        cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
     else:
-        pattern = re.compile(cellhash_regex)
-    hashes = non_gex[:, [re.search(pattern, i) is not None for i in non_gex.var.gene_ids]]
-    features = non_gex[:, [re.search(pattern, i) is None for i in non_gex.var.gene_ids]]
+        cellhash_pattern = re.compile(cellhash_regex)
+    if ignore_agbc_case:
+        agbc_pattern = re.compile(agbc_regex, flags=re.IGNORECASE)
+    else:
+        agbc_pattern = re.compile(agbc_regex)
+    hashes = non_gex[:, [re.search(cellhash_pattern, i) is not None for i in non_gex.var.gene_ids]]
+    agbcs = non_gex[:, [re.search(agbc_pattern, i) is not None for i in non_gex.var.gene_ids]]
+    features = non_gex[:, [all([re.search(cellhash_pattern, i) is None,
+                                re.search(agbc_pattern, i) is None]) for i in non_gex.var.gene_ids]]
     
     # process cellhash data
     if verbose:
@@ -188,6 +216,20 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         rename_cellhashes = {}
     for h in hash_df:
         gex.obs[rename_cellhashes.get(h, h)] = hash_df[h]
+
+    # process cellhash data
+    if verbose:
+        print('processing AgBC data...')
+    agbc_df = agbcs.to_df()[agbcs.var_names]
+    if ignore_zero_median_agbcs:
+        agbc_df = agbc_df[[a for a in agbc_df.columns.values if agbc_df[a].median() > 0]]
+    if log_transform_agbcs:
+        agbc_df += 1
+        agbc_df = agbc_df.apply(np.log2)
+    if rename_agbcs is None:
+        rename_agbcs = {}
+    for a in agbc_df:
+        gex.obs[rename_agbcs.get(a, a)] = agbc_df[a]
     
     # make feature dataframe
     if verbose:
@@ -199,7 +241,7 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         feature_df += 1
         feature_df = feature_df.apply(np.log2)
     if rename_features is None:
-        rename_features = {f: f'{f}{feature_suffix}' for f in feature_df.var_names}
+        rename_features = {f: f'{f}{feature_suffix}' for f in feature_df}
     for f in feature_df:
         gex.obs[rename_features.get(f, f)] = feature_df[f]
     return gex
