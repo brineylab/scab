@@ -238,6 +238,16 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True):
     
     '''
     conf_data = {}
+    if any([a not in control_adata.obs for a in agbcs]):
+        missing = [a for a in agbcs if a not in control_adata.obs]
+        print('Ignoring the following AgBCs, as they were not found in the control dataset:')
+        print(', '.join(missing))
+        agbcs = [a for a in agbcs if a not in missing]
+    if any([a not in adata.obs for a in agbcs]):
+        missing = [a for a in agbcs if a not in adata.obs]
+        print('Ignoring the following AgBCs, as they were not found in the dataset:')
+        print(', '.join(missing))
+        agbcs = [a for a in agbcs if a not in missing]
     for barcode in agbcs:
         # get the fit parameters
         y = np.exp2(control_adata.obs[barcode]) - 1
