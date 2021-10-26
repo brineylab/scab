@@ -270,10 +270,18 @@ def feature_kde(data, x, y, hue=None, hue_order=None, colors=None, thresh=0.1,
 
     # kdeplot
     if fill:
-        sns.kdeplot(data=df, x=x, y=y, hue=hue, fill=True, alpha=kde_fill_alpha,
-                    hue_order=hue_order, palette=colors, thresh=thresh, **kwargs)
-    ax = sns.kdeplot(data=df, x=x, y=y, hue=hue, alpha=kde_line_alpha,
-                     hue_order=hue_order, palette=colors, thresh=thresh, **kwargs)
+        if hue_order:
+            sns.kdeplot(data=df, x=x, y=y, hue=hue, fill=True, alpha=kde_fill_alpha,
+                        hue_order=hue_order, palette=colors, thresh=thresh, **kwargs)
+        else:
+            sns.kdeplot(data=df, x=x, y=y, fill=True, alpha=kde_fill_alpha, 
+                        color=colors[0], thresh=thresh, **kwargs)
+    if hue_order:
+        ax = sns.kdeplot(data=df, x=x, y=y, hue=hue, alpha=kde_line_alpha,
+                        hue_order=hue_order, palette=colors, thresh=thresh, **kwargs)
+    else:
+        ax = sns.kdeplot(data=df, x=x, y=y, alpha=kde_line_alpha,
+                        color=colors[0], thresh=thresh, **kwargs)
     
     # highlighted points
     highlight = any([highlight_index is not None, all([highlight_x is not None, highlight_y is not None])])
