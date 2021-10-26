@@ -55,7 +55,8 @@ from abstar.core.germline import get_germlines
 # ===========================
 
 
-def qc_metrics(adata, fig_dir=None, fig_prefix=None):
+def qc_metrics(adata, ngenes_cutoff=2500, mito_cutoff=10, ig_cutoff=50,
+               fig_dir=None, fig_prefix=None):
     if 'ig' not in adata.var:
         pattern = re.compile('IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]')
         adata.var['ig'] = [False if re.match(pattern, a) is None else True for a in adata.var.index]
@@ -64,13 +65,22 @@ def qc_metrics(adata, fig_dir=None, fig_prefix=None):
     sc.pp.calculate_qc_metrics(adata, qc_vars=['ig', 'mt'],
                                percent_top=None, log1p=False, inplace=True)
 
+    palette = {'include': '#202020', 'exclude': '#C0C0C0'}
+    hue_order = ['include', 'exclude']
+
     # plot Ig
+    ig_hue = ['include' if i < ig_cutoff else 'exclude' for i in adata.obs.pct_counts_ig]
+    ig_counter = Counter(ig_hue)
     g = sns.JointGrid(data=adata.obs, x='total_counts', y='pct_counts_ig')
-    g.plot_joint(sns.scatterplot, s=10, fc='grey', linewidth=0)
+    g.plot_joint(sns.scatterplot, s=10, linewidth=0, 
+                 hue=ig_hue, hue_order=hue_order, palette=palette)
     g.plot_marginals(sns.kdeplot, shade=True, color='#404040')
     g.ax_joint.set_xlabel('total counts', fontsize=16)
     g.ax_joint.set_ylabel('immunoglobulin counts (%)', fontsize=16)
     g.ax_joint.tick_params(axis='both', labelsize=13)
+    handles, labels = g.ax_joint.get_legend_handles_labels()
+    labels = [f'{l} ({ig_counter[l]})' for l in labels]
+    g.ax_joint.legend(handles, labels, title='ig filter', title_fontsize=14, fontsize=13)
     if fig_dir is not None:
         plt.tight_layout()
         if fig_prefix is not None:
@@ -82,12 +92,18 @@ def qc_metrics(adata, fig_dir=None, fig_prefix=None):
         plt.show()
 
     # plot mito
+    mito_hue = ['include' if i < mito_cutoff else 'exclude' for i in adata.obs.pct_counts_mt]
+    mito_counter = Counter(mito_hue)
     g = sns.JointGrid(data=adata.obs, x='total_counts', y='pct_counts_mt')
-    g.plot_joint(sns.scatterplot, s=10, fc='grey', linewidth=0)
+    g.plot_joint(sns.scatterplot, s=10, linewidth=0, 
+                 hue=mito_hue, hue_order=hue_order, palette=palette)
     g.plot_marginals(sns.kdeplot, shade=True, color='#404040')
     g.ax_joint.set_xlabel('total counts', fontsize=16)
     g.ax_joint.set_ylabel('mitochondrial counts (%)', fontsize=16)
     g.ax_joint.tick_params(axis='both', labelsize=13)
+    handles, labels = g.ax_joint.get_legend_handles_labels()
+    labels = [f'{l} ({mito_counter[l]})' for l in labels]
+    g.ax_joint.legend(handles, labels, title='mito filter', title_fontsize=14, fontsize=13)
     if fig_dir is not None:
         plt.tight_layout()
         if fig_prefix is not None:
@@ -99,12 +115,18 @@ def qc_metrics(adata, fig_dir=None, fig_prefix=None):
         plt.show()
 
     # plot N genes by counts
+    ngenes_hue = ['include' if i < ngenes_cutoff else 'exclude' for i in adata.obs.n_genes_by_counts]
+    ngenes_counter = Counter(ngenes_hue)
     g = sns.JointGrid(data=adata.obs, x='total_counts', y='n_genes_by_counts')
-    g.plot_joint(sns.scatterplot, s=10, fc='grey', linewidth=0)
+    g.plot_joint(sns.scatterplot, s=10, linewidth=0, 
+                 hue=ngenes_hue, hue_order=hue_order, palette=palette)
     g.plot_marginals(sns.kdeplot, shade=True, color='#404040')
     g.ax_joint.set_xlabel('total counts', fontsize=16)
     g.ax_joint.set_ylabel('number of genes', fontsize=16)
     g.ax_joint.tick_params(axis='both', labelsize=13)
+    handles, labels = g.ax_joint.get_legend_handles_labels()
+    labels = [f'{l} ({ngenes_counter[l]})' for l in labels]
+    g.ax_joint.legend(handles, labels, title='genes filter', title_fontsize=14, fontsize=13)
     if fig_dir is not None:
         plt.tight_layout()
         if fig_prefix is not None:
