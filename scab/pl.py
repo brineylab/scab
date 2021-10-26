@@ -459,7 +459,8 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
             else:
                 cmap = plt.get_cmap(cmap)
             max_hue = df[hue].max()
-            df['color'] = [cmap(h / max_hue) for h in df[hue]]
+            min_hue = df[hue].min()
+            df['color'] = [cmap((h - min_hue) / (max_hue - min_hue)) for h in df[hue]]
         else:
             if hue_order is None:
                 hue_order = natsorted(list(set(df[hue])))
