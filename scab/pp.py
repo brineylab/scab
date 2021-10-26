@@ -31,8 +31,8 @@ import scrublet
 
 
 def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_cells=None,
-                         n_genes_by_counts=2500, percent_mito=10, hvg_batch_key=None,
-                         remove_ig=True, ig_removal_pattern='IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]',
+                         n_genes_by_counts=2500, percent_mito=10, percent_ig=50, hvg_batch_key=None,
+                         ig_regex_pattern='IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]',
                          target_sum=None, n_top_genes=None, normalization_flavor='cell_ranger', log=True,
                          scale_max_value=None, save_raw=True, verbose=True):
     '''
@@ -67,11 +67,9 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
                              variable genes for each batch. Default is ``None``, which results in highly
                              variable genes being computed on the entire dataset.
 
-        remove_ig (bool): If ``True``, immunoglobulin genes will be filtered from the dataset. Default is ``True``.
-
-        ig_removal_pattern (str): Regular expression pattern used to identify immunoglobulin genes. Default is
-                                  ``'IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]"``, which filteres all immunoglobulin
-                                  germline gene segments (V, D and J). Constant region genes are not removed.
+        ig_regex_pattern (str): Regular expression pattern used to identify immunoglobulin genes. Default is
+                                ``'IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]"``, which captures all immunoglobulin
+                                germline gene segments (V, D and J). Constant region genes are not captured.
 
         target_sum (int): Target read count for normalization, passed to ``sc.pp.normalize_total()``. Default
                           is ``None``, which uses the median count of all cells (pre-normalization).
@@ -87,11 +85,8 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
         scale_max_value (float): Value at which normalized count values will be clipped. Default is ``None``,
                                  which results in no clipping.
 
-        doublet_removal (bool): If ``True``, doublets will be identified using ``scrublet.scrub_doublets()``
-                                and removed.
-
         save_raw (bool): If ``True``, normalized and filtered data will be saved to ``adata.raw`` prior to
-                         scaling, regressing out mitochondrial genes, and doublet removal. Default is ``True``.
+                         scaling and regressing out mitochondrial/immmunoglobulin genes. Default is ``True``.
 
         verbose (bool): If ``True``, progress updates will be printed. Default is ``True``.
     '''
@@ -106,19 +101,16 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
     if verbose:
         print(f'filtering genes found in fewer than {min_cells} cells...')
     sc.pp.filter_genes(adata, min_cells=min_cells)
-    if remove_ig:
-        if verbose:
-            print('removing immunoglobulin genes...')
-        pattern = re.compile(ig_removal_pattern)
-        not_ig = [g for g in adata.var.index if not re.match(pattern, g)]
-        adata = adata[:, not_ig]
-    # filter by mito and n_genes_by_counts
     if verbose:
-        print('filtering mitochondrial genes...')
-    if 'mt' not in adata.var:
-        adata.var['mt'] = adata.var_names.str.startswith('MT-')
-        sc.pp.calculate_qc_metrics(adata, qc_vars=['mt'],
-                                   percent_top=None, log1p=False, inplace=True)
+        print('QC...')
+    ig_pattern = re.compile(ig_regex_pattern)
+    adata.var['ig'] = [False if re.match(ig_pattern, g) is None else True for g in adata.var.index]
+    adata.var['mt'] = adata.var_names.str.startswith('MT-')
+    sc.pp.calculate_qc_metrics(adata, qc_vars=['mt', 'ig'],
+                               percent_top=None, log1p=False, inplace=True)
+    if verbose:
+        print('filtering based on percent Ig and percent mito...')
+    adata = adata[adata.obs.pct_counts_ig < percent_ig, :]
     adata = adata[adata.obs.pct_counts_mt < percent_mito, :]
     adata = adata[adata.obs.n_genes_by_counts < n_genes_by_counts, :]
     # normalize and log transform
@@ -143,6 +135,9 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
     if verbose:
         print('regressing out mitochondrial genes...')
     sc.pp.regress_out(adata, ['total_counts', 'pct_counts_mt'])
+    if verbose:
+        print('regressing out immunoglobulin genes...')
+    sc.pp.regress_out(adata, ['total_counts', 'pct_counts_ig'])
     if verbose:
         print('scaling...')
     sc.pp.scale(adata, max_value=scale_max_value)
