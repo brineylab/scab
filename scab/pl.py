@@ -35,6 +35,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import scanpy as sc
 
@@ -373,6 +374,7 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
                     highlight_size=90, highlight_color='k', highlight_name=None, highlight_alpha=0.9,
                     xlabel=None, ylabel=None, equal_axes=True, force_categorical_hue=False,
                     legend_loc='best', legend_title=None, legend_fontsize=13, legend_frameon=True,
+                    cbar_width=30, cbar_height=5, cbar_loc='lower right', cbar_orientation='horizontal', 
                     return_ax=False, figsize=[6, 6], figfile=None):
     '''
     Produces a scatter plot of two features, optionally colored by a third feature.
@@ -481,8 +483,10 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
         df = pd.DataFrame(_data, index=data.index.values)
     
     # hue and color
+    continuous_hue = False
     if hue is not None:
         if all([isinstance(h, float) for h in df[hue]]) and not force_categorical_hue:
+            continuous_hue = True
             hue_order = []
             if cmap is None:
                 cmap = sns.color_palette("flare", as_cmap=True)
@@ -535,7 +539,12 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
                     marker=highlight_marker,
                     label=highlight_name)
     # legend
-    ax.legend(loc=legend_loc, fontsize=legend_fontsize, title=legend_title, frameon=legend_frameon)
+    if not continuous_hue:
+        ax.legend(loc=legend_loc, fontsize=legend_fontsize, title=legend_title, frameon=legend_frameon)
+    # colorbar
+    else:
+        cbaxes = inset_axes(ax, width=f'{cbar_width}%', height=f'{cbar_height}%', loc=cbar_loc) 
+        plt.colorbar(cax=cbaxes, orientation=cbar_orientation)
     
     # style the plot
     ax.set_xlabel(xlabel if xlabel is not None else x, fontsize=16)
