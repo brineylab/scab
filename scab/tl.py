@@ -22,7 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-
+from natsort import natsorted
 import numpy as np
 import pandas as pd
 import scanpy as sc
@@ -213,7 +213,8 @@ def scanorama(adata, batch_key='sample', dim_red=True):
 
 
 
-def calculate_agbc_confidence(adata, control_adata, agbcs, update=True):
+def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
+                              batch_key=None, batch_control_data=True, verbose=True):
     '''
     Computes AgBC confidence using a control dataset.
 
@@ -238,29 +239,57 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True):
     
     '''
     conf_data = {}
+    # check to make sure AgBCs are in both datasets
     if any([a not in control_adata.obs for a in agbcs]):
         missing = [a for a in agbcs if a not in control_adata.obs]
-        print('Ignoring the following AgBCs, as they were not found in the control dataset:')
-        print(', '.join(missing))
+        if verbose:
+            print('Ignoring the following AgBCs, as they were not found in the control data: ', end='')
+            print(', '.join(missing))
         agbcs = [a for a in agbcs if a not in missing]
     if any([a not in adata.obs for a in agbcs]):
         missing = [a for a in agbcs if a not in adata.obs]
-        print('Ignoring the following AgBCs, as they were not found in the dataset:')
-        print(', '.join(missing))
+        if verbose:
+            print('Ignoring the following AgBCs, as they were not found in the data: ', end='')
+            print(', '.join(missing))
         agbcs = [a for a in agbcs if a not in missing]
+    # split data into batches
+    if batch_key is not None:
+        if batch_key not in adata.obs:
+            print(f'ERROR: the supplied batch key ({batch_key}) was not found in the input data.')
+            return
+        batch_names = natsorted(adata.obs[batch_key].unique())
+        if verbose:
+            print(f'Found {len(batch_names)} batches: {", ".join(batch_names)}')
+        batches = [adata[adata.obs[batch_key] == b] for b in batch_names]
+        if batch_control_data:
+            if batch_key not in control_adata.obs:
+                print(f'ERROR: the supplied batch key ({batch_key}) was not found in the control data.')
+                return
+            control_batches = [control_adata[control_adata.obs[batch_key] == b] for b in batch_names]
+        else:
+            control_batches = [control_adata] * len(batch_names)
+    else:
+        batch_names = [None]
+        batches = [adata]
+        control_batches = [control_adata]
+    # calculate confidence
     for barcode in agbcs:
-        # get the fit parameters
-        y = np.exp2(control_adata.obs[barcode]) - 1
-        x = np.ones(y.shape)
-        res = sm.NegativeBinomial(y, x).fit(start_params=[0.1, 0.1], disp=False)
-        mu = np.exp(res.params[0])
-        alpha = res.params[1]
-        size = 1. / alpha
-        prob = size / (size + mu)
-        # estimate the distribution
-        dist = stats.nbinom(size, prob)
-        # calculate confidences
-        confidence = [dist.cdf(np.exp2(v) - 1) for v in adata.obs[barcode]]
+        bc_conf = {}
+        for name, data, control in zip(batch_names, batches, control_batches):
+            # get the fit parameters
+            y = np.exp2(control.obs[barcode]) - 1
+            x = np.ones(y.shape)
+            res = sm.NegativeBinomial(y, x).fit(start_params=[0.1, 0.1], disp=False)
+            mu = np.exp(res.params[0])
+            alpha = res.params[1]
+            size = 1. / alpha
+            prob = size / (size + mu)
+            # estimate the distribution
+            dist = stats.nbinom(size, prob)
+            # calculate confidences
+            conf = [dist.cdf(np.exp2(v) - 1) for v in data.obs[barcode]]
+            bc_conf.update({k: v for k, v in zip(data.obs_names, conf)})
+        confidence = [bc_conf[o] for o in adata.obs_names]
         if update:
             adata.obs[f'{barcode}_confidence'] = confidence
         else:
