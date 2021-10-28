@@ -29,6 +29,8 @@ from natsort import natsorted
 import numpy as np
 import pandas as pd
 
+import matplotlib.pyplot as plt
+
 import scanpy as sc
 
 from sklearn.neighbors import KernelDensity
@@ -311,10 +313,10 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
 
 
 
-def classify_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
-                        batch_names=None, batch_key='batch',
-                        threshold_minimum=4.0, threshold_maximum=10.0, kde_maximum=15.0, 
-                        assignments_only=False, debug=False):
+def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
+                      batch_names=None, batch_key='batch',
+                      threshold_minimum=4.0, threshold_maximum=10.0, kde_maximum=15.0, 
+                      assignments_only=False, debug=False):
     '''
     Assigns cells to hash groups based on cell hashing data.
 
@@ -361,16 +363,16 @@ def classify_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ign
         debug (bool): produces plots and prints intermediate information for debugging. Default is 
             ``False``.
     '''
-    # make sure the dataframe is counts + 1
+    # parse hash names
     if hash_names is None:
         if ignore_cellhash_case:
             cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
         else:
             cellhash_pattern = re.compile(cellhash_regex)
-        hashnames = [re.search(cellhash_pattern, o) is not None for o in adata.obs.columns]]
+        hash_names = [re.search(cellhash_pattern, o) is not None for o in adata.obs.columns]
     if batch_names is None:
         batch_names = {}
-
+    # compute thresholds
     thresholds = {}
     for hash_name in hash_names:
         if debug:
@@ -380,13 +382,11 @@ def classify_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ign
                                                         threshold_maximum=threshold_maximum,
                                                         kde_maximum=kde_maximum,
                                                         debug=debug)
-    
     if debug:
         print('THRESHOLDS')
         print('----------')
         for hash_name in hash_names:
             print(f'{hash_name}: {thresholds[hash_name]}')
-
     assignments = []
     for _, row in adata.obs[hash_names].iterrows():
         a = [h for h in hash_names if row[h] >= thresholds[h]]
@@ -397,18 +397,11 @@ def classify_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ign
         else:
             assignment = 'unassigned'
         assignments.append(assignment)
-    adata.obs[batch_key] = assignments
-    
     if assignments_only:
-        return hash_df['assignment']
-    elif update_also is not None:
-        update_also = update_also.copy()
-        update_also['assignment'] = hash_df['assignment']
-        return hash_df, update_also
+        return pd.Series(assignments, index=adata.obs_names)
     else:
-        return hash_df
-
-
+        adata.obs[batch_key] = assignments
+        return adata
 
 
 def positive_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0, kde_maximum=15.0,
