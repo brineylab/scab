@@ -635,9 +635,9 @@ def cellhash_ridge(adata, hashname, category, colors=None, alpha=1.0,
     g = sns.FacetGrid(data, row=category, hue=category,
                       aspect=7.5, height=0.75, palette=colors,
                       row_order=categories, hue_order=categories)
-    g.map(sns.kdeplot, hashname, clip_on=False, shade=True, alpha=alpha, lw=1.5)
-    g.map(sns.kdeplot, hashname, clip_on=False, color="w", lw=3)
-    g.map(plt.axhline, y=0, lw=2, clip_on=False)
+    g.map(sns.kdeplot, hashname, clip=[None, xmax], shade=True, alpha=alpha, lw=1.5)
+    g.map(sns.kdeplot, hashname, clip=[None, xmax], color="w", lw=3)
+    g.map(plt.axhline, y=0, lw=2, clip=[None, xmax])
 
     def label(x, color, label):
         ax = plt.gca()
