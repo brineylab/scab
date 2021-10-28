@@ -574,7 +574,7 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
 
 def cellhash_ridge(data, hashname, category, colors=None, alpha=1.0,
                    categories=None, hide_extra_categories=False, rename=None, xmax=14,
-                   ylabel_fontsize=11, xlabel=None, xlabel_fontsize=12,
+                   ylabel_fontsize=11, xlabel=None, xlabel_fontsize=12, xtick_labelsize=11,
                    feature_label_xoffset=5, figfile=None):
     '''
     Docstring for feature_ridge.
@@ -664,9 +664,10 @@ def cellhash_ridge(data, hashname, category, colors=None, alpha=1.0,
         ax.set_xlabel(ax.get_xlabel(),
                       x=xlabel_position,
                       fontsize=xlabel_fontsize)
+        ax.tick_params(axis='x', label_size=xtick_labelsize)
         
-    for ax in g.axes.flat:
-        ax.set_xlabel(ax.get_xlabel(), fontsize=xlabel_fontsize)
+    # for ax in g.axes.flat:
+    #     ax.set_xlabel(ax.get_xlabel(), fontsize=xlabel_fontsize)
 
     if figfile is not None:
         g.savefig(figfile)
