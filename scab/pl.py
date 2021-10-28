@@ -637,7 +637,7 @@ def cellhash_ridge(adata, hashname, category, colors=None, alpha=1.0,
                       row_order=categories, hue_order=categories)
     g.map(sns.kdeplot, hashname, clip=[None, xmax], shade=True, alpha=alpha, lw=1.5)
     g.map(sns.kdeplot, hashname, clip=[None, xmax], color="w", lw=3)
-    g.map(plt.axhline, y=0, lw=2, clip=[None, xmax])
+    g.map(plt.axhline, y=0, lw=2, clip_on=False)
 
     def label(x, color, label):
         ax = plt.gca()
