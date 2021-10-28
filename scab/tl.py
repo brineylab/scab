@@ -369,7 +369,7 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
             cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
         else:
             cellhash_pattern = re.compile(cellhash_regex)
-        hash_names = [re.search(cellhash_pattern, o) is not None for o in adata.obs.columns]
+        hash_names = [o for o in adata.obs.columns if re.search(cellhash_pattern, o) is not None]
     if batch_names is None:
         batch_names = {}
     # compute thresholds
