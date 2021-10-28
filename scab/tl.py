@@ -458,6 +458,66 @@ def positive_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0,
     return cutoff
 
 
+def negative_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0, kde_maximum=15.0, denominator=2.0,
+                            debug=False, show_cutoff_value=False, cutoff_text='cutoff', debug_figfile=None):
+    a = np.array(vals)
+    k = _bw_silverman(a)
+    kde = KernelDensity(kernel='gaussian', bandwidth=k).fit(a.reshape(-1, 1))
+    s = np.linspace(0, kde_maximum, num=int(kde_maximum * 100))
+    e = kde.score_samples(s.reshape(-1,1))
+    
+    all_min, all_max = argrelextrema(e, np.less)[0], argrelextrema(e, np.greater)[0]
+    if len(all_min) > 1:
+        _all_min = np.array([m for m in all_min if s[m] <= threshold_maximum and s[m] >= threshold_minimum])
+        min_vals = zip(_all_min, e[_all_min])
+        mi = sorted(min_vals, key=lambda x: x[1])[0][0]
+        ma = [m for m in all_max if s[m] < s[mi]][-1]
+        cutoff = s[int((mi + ma) / denominator)]
+    elif len(all_min) == 1:
+        mi = all_min[0]
+        ma = all_max[0]
+        cutoff = s[int((mi + ma) / denominator)]
+    else:
+        cutoff = None
+    if debug:
+        if cutoff is not None:
+            # plot
+            plt.plot(s, e)
+            plt.fill_between(s, e, y2=[min(e)] * len(s), alpha=0.1)
+            plt.vlines(s[mi], min(e), e[mi], colors='k', alpha=0.5, linestyles=':')
+            plt.vlines(s[ma], min(e), e[ma], colors='k', alpha=0.5, linestyles=':')
+            plt.vlines(cutoff, min(e), max(e),
+                       colors='k', alpha=0.5, linestyles=':', linewidths=2)
+            # text
+            text_ymin = min(e) + (0.025 * (max(e) - min(e)))
+            text_xadj = 0.025 * (max(s) - min(s))
+            plt.text(s[mi] + text_xadj, text_ymin, 'local\nmin', ha='left', va='bottom', fontsize=12)
+            plt.text(s[ma] - text_xadj, text_ymin, 'local\nmax', ha='right', va='bottom', fontsize=12)
+            cutoff_string = f'{cutoff_text}: {round(cutoff, 3)}' if show_cutoff_value else cutoff_text
+            plt.text(cutoff + text_xadj, max(e), cutoff_string, ha='left', va='top', fontsize=14)
+            # style
+            ax = plt.gca()
+            for spine in ['right', 'top']:
+                ax.spines[spine].set_visible(False)
+            ax.tick_params(axis='both', labelsize=12)
+            ax.set_xlabel('$\mathregular{log_2}$ UMI counts', fontsize=14)
+            ax.set_ylabel('kernel density', fontsize=14)
+            # save or show
+            if debug_figfile is not None:
+                plt.tight_layout()
+                plt.savefig(debug_figfile)
+            else:
+                plt.show()
+        print('bandwidth: {}'.format(k))
+        print('local minima: {}'.format(s[all_min]))
+        print('local maxima: {}'.format(s[all_max]))
+        if cutoff is not None:
+            print('cutoff: {}'.format(cutoff))
+        else:
+            print('WARNING: no local minima were found, so the threshold could not be calculated.')
+        print('\n\n')
+    return cutoff
+
 
 def _bw_silverman(x):
     normalize = 1.349
