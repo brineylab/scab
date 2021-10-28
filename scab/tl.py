@@ -22,11 +22,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
+import re
+
 from natsort import natsorted
+
 import numpy as np
 import pandas as pd
+
 import scanpy as sc
+
+from sklearn.neighbors import KernelDensity
+
 from scipy import stats
+from scipy.signal import argrelextrema
+from scipy.stats import scoreatpercentile
+
 import statsmodels.api as sm
 
 
@@ -301,6 +311,171 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
 
 
 
+def classify_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
+                        batch_names=None, batch_key='batch',
+                        threshold_minimum=4.0, threshold_maximum=10.0, kde_maximum=15.0, 
+                        assignments_only=False, debug=False):
+    '''
+    Assigns cells to hash groups based on cell hashing data.
+
+    Args:
+    -----
+
+        df (pd.DataFrame): Squareform input dataframe, containing cellhash UMI counts. Indexes
+            should be cells, columns should be cell hashes.
+        
+        hash_names (iterable): List of hashnames, which correspond to column names in ``adata.obs``. 
+            Overrides cellhash name matching using ``cellhash_regex``. If not provided, all columns 
+            in ``adata.obs`` that are matched using ``cellhash_regex`` will be assumed to be hashnames. 
+        
+        cellhash_regex (str): A regular expression (regex) string used to identify cell hashes. The regex 
+            must be found in all cellhash names. The default is ``'cell ?hash'``, which combined with the
+            default setting for ``ignore_cellhash_regex_case``, will match ``'cellhash'`` or ``'cell hash'``
+            in any combination of upper and lower case letters.
+
+        ignore_cellhash_regex_case (bool): If ``True``, searching for ``cellhash_regex`` will ignore case.
+            Default is ``True``.
+        
+        batch_names (dict): Dictionary relating hasnhames (column names in ``adata.obs``) to the preferred
+            batch name. For example, if the hashname ``'Cellhash1'`` corresponded to the sample 
+            ``'Sample1'``, an example ``batch_names`` argument would be::
+
+                {'Cellhash1': 'Sample1'}
+
+        batch_key (str): Column name (in ``adata.obs``) into which cellhash classifications will be 
+            stored. Default is ``'batch'``.
+
+        threshold_minimum (float): Minimum acceptable kig2-normalized UMI threshold. Potential 
+            thresholds below this value will be ignored. Default is ``4.0``.
+
+        threshold_maximum (float): Maximum acceptable kig2-normalized UMI threshold. Potential 
+            thresholds above this value will be ignored. Default is ``10.0``.
+
+        kde_maximum (float): Upper limit of the KDE (in log2-normalized UMI counts). This should 
+            be below the maximum number of UMI counts, or else strange results may occur. Default 
+            is ``15.0``.
+
+        assignments_only (bool): If ``True``, return a pandas ``Series`` object containing only the 
+            group assignment. Suitable for appending to an existing dataframe.
+
+        debug (bool): produces plots and prints intermediate information for debugging. Default is 
+            ``False``.
+    '''
+    # make sure the dataframe is counts + 1
+    if hash_names is None:
+        if ignore_cellhash_case:
+            cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
+        else:
+            cellhash_pattern = re.compile(cellhash_regex)
+        hashnames = [re.search(cellhash_pattern, o) is not None for o in adata.obs.columns]]
+    if batch_names is None:
+        batch_names = {}
+
+    thresholds = {}
+    for hash_name in hash_names:
+        if debug:
+            print(hash_name)
+        thresholds[hash_name] = positive_feature_cutoff(adata.obs[hash_name],
+                                                        threshold_minimum=threshold_minimum,
+                                                        threshold_maximum=threshold_maximum,
+                                                        kde_maximum=kde_maximum,
+                                                        debug=debug)
+    
+    if debug:
+        print('THRESHOLDS')
+        print('----------')
+        for hash_name in hash_names:
+            print(f'{hash_name}: {thresholds[hash_name]}')
+
+    assignments = []
+    for _, row in adata.obs[hash_names].iterrows():
+        a = [h for h in hash_names if row[h] >= thresholds[h]]
+        if len(a) == 1:
+            assignment = batch_names.get(a[0], a[0])
+        elif len(a) > 1:
+            assignment = 'doublet'
+        else:
+            assignment = 'unassigned'
+        assignments.append(assignment)
+    adata.obs[batch_key] = assignments
+    
+    if assignments_only:
+        return hash_df['assignment']
+    elif update_also is not None:
+        update_also = update_also.copy()
+        update_also['assignment'] = hash_df['assignment']
+        return hash_df, update_also
+    else:
+        return hash_df
+
+
+
+
+def positive_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0, kde_maximum=15.0,
+                            debug=False, show_cutoff_value=False, cutoff_text='cutoff', debug_figfile=None):
+    a = np.array(vals)
+    k = _bw_silverman(a)
+    kde = KernelDensity(kernel='gaussian', bandwidth=k).fit(a.reshape(-1, 1))
+    s = np.linspace(0, kde_maximum, num=int(kde_maximum * 100))
+    e = kde.score_samples(s.reshape(-1,1))
+    
+    all_min, all_max = argrelextrema(e, np.less)[0], argrelextrema(e, np.greater)[0]
+    if len(all_min) > 1:
+        _all_min = np.array([m for m in all_min if s[m] <= threshold_maximum and s[m] >= threshold_minimum])
+        min_vals = zip(_all_min, e[_all_min])
+        mi = sorted(min_vals, key=lambda x: x[1])[0][0]
+        cutoff = s[mi]
+    elif len(all_min) == 1:
+        mi = all_min[0]
+        cutoff = s[mi]
+    else:
+        cutoff = None
+    if debug:
+        if cutoff is not None:
+            # plot
+            plt.plot(s, e)
+            plt.fill_between(s, e, y2=[min(e)] * len(s), alpha=0.1)
+            plt.vlines(cutoff, min(e), max(e),
+                       colors='k', alpha=0.5, linestyles=':', linewidths=2)
+            # text
+            text_xadj = 0.025 * (max(s) - min(s))
+            cutoff_string = f'{cutoff_text}: {round(cutoff, 3)}' if show_cutoff_value else cutoff_text
+            plt.text(cutoff - text_xadj, max(e), cutoff_string, ha='right', va='top', fontsize=14)
+            # style
+            ax = plt.gca()
+            for spine in ['right', 'top']:
+                ax.spines[spine].set_visible(False)
+            ax.tick_params(axis='both', labelsize=12)
+            ax.set_xlabel('$\mathregular{log_2}$ UMI counts', fontsize=14)
+            ax.set_ylabel('kernel density', fontsize=14)
+            # save or show
+            if debug_figfile is not None:
+                plt.tight_layout()
+                plt.savefig(debug_figfile)
+            else:
+                plt.show()
+        print('bandwidth: {}'.format(k))
+        print('local minima: {}'.format(s[all_min]))
+        print('local maxima: {}'.format(s[all_max]))
+        if cutoff is not None:
+            print('cutoff: {}'.format(cutoff))
+        else:
+            print('WARNING: no local minima were found, so the threshold could not be calculated.')
+        print('\n\n')
+    return cutoff
+
+
+
+def _bw_silverman(x):
+    normalize = 1.349
+    IQR = (scoreatpercentile(x, 75) - scoreatpercentile(x, 25)) / normalize
+    std_dev = np.std(x, axis=0, ddof=1)
+    if IQR > 0:
+        A = np.minimum(std_dev, IQR)
+    else:
+        A = std_dev
+    n = len(x)
+    return .9 * A * n ** (-0.2)
 
 
 
