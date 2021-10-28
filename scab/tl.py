@@ -370,6 +370,7 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
         else:
             cellhash_pattern = re.compile(cellhash_regex)
         hash_names = [o for o in adata.obs.columns if re.search(cellhash_pattern, o) is not None]
+    hash_names = [h for h in hash_names if h  != assignment_key]
     if rename is None:
         rename = {}
     # compute thresholds
