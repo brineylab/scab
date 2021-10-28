@@ -572,7 +572,7 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
         plt.show()
 
 
-def cellhash_ridge(data, hashname, category, colors=None, alpha=1.0,
+def cellhash_ridge(adata, hashname, category, colors=None, alpha=1.0,
                    categories=None, hide_extra_categories=False, rename=None, xmax=14,
                    ylabel_fontsize=11, xlabel=None, xlabel_fontsize=12, xtick_labelsize=11,
                    feature_label_xoffset=5, figfile=None):
@@ -581,7 +581,8 @@ def cellhash_ridge(data, hashname, category, colors=None, alpha=1.0,
     '''
     
     # input data
-    data = data.copy()
+    data = adata.obs.copy()
+    data = data[data[hashname] <= xmax]
     if category not in data.columns.values:
         print('"{}" is not a column in the supplied dataframe'.format(category))
         return
@@ -594,7 +595,7 @@ def cellhash_ridge(data, hashname, category, colors=None, alpha=1.0,
             rename = {v: k for k, v in rename.items()}
 
     # categories
-    category_set = list(set(data[category]))
+    category_set = data[category].unique()
     if categories is None:
         feature_cats = natsorted([c for c in category_set if rename.get(c, c) in data.columns.values])
         extra_cats = natsorted([c for c in category_set if rename.get(c, c) not in feature_cats])
