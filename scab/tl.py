@@ -314,7 +314,7 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
 
 
 def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
-                      batch_names=None, batch_key='batch',
+                      rename=None, assignment_key='cellhash_assignment',
                       threshold_minimum=4.0, threshold_maximum=10.0, kde_maximum=15.0, 
                       assignments_only=False, debug=False):
     '''
@@ -370,8 +370,8 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
         else:
             cellhash_pattern = re.compile(cellhash_regex)
         hash_names = [o for o in adata.obs.columns if re.search(cellhash_pattern, o) is not None]
-    if batch_names is None:
-        batch_names = {}
+    if rename is None:
+        rename = {}
     # compute thresholds
     thresholds = {}
     for hash_name in hash_names:
@@ -391,7 +391,7 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
     for _, row in adata.obs[hash_names].iterrows():
         a = [h for h in hash_names if row[h] >= thresholds[h]]
         if len(a) == 1:
-            assignment = batch_names.get(a[0], a[0])
+            assignment = rename.get(a[0], a[0])
         elif len(a) > 1:
             assignment = 'doublet'
         else:
@@ -400,7 +400,7 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
     if assignments_only:
         return pd.Series(assignments, index=adata.obs_names)
     else:
-        adata.obs[batch_key] = assignments
+        adata.obs[assignment_key] = assignments
         return adata
 
 
