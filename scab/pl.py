@@ -664,7 +664,7 @@ def cellhash_ridge(data, hashname, category, colors=None, alpha=1.0,
         ax.set_xlabel(ax.get_xlabel(),
                       x=xlabel_position,
                       fontsize=xlabel_fontsize)
-        ax.tick_params(axis='x', label_size=xtick_labelsize)
+        ax.tick_params(axis='x', labelsize=xtick_labelsize)
         
     # for ax in g.axes.flat:
     #     ax.set_xlabel(ax.get_xlabel(), fontsize=xlabel_fontsize)
