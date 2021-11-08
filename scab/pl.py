@@ -33,6 +33,7 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -374,7 +375,9 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
                     highlight_size=90, highlight_color='k', highlight_name=None, highlight_alpha=0.9,
                     xlabel=None, ylabel=None, equal_axes=True, force_categorical_hue=False,
                     legend_loc='best', legend_title=None, legend_fontsize=13, legend_frameon=True,
-                    cbar_width=30, cbar_height=5, cbar_loc='lower right', cbar_orientation='horizontal', 
+                    cbar_width=35, cbar_height=5, cbar_loc='lower right', cbar_orientation='horizontal', 
+                    cbar_bbox_to_anchor=None, cbar_flip_ticks=False,
+                    cbar_title=None, cbar_title_loc=None, cbar_title_fontsize=12, 
                     return_ax=False, figsize=[6, 6], figfile=None):
     '''
     Produces a scatter plot of two features, optionally colored by a third feature.
@@ -540,12 +543,26 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
                     label=highlight_name)
     # legend
     if not continuous_hue:
-        ax.legend(loc=legend_loc, fontsize=legend_fontsize, title=legend_title, frameon=legend_frameon)
+        if hue is not None:
+            ax.legend(loc=legend_loc, fontsize=legend_fontsize, title=legend_title, frameon=legend_frameon)
     # colorbar
     else:
-        cbaxes = inset_axes(ax, width=f'{cbar_width}%', height=f'{cbar_height}%', loc=cbar_loc) 
-        plt.colorbar(cax=cbaxes, orientation=cbar_orientation)
-    
+        cbax = inset_axes(ax, width=f'{cbar_width}%', height=f'{cbar_height}%',
+                          loc=cbar_loc, bbox_to_anchor=cbar_bbox_to_anchor,
+                          bbox_transform=ax.transAxes) 
+        fig = plt.gcf()
+        norm = mpl.colors.Normalize(vmin=min_hue, vmax=max_hue)
+        ticks = [round(t, 2) for t in np.linspace(min_hue, max_hue, num=4)]
+        fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbax,
+                     orientation=cbar_orientation, ticks=ticks,)
+        if cbar_orientation == 'horizontal':
+            ticks_position = 'bottom' if cbar_flip_ticks else 'top'
+            cbax.xaxis.set_ticks_position(ticks_position)
+        else:
+            ticks_position = 'left' if cbar_flip_ticks else 'right'
+            cbax.yaxis.set_ticks_position(ticks_position)
+        cbax.set_title(cbar_title, fontsize=cbar_title_fontsize, fontweight='medium')
+            
     # style the plot
     ax.set_xlabel(xlabel if xlabel is not None else x, fontsize=16)
     ax.set_ylabel(ylabel if ylabel is not None else y, fontsize=16)
