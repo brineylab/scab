@@ -48,6 +48,8 @@ from natsort import natsorted
 
 from abstar.core.germline import get_germlines
 
+from abutils.utils.utilities import nested_dict_lookup
+
 
 
 # ===========================
@@ -773,33 +775,54 @@ def feature_ridge(data, features, colors=None, rename=None,
 # ===========================
 
 
-def germline_use_barplot(adata, fig_file=None, gene='V', species='human', chain='heavy',
+def germline_use_barplot(adata, fig_file=None, gene_names=None, segment='v', chain='heavy',
+                         germline_key='v_call', batch_key=None, batch_names=None,
                          show=False,  pairs_only=False, normalize=True, figfile=None):
     '''
 
     '''
-    vdjs = adata.obs.vdj
-    if pairs_only:
-        vdjs = [v for v in vdjs if v.is_pair]
-    
-    # parse sequences
-    if chain == 'heavy':
-        seqs = [v.heavy for v in vdjs if v.heavy is not None]
-    elif chain == 'light':
-        seqs = [v.light for v in vdjs if v.heavy is not None]
-    elif chain == 'kappa':
-        lights = [v.light for v in vdjs if v.heavy is not None]
-        seqs = [l for l in lights if l['chain'] == 'kappa']
-    elif chain == 'lambda':
-        lights = [v.light for v in vdjs if v.heavy is not None]
-        seqs = [l for l in lights if l['chain'] == 'lambda']
+    if batch_key is not None:
+        batch_names = batch_names if batch_names is not None else natsorted(adata.obs.batch_key.unique())
+        batches = [adata[adata.obs.batch_key == batch] for batch in batch_names]
+    else:
+        batch_names = [None, ]
+        batches = [adata, ]
 
-    # retrieve germline genes
+    batch_data = []
+    all_gene_names = []
+    for batch in batches:
+        vdjs = batch.obs.vdj
+        if pairs_only:
+            vdjs = [v for v in vdjs if v.is_pair]
+        # parse sequences
+        if chain == 'heavy':
+            seqs = [v.heavy for v in vdjs if v.heavy is not None]
+        elif chain == 'light':
+            seqs = [v.light for v in vdjs if v.light is not None]
+        elif chain == 'kappa':
+            lights = [v.light for v in vdjs if v.light is not None]
+            seqs = [l for l in lights if l['chain'] == 'kappa']
+        elif chain == 'lambda':
+            lights = [v.light for v in vdjs if v.light is not None]
+            seqs = [l for l in lights if l['chain'] == 'lambda']
+
+        # retrieve germline genes
+        klist = germline_key.split('.')
+        germ_counts = Counter([nested_dict_lookup(s, klist) for s in seqs])
+        if normalize:
+            total = sum(germ_counts.values())
+            germ_counts = {k: v / total for k, v in germ_counts.items()}
+        batch_data.append(germ_counts)
+        for gname in germ_counts.keys():
+            if gname not in all_gene_names:
+                all_gene_names.append(gname)
+
+
     germs = get_germlines(species, gene, chain=chain)
     keys = list(set([g.name.split('*')[0] for g in germs]))
-    if gene.upper() == 'J':
+    if segment.upper() == 'J':
         size = (6, 4)
-    elif gene.upper() == 'D':
+    elif segment.upper() == 'D':
         size = (8, 4)
     else:
         size = (10, 4)
