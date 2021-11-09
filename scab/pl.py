@@ -777,6 +777,7 @@ def feature_ridge(data, features, colors=None, rename=None,
 
 def germline_use_barplot(adata, fig_file=None, gene_names=None, segment='v', chain='heavy',
                          germline_key='v_call', batch_key=None, batch_names=None,
+                         palette=None, color=None, color_by_germline=False, germline_cmap=None,
                          show=False,  pairs_only=False, normalize=True, figfile=None):
     '''
 
@@ -816,6 +817,16 @@ def germline_use_barplot(adata, fig_file=None, gene_names=None, segment='v', cha
         for gname in germ_counts.keys():
             if gname not in all_gene_names:
                 all_gene_names.append(gname)
+
+    gene_names = gene_names if gene_names is not None else natsorted(all_gene_names)
+
+    # colors
+    if palette is not None:
+        colors = [[p] * len(gene_names) for _, p in itertools.zip_longest(batches, palette)]
+    elif color_by_germline:
+        color_dict
+
+    for name, 
 
 
     germs = get_germlines(species, gene, chain=chain)
