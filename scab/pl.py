@@ -46,8 +46,6 @@ from anndata import AnnData
 
 from natsort import natsorted
 
-from abstar.core.germline import get_germlines
-
 from abutils.utils.utilities import nested_dict_lookup
 
 
@@ -385,6 +383,7 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
     Produces a scatter plot of two features, optionally colored by a third feature.
 
     Args:
+    -----
 
         data (anndata.AnnData or pd.DataFramne): An ``AnnData`` object or a ``Pandas`` dataframe
                                                  containing the input data. Required.
@@ -775,20 +774,98 @@ def feature_ridge(data, features, colors=None, rename=None,
 # ===========================
 
 
-def germline_use_barplot(adata, fig_file=None, gene_names=None, segment='v', chain='heavy',
+def germline_use_barplot(adata, gene_names=None, chain='heavy',
                          germline_key='v_call', batch_key=None, batch_names=None,
-                         palette=None, color=None, color_by_germline=False, germline_cmap=None,
-                         show=False,  pairs_only=False, normalize=True, figfile=None):
+                         palette=None, color=None, germline_colors=None,
+                         pairs_only=False, normalize=False,
+                         plot_kwargs=None, legend_kwargs=None, hide_legend=False,
+                         ylabel=None, ylabel_fontsize=16, 
+                         xtick_labelsize=14, ytick_labelsize=14, xtick_labelrotation=90, 
+                         show=False, figsize=None, figfile=None):
     '''
+    Produces a bar plot of germline gene usage. For datasets containing multiple batches, a stacked
+    bar plot can optionally be generated.
 
+    Args:
+    -----
+
+        adata (anndata.AnnData): An ``AnnData`` object containing the input data. ``adata`` must have
+            the ``adata.obs.vdj`` populated with annotated VDJ information. Required.
+
+        gene_names (iterable): A list of germline gene names to be plotted. If not provided, all 
+            germline genes found in the dataset will be shown.
+
+        chain (str): Chain for which germline gene usage will be plotted. Options are ``'heavy'``, 
+            ``'light'``, ``'kappa'`` and ``'lambda'``. Default is ``'heavy'``.
+
+        germline_key (str): Field (found in ``vdj.heavy`` or ``vdj'light``) containing the germline
+            gene to be plotted. Default is ``'v_call'``, which plots Variable gene use using the standard
+            AIRR anotation naming scheme.
+
+        batch_key (str): Field (found in ``adata.obs``) containing batch names. If provided, batches 
+            will be plotted as stacked bars, one per batch. If not provided, all of the input data is 
+            assumed to be from a single batch and a standard bar plot is generated. 
+
+        batch_names (iterable): List of batch names to be plotted. Useful when only a subset of the
+            batches found in ``adata.obs.batch_key`` are to be plotted or when the desired order of batches
+            is something other than the order produced by ``natsort.natsorted()``. Default is ``None``, 
+            which results in all batches being plotted in ``natsort.natsorted()`` order.
+
+        palette (iterable): List of batch colors. If none of ``palette``, ``color`` or ``germline_colors``
+            are provided, bars are colored by the germline gene.
+
+        color (str): Single color to be used for all bars in the plot. If none of ``palette``, ``color`` 
+            or ``germline_colors`` are provided, bars are colored by the germline gene. If provided in 
+            combination with ``germline_colors``, ``color`` will be used as the default color for genes 
+            not found in ``germline_colors``.
+
+        germline_colors (dict): Dictionary mapping germline genes to colors. Particularly useful when
+            highlighting one or more germline genes is desired. Germline genes not found as keys in 
+            ``germline_colors`` will be colored using ``color``.
+
+        pairs_only (bool): If ``True``, only sequences for which a heavy/light pair is present will be
+            plotted. Default is ``False``, which plots all seqeunces of the desired ``chain``.
+
+        normalize (bool): If ``True``, normalized frequencies are plotted. Note that normalization is
+            performed separately for each batch, so the total frequency may exceed ``1.0``. Default is
+            ``False``, which plots sequence counts.
+
+        plot_kwargs (dict): Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
+
+        legend_kwargs (dict): Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
+
+        hide_legend (bool): By default, a plot legend will be shown if multiple batches are plotted. If 
+            ``True``, the legend will not be shown. Default is ``False``.
+
+        ylabel (str): Text for the Y-axis label.
+
+        ylabel_fontsize (float): Fontsize for the Y-axis label text. Default is ``16``.
+
+        xtick_labelsize (float): Fontsize for the X-axis tick labels. Default is ``14``.
+
+        ytick_labelsize (float): Fontsize for the Y-axis tick labels. Default is ``14``.
+
+        xtick_labelrotation (float): Rotation of the X-axis tick labels. Default is ``90``.
+
+        show (bool): If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
+            is ``False``, which does not call ``pyplot.show()`` and results the ``Axes`` object.
+
+        figsize (list): List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
+            If not provided, the figure size will be determined based on the number of germline genes
+            found in the data.
+
+        figfile (str): Path at which to save the figure file. If not provided, the figure is not saved
+            and is either shown (if ``show`` is ``True``) or the ``Axes`` object is returned.
     '''
+    # split input into batches
     if batch_key is not None:
-        batch_names = batch_names if batch_names is not None else natsorted(adata.obs.batch_key.unique())
-        batches = [adata[adata.obs.batch_key == batch] for batch in batch_names]
+        batch_names = batch_names if batch_names is not None else natsorted(adata.obs[batch_key].unique())
+        batches = [adata[adata.obs[batch_key] == batch] for batch in batch_names]
     else:
         batch_names = [None, ]
         batches = [adata, ]
-
+    
+    # process batches
     batch_data = []
     all_gene_names = []
     for batch in batches:
@@ -806,7 +883,6 @@ def germline_use_barplot(adata, fig_file=None, gene_names=None, segment='v', cha
         elif chain == 'lambda':
             lights = [v.light for v in vdjs if v.light is not None]
             seqs = [l for l in lights if l['chain'] == 'lambda']
-
         # retrieve germline genes
         klist = germline_key.split('.')
         germ_counts = Counter([nested_dict_lookup(s, klist) for s in seqs])
@@ -817,76 +893,71 @@ def germline_use_barplot(adata, fig_file=None, gene_names=None, segment='v', cha
         for gname in germ_counts.keys():
             if gname not in all_gene_names:
                 all_gene_names.append(gname)
-
     gene_names = gene_names if gene_names is not None else natsorted(all_gene_names)
 
     # colors
     if palette is not None:
         colors = [[p] * len(gene_names) for _, p in itertools.zip_longest(batches, palette)]
-    elif color_by_germline:
-        color_dict
-
-    for name, 
-
-
-    germs = get_germlines(species, gene, chain=chain)
-    keys = list(set([g.name.split('*')[0] for g in germs]))
-    if segment.upper() == 'J':
-        size = (6, 4)
-    elif segment.upper() == 'D':
-        size = (8, 4)
+    elif germline_colors is not None:
+        default_color = color if color is not None else '#D3D3D3'
+        germ_color_list = [germline_colors.get(g, default_color) for g in gene_names]
+        colors = [germ_color_list] * len(batches)
+    elif color is not None:
+        colors = [[color] * len(gene_names) for _ in batches]
     else:
-        size = (10, 4)
-    genes = natsorted(keys)
+        fams = natsorted(set([g.split('-')[0] for g in gene_names]))
+        germ_color_dict = {f: c for f, c in zip(fams, sns.hls_palette(len(fams)))}
+        germ_color_list = [germ_color_dict[g.split('-')[0]] for g in gene_names]
+        colors = [germ_color_list] * len(batches)
 
-    # parse germline data
-    gtype = '{}_gene'.format(gene.lower())
-    data = [s[gtype] for s in seqs]
-    if level == 'gene':
-        data = [d.split('*')[0].rstrip('D') for d in data]
-    counts = Counter(data)
-    xs = np.arange(len(genes))
-    ys = [counts.get(g, 0) for g in genes]
-    if normalize:
-        ys = [y / sum(ys) for y in ys]
-    short_chain = chain[0].upper()
-    genes = [g.replace('IG{}{}'.format(short_chain, gene), '{}{}'.format(gene, short_chain)) for g in genes]
+    # plot kwargs
+    default_plot_kwargs = {'width': 0.8, 'linewidth': 1.5, 'edgecolor':'w'} 
+    if plot_kwargs is not None:
+        default_plot_kwargs.update(plot_kwargs)
+    plot_kwargs = default_plot_kwargs
 
-    # colors
-    fams = [g.split('-')[0].replace('/OR', '') for g in genes]
-    nr_fams = natsorted(set(fams))
-    cdict = {f: c for f, c in zip(nr_fams, sns.hls_palette(len(nr_fams)))}
-    colors = [cdict[f] for f in fams]
+    # legend kwargs
+    default_legend_kwargs = {'frameon': True, 'loc': 'best', 'fontsize':12}
+    if legend_kwargs is not None:
+        default_legend_kwargs.update(legend_kwargs)
+    legend_kwargs = default_legend_kwargs
 
     # make the plot
-    plt.bar(xs, ys, color=colors, tick_label=genes)
+    if figsize is None:
+        figsize = [len(gene_names) / 3, 4]
+    plt.figure(figsize=figsize)
+    bottom = np.zeros(len(gene_names))
+    for n, d, c in zip(batch_names, batch_data, colors):
+        ys = np.asarray([d.get(g, 0) for g in gene_names])
+        plt.bar(gene_names, ys, bottom=bottom, color=c, label=n, **plot_kwargs)
+        bottom += ys
+
+    # style the plot
     ax = plt.gca()
-
-    if normalize:
-        ax.set_ylabel('Frequency (%)', fontsize=14)
-    else:
-        ax.set_ylabel('Sequence count', fontsize=14)
-    ax.tick_params(axis='x', labelsize=14, labelrotatino=90)
-    ax.tick_params(axis='y', labelsize=12)
-
+    if ylabel is None:
+        ylabel = 'Frequency (%)' if normalize else 'Sequence count'
+    ax.set_ylabel(ylabel, fontsize=ylabel_fontsize)
+    ax.tick_params(axis='x', labelsize=xtick_labelsize, labelrotation=xtick_labelrotation)
+    ax.tick_params(axis='y', labelsize=ytick_labelsize)
     for s in ['left', 'right', 'top']:
         ax.spines[s].set_visible(False)
-
+        
+    ax.set_xlim([-0.75, len(gene_names) - 0.25])
+    
+    # legend
+    if len(batches) > 1 and not hide_legend:
+        ax.legend(**legend_kwargs)
+    if hide_legend or palette is None:
+        ax.get_legend().remove()
+    
+    # save, show or return the ax
     if figfile is not None:
         plt.tight_layout()
-        plt.savefit(fig_file)
+        plt.savefig(figfile)
     elif show:
         plt.show()
     else:
         return ax
-
-
-
-def _get_germline_plot_colors(data):
-    fams = [d.split('-')[0].replace('/OR', '') for d in data]
-    nr_fams = natsorted(set(fams))
-    cdict = {f: c for f, c in zip(nr_fams, sns.hls_palette(len(nr_fams)))}
-    return [cdict[f] for f in fams]
 
 
 
