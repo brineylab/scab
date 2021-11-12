@@ -775,7 +775,7 @@ def feature_ridge(data, features, colors=None, rename=None,
 
 
 def germline_use_barplot(adata, gene_names=None, chain='heavy',
-                         germline_key='v_call', batch_key=None, batch_names=None,
+                         germline_key='v_gene', batch_key=None, batch_names=None,
                          palette=None, color=None, germline_colors=None,
                          pairs_only=False, normalize=False,
                          plot_kwargs=None, legend_kwargs=None, hide_legend=False,
