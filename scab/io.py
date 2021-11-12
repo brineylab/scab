@@ -34,8 +34,10 @@ from abutils.core.pair import Pair, assign_pairs
 from abutils.core.sequence import read_csv, read_fasta, read_json
 
 
-def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv', vdj_delimiter='\t',
-                 vdj_id_key='sequence_id', vdj_sequence_key='sequence', vdj_id_delimiter='_', vdj_id_delimiter_num=1,
+def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv', bcr_delimiter='\t',
+                 bcr_id_key='sequence_id', bcr_sequence_key='sequence', bcr_id_delimiter='_', bcr_id_delimiter_num=1,
+                 tcr_file=None, tcr_annotations=None, tcr_format='csv', tcr_delimiter='\t',
+                 tcr_id_key='sequence_id', tcr_sequence_key='sequence', tcr_id_delimiter='_', tcr_id_delimiter_num=1,
                  h_selection_func=None, l_selection_func=None, abstar_output_format='airr',
                  gex_only=False, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
                  agbc_regex='agbc', ignore_agbc_case=True,
@@ -52,40 +54,41 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
 
         mtx_path (str): Path to the 10x Genomics matrix folder (as accepted by ``scanpy.read_10x_mtx()``)
 
-        vdj_file (str): Path to a file containing VDJ data. The file can be in of the following formats:
-                            1) a FASTA-formatted file, as output by CellRanger
-                            2) a delimited text file, containing annotated VDJ sequences
-                            3) a JSON file, containing annotated VDJ sequences
+        [bcr|tcr]_file (str): Path to a file containing VDJ data. The file can be in of the following formats:
+                1) a FASTA-formatted file, as output by CellRanger
+                2) a delimited text file, containing annotated VDJ sequences
+                3) a JSON file, containing annotated VDJ sequences
 
-        vdj_annotations (str): Path to the CSV-formatted VDJ annotations file produced by CellRanger. 
+        [bcr|tcr]_annotations (str): Path to the CSV-formatted VDJ annotations file produced by CellRanger. 
             Matching the annotation file to ``vdj_file`` is preferred -- if ``all_contig.fasta`` is the supplied 
             ``vdj_file``, then ``all_contig_annotations.csv`` is the appropriate annotation file.
 
-        vdj_format (str): Format of the input ``vdj_file``. Options are: ``'fasta'``, ``'csv'``, and ``'json'``.
-            Default is ``'csv'``. If ``vdj_format`` is ``'fasta'``, ``abstar`` will be run on  =the input data to 
+        [bcr|tcr]_format (str): Format of the input ``[bcr|tcr]_file``. Options are: ``'fasta'``, ``'csv'``, and ``'json'``.
+            Default is ``'csv'``. If ``[bcr|tcr]_format`` is ``'fasta'``, ``abstar`` will be run on  the input data to 
             obtain annotated VDJ data. By default, ``abstar`` will produce AIRR-formatted (tab-delimited) annotations.
 
-        vdj_delimiter (str): Delimiter used in ``vdj_file``. Only used if ``vdj_format`` is ``'csv'``.
+        [bcr|tcr]_delimiter (str): Delimiter used in ``[bcr|tcr]_file``. Only used if ``[bcr|tcr]_format`` is ``'csv'``.
             Default is ``'\t'``, which conforms to AIRR-C data standards.
 
-        vdj_id_key (str): Name of the column or field in ``vdj_file`` that corresponds to the sequence ID. 
+        [bcr|tcr]_id_key (str): Name of the column or field in ``[bcr|tcr]_file`` that corresponds to the sequence ID. 
             Default is ``'sequence_id'``, which is compatible with standardized AIRR-C data formatting.
 
-        vdj_id_key (str): Name of the column or field in ``vdj_file`` that corresponds to the VDJ sequence. 
+        [bcr|tcr]_id_key (str): Name of the column or field in ``[bcr|tcr]_file`` that corresponds to the VDJ sequence. 
             Default is ``'sequence'``, which is compatible with standardized AIRR-C data formatting.
 
-        vdj_id_delimiter (str): The delimiter used to separate the droplet and contig components of the sequence ID.
+        [bcr|tcr]_id_delimiter (str): The delimiter used to separate the droplet and contig components of the sequence ID.
             For example, default CellRanger names are formatted as: ``'AAACCTGAGAACTGTA-1_contig_1'``, where 
             ``'AAACCTGAGAACTGTA-1'`` is the droplet identifier and ``'contig_1'`` is the contig identifier. 
             Default is '_', which matches the format used by CellRanger.
 
-        vdj_id_delimiter_num (str): The occurance (1-based numbering) of the ``vdj_id_delimiter``. Default is ``1``,
+        [bcr|tcr]_id_delimiter_num (str): The occurance (1-based numbering) of the ``[bcr|tcr]_id_delimiter``. Default is ``1``,
             which matches the format used by CellRanger.
 
-        abstar_output_format (str): Format for abstar annotations. Only used if ``vdj_format`` is ``'fasta'``. 
+        abstar_output_format (str): Format for abstar annotations. Only used if ``[bcr|tcr]_format`` is ``'fasta'``. 
             Options are ``'airr'``, ``'json'`` and ``'tabular'``. Default is ``'airr'``.
 
-        gex_only (bool): If ``True``, return only gene expression data and ignore features and hashes.
+        gex_only (bool): If ``True``, return only gene expression data and ignore features and hashes. Note that
+            VDJ data will still be included in the returned ``AnnData`` object if ``[bcr|tcr]_file`` is provided.
             Default is ``False``.
 
         cellhash_regex (str): A regular expression (regex) string used to identify cell hashes. The regex 
@@ -161,30 +164,55 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
     adata = sc.read_10x_mtx(mtx_path, gex_only=False)
     gex = adata[:,adata.var.feature_types == 'Gene Expression']
 
-    # process VDJ data:
-    if vdj_file is not None:
-        if vdj_format == 'csv':
+    # process BCR data:
+    if bcr_file is not None:
+        if bcr_format == 'csv':
             if verbose:
-                print('reading CSV-formatted VDJ data...')
-            sequences = read_csv(vdj_file, delimiter=vdj_delimiter,
-                                 id_key=vdj_id_key, sequence_key=vdj_sequence_key)
-        elif vdj_format == 'json':
+                print('reading CSV-formatted BCR data...')
+            sequences = read_csv(bcr_file, delimiter=bcr_delimiter,
+                                 id_key=bcr_id_key, sequence_key=bcr_sequence_key)
+        elif bcr_format == 'json':
             if verbose:
-                print('reading JSON-formatted VDJ data...')
-            sequences = read_json(vdj_file, id_key=vdj_id_key, sequence_key=vdj_sequence_key)
-        elif vdj_format == 'fasta':
+                print('reading JSON-formatted BCR data...')
+            sequences = read_json(bcr_file, id_key=bcr_id_key, sequence_key=bcr_sequence_key)
+        elif bcr_format == 'fasta':
             if verbose:
-                print('reading FASTA-formatted VDJ data...')
-            raw_seqs = read_fasta(vdj_file)
+                print('reading FASTA-formatted BCR data...')
+            raw_seqs = read_fasta(bcr_file)
             if verbose:
-                print('annotating VDJ sequences with abstar...')
+                print('annotating BCR sequences with abstar...')
             sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
-        pairs = assign_pairs(sequences, name=vdj_id_key,
-                             delim=vdj_id_delimiter, delim_occurance=vdj_id_delimiter_num,
+        pairs = assign_pairs(sequences, name=bcr_id_key,
+                             delim=bcr_id_delimiter, delim_occurance=bcr_id_delimiter_num,
                              h_selection_func=h_selection_func, l_selection_func=l_selection_func,
-                             tenx_annot_file=vdj_annotations)
+                             tenx_annot_file=bcr_annotations)
         pdict = {p.name: p for p in pairs}
-        gex.obs['vdj'] = [pdict.get(o, Pair([])) for o in gex.obs_names]
+        gex.obs['bcr'] = [pdict.get(o, Pair([])) for o in gex.obs_names]
+
+    # process TCR data:
+    if tcr_file is not None:
+        if tcr_format == 'csv':
+            if verbose:
+                print('reading CSV-formatted TCR data...')
+            sequences = read_csv(tcr_file, delimiter=tcr_delimiter,
+                                 id_key=tcr_id_key, sequence_key=tcr_sequence_key)
+        elif tcr_format == 'json':
+            if verbose:
+                print('reading JSON-formatted TCR data...')
+            sequences = read_json(tcr_file, id_key=tcr_id_key, sequence_key=tcr_sequence_key)
+        elif tcr_format == 'fasta':
+            if verbose:
+                print('reading FASTA-formatted TCR data...')
+            raw_seqs = read_fasta(tcr_file)
+            if verbose:
+                print('annotating TCR sequences with abstar...')
+            sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
+        pairs = assign_pairs(sequences, name=tcr_id_key,
+                             delim=tcr_id_delimiter, delim_occurance=tcr_id_delimiter_num,
+                             h_selection_func=h_selection_func, l_selection_func=l_selection_func,
+                             tenx_annot_file=tcr_annotations)
+        pdict = {p.name: p for p in pairs}
+        gex.obs['tcr'] = [pdict.get(o, Pair([])) for o in gex.obs_names]
     if gex_only:
         return gex
     
