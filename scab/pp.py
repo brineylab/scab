@@ -26,13 +26,13 @@
 import re
 
 import scanpy as sc
-import scrublet
 
 
 
 def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_cells=None,
                          n_genes_by_counts=2500, percent_mito=10, percent_ig=50, hvg_batch_key=None,
                          ig_regex_pattern='IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]',
+                         regress_out_mt=True, regress_out_ig=True,
                          target_sum=None, n_top_genes=None, normalization_flavor='cell_ranger', log=True,
                          scale_max_value=None, save_raw=True, verbose=True):
     '''
@@ -104,7 +104,7 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
     if verbose:
         print('QC...')
     ig_pattern = re.compile(ig_regex_pattern)
-    adata.var['ig'] = [False if re.match(ig_pattern, g) is None else True for g in adata.var.index]
+    adata.var['ig'] = [re.match(ig_pattern, g) is not None for g in adata.var.index]
     adata.var['mt'] = adata.var_names.str.startswith('MT-')
     sc.pp.calculate_qc_metrics(adata, qc_vars=['mt', 'ig'],
                                percent_top=None, log1p=False, inplace=True)
@@ -132,19 +132,21 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
                                     flavor=normalization_flavor)
     if save_raw:
         adata.raw = adata
-    if verbose:
-        print('regressing out mitochondrial genes...')
-    sc.pp.regress_out(adata, ['total_counts', 'pct_counts_mt'])
-    if verbose:
-        print('regressing out immunoglobulin genes...')
-    sc.pp.regress_out(adata, ['total_counts', 'pct_counts_ig'])
+    if regress_out_mt:
+        if verbose:
+            print('regressing out mitochondrial genes...')
+        sc.pp.regress_out(adata, ['total_counts', 'pct_counts_mt'])
+    if regress_out_ig:
+        if verbose:
+            print('regressing out immunoglobulin genes...')
+        sc.pp.regress_out(adata, ['total_counts', 'pct_counts_ig'])
     if verbose:
         print('scaling...')
     sc.pp.scale(adata, max_value=scale_max_value)
     return adata
 
 
-def predict_doublets(adata, verbose=True):
+def scrublet(adata, verbose=True):
     '''
     Predicts doublets using scrublet.
 
@@ -158,19 +160,64 @@ def predict_doublets(adata, verbose=True):
     Returns:
     --------
 
-        Returns an anndata.AnnData object with doublet predictions found at ``adata.obs.predicted_doublets``..
+        Returns an anndata.AnnData object with doublet predictions found at ``adata.obs.is_doublet`` 
+        and doublet scores at ``adata.obs.doublet_score``.
     '''
+    import scrublet
     scrub = scrublet.Scrublet(adata.raw.X)
-    adata.obs['doublet_scores'], adata.obs['predicted_doublets'] = scrub.scrub_doublets(verbose=verbose)
+    adata.obs['doublet_score'], adata.obs['is_doublet'] = scrub.scrub_doublets(verbose=verbose)
     if verbose:
         scrub.plot_histogram()
-        print('Identified {} potential doublets'.format(sum(adata.obs['predicted_doublets'])))
+        print('Identified {} potential doublets'.format(sum(adata.obs['is_doublet'])))
     return adata
 
 
-def remove_doublets(adata, verbose=True):
+def doubletdetection(adata, verbose=False, n_iters=25, use_phenograph=False,
+                     standard_scaling=True, p_thresh=1e-16, voter_thresh=0.5):
     '''
-    Removes doublets (doublet identification performed using scrublet).
+    Predicts doublets using doubletdetection.
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): AnnData object containing gene count data.
+
+        verbose (bool): If ``True``, progress updates will be printed. Default is ``True``.
+
+        n_iters (int): Iterations of doubletdetection to perform. Default is 25.
+
+        use_phenograph (bool): Passed to ``doubletdection.BoostClassifier()``. Default is ``False``.
+
+        standard_scaling (bool): Passed to ``doubletdection.BoostClassifier()``. Default is ``True``.
+
+        p_thresh (float): P-value threshold. Default is ``1e-16``.
+
+        voter_thresh (float): Voter threshold. Default is ``0.5``.
+
+    Returns:
+    --------
+
+        Returns an anndata.AnnData object with doublet predictions found at ``adata.obs.is_doublet`` 
+        and doublet scores at ``adata.obs.doublet_score``.
+    '''
+    import doubletdetection
+    clf = doubletdetection.BoostClassifier(
+        n_iters=n_iters,
+        use_phenograph=use_phenograph,
+        verbose=verbose,
+        standard_scaling=standard_scaling,)
+    doublets = clf.fit(adata.raw.X).predict(p_thresh=p_thresh,
+                                            voter_thresh=voter_thresh)
+    adata.obs['is_doublet'] = doublets > 0
+    adata.obs['doublet_score'] = clf.doublet_score()
+    return adata
+
+
+def remove_doublets(adata, verbose=True, doublet_identification_function=None):
+    '''
+    Removes doublets. If not already performed, doublet identification is performed 
+    using either doubletdetection (default) or with scrublet if 
+    ``doublet_identification_function`` is ``'scrublet'``.
 
     Args:
     -----
@@ -182,10 +229,13 @@ def remove_doublets(adata, verbose=True):
     Returns:
     --------
 
-        Returns an anndata.AnnData object without droplets identified as doublets.
+        Returns an anndata.AnnData object without observations that were identified as doublets.
     '''
-    if "predicted_doublets" not in adata.obs.columns:
-        adata = predict_doublets(adata, verbose=verbose)
-    singlets = [not o for o in adata.obs['predicted_doublets']]
+    if "is_doublet" not in adata.obs.columns:
+        if doublet_identification_function.lower() == 'scrublet':
+            adata = scrublet(adata, verbose=verbose)
+        else:
+            adata = doubletdetection(adata, verbose=verbose)
+    singlets = [not o for o in adata.obs['is_doublet']]
     adata = adata[singlets,:]
     return adata
