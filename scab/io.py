@@ -182,7 +182,7 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
             if verbose:
                 print('annotating BCR sequences with abstar...')
             sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
-        pairs = assign_pairs(sequences, name=bcr_id_key,
+        pairs = assign_pairs(sequences, id_key=bcr_id_key,
                              delim=bcr_id_delimiter, delim_occurance=bcr_id_delimiter_num,
                              h_selection_func=h_selection_func, l_selection_func=l_selection_func,
                              tenx_annot_file=bcr_annotations)
@@ -207,7 +207,7 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
             if verbose:
                 print('annotating TCR sequences with abstar...')
             sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
-        pairs = assign_pairs(sequences, name=tcr_id_key,
+        pairs = assign_pairs(sequences, id_key=tcr_id_key,
                              delim=tcr_id_delimiter, delim_occurance=tcr_id_delimiter_num,
                              h_selection_func=h_selection_func, l_selection_func=l_selection_func,
                              tenx_annot_file=tcr_annotations)
