@@ -38,7 +38,7 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
                  bcr_id_key='sequence_id', bcr_sequence_key='sequence', bcr_id_delimiter='_', bcr_id_delimiter_num=1,
                  tcr_file=None, tcr_annotations=None, tcr_format='csv', tcr_delimiter='\t',
                  tcr_id_key='sequence_id', tcr_sequence_key='sequence', tcr_id_delimiter='_', tcr_id_delimiter_num=1,
-                 h_selection_func=None, l_selection_func=None, abstar_output_format='airr',
+                 chain_selection_func=None, abstar_output_format='airr',
                  gex_only=False, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
                  agbc_regex='agbc', ignore_agbc_case=True,
                  log_transform_cellhashes=True, ignore_zero_median_cellhashes=True, rename_cellhashes=None,
@@ -184,7 +184,7 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
             sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
         pairs = assign_pairs(sequences, id_key=bcr_id_key,
                              delim=bcr_id_delimiter, delim_occurance=bcr_id_delimiter_num,
-                             h_selection_func=h_selection_func, l_selection_func=l_selection_func,
+                             chain_selection_func=chain_selection_func,
                              tenx_annot_file=bcr_annotations)
         pdict = {p.name: p for p in pairs}
         gex.obs['bcr'] = [pdict.get(o, Pair([])) for o in gex.obs_names]
@@ -209,7 +209,7 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
             sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
         pairs = assign_pairs(sequences, id_key=tcr_id_key,
                              delim=tcr_id_delimiter, delim_occurance=tcr_id_delimiter_num,
-                             h_selection_func=h_selection_func, l_selection_func=l_selection_func,
+                             chain_selection_func=chain_selection_func,
                              tenx_annot_file=tcr_annotations)
         pdict = {p.name: p for p in pairs}
         gex.obs['tcr'] = [pdict.get(o, Pair([])) for o in gex.obs_names]
