@@ -208,7 +208,7 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
             raw_seqs = read_fasta(tcr_file)
             if verbose:
                 print('annotating TCR sequences with abstar...')
-            sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
+            sequences = abstar.run(raw_seqs, receptor='tcr', output_type=abstar_output_format)
         pairs = assign_pairs(sequences, id_key=tcr_id_key,
                              delim=tcr_id_delimiter, delim_occurance=tcr_id_delimiter_num,
                              chain_selection_func=chain_selection_func,
