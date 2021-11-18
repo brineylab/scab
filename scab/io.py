@@ -23,6 +23,8 @@
 #
 
 
+import codecs
+import pickle
 import re
 
 import numpy as np
@@ -276,8 +278,61 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
 
 
 
+def read(h5ad_file):
+    '''
+    Reads a serialized ``AnnData`` object. Similar to ``scanpy.read()``, except that ``scanpy`` 
+    does not support serializing BCR/TCR data. If BCR/TCR data is included in the serialized ``AnnData``
+    file, it will be separately deserialized into the original ``abutils.Pair`` objects.
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): An ``AnnData`` object containing gene expression, feature barcode and 
+            VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
+            from raw CellRanger outputs. Required.
+
+        h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
+            include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
+            be added. Required.    
+    '''
+    adata = sc.read(h5ad_file)
+    if 'bcr' in adata.obs:
+        # unpickle BCR data
+        adata.obs['bcr'] = [pickle.loads(codecs.decode(b.encode(), "base64")) for b in adata.obs.bcr]
+    if 'tcr' in adata.obs:
+        # unpickle TCR data
+        adata.obs['tcr'] = [pickle.loads(codecs.decode(t.encode(), "base64")) for t in adata.obs.tcr]
+    return adata
 
 
+def write(adata, h5ad_file):
+    '''
+    Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to 
+    ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
+    function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or 
+    ``adata.obs.tcr`` using ``pickle`` prior to writing the ``AnnData`` object to disk.
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): An ``AnnData`` object containing gene expression, feature barcode and 
+            VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
+            from raw CellRanger outputs. Required.
+
+        h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
+            include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
+            be added. Required.    
+    '''
+    if not h5ad_file.endswith('h5ad'):
+        h5ad_file += '.h5ad'
+    _adata = adata.copy()
+    if 'bcr' in _adata.obs:
+        # pickle BCR data
+        _adata.obs['bcr'] = [codecs.encode(pickle.dumps(b), "base64").decode() for b in _adata.obs.bcr]
+    if 'tcr' in adata.obs:
+        # pickle TCR data
+        _adata.obs['tcr'] = [codecs.encode(pickle.dumps(t), "base64").decode() for t in _adata.obs.tcr]
+    _adata.write(h5ad_file)
 
 
 
