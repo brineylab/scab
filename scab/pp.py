@@ -198,17 +198,21 @@ def doubletdetection(adata, verbose=False, n_iters=25, use_phenograph=False,
     --------
 
         Returns an anndata.AnnData object with doublet predictions found at ``adata.obs.is_doublet`` 
-        and doublet scores at ``adata.obs.doublet_score``.
+        and doublet scores at ``adata.obs.doublet_score``. Note that ``adata.obs.is_doublet`` values are
+        ``0.0`` and ``1.0``, not ``True`` and ``False``. This is the default output of ``doubletdetection``
+        and is useful for plotting doublets using ``scanpy.pl.umap``, which does not handle boolean
+        color values well.
     '''
     import doubletdetection
     clf = doubletdetection.BoostClassifier(
         n_iters=n_iters,
         use_phenograph=use_phenograph,
         verbose=verbose,
-        standard_scaling=standard_scaling,)
-    doublets = clf.fit(adata.raw.X).predict(p_thresh=p_thresh,
-                                            voter_thresh=voter_thresh)
-    adata.obs['is_doublet'] = doublets > 0
+        standard_scaling=standard_scaling)
+    fit = clf.fit(adata.raw.X)
+    doublets = fit.predict(p_thresh=p_thresh,
+                           voter_thresh=voter_thresh)
+    adata.obs['is_doublet'] = doublets
     adata.obs['doublet_score'] = clf.doublet_score()
     return adata
 
