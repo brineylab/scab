@@ -311,7 +311,8 @@ def feature_kde(data, x, y, hue=None, hue_order=None, colors=None, thresh=0.1,
     highlight = any([highlight_index is not None, all([highlight_x is not None, highlight_y is not None])])
     if highlight:
         if highlight_index is not None:
-            hidata = df.loc[highlight_index]
+            hi_index = [h for h in highlight_index if h in df.index.values]
+            hidata = df.loc[hi_index]
             highlight_x = hidata[x]
             highlight_y = hidata[y]
         plt.scatter(highlight_x, highlight_y, zorder=10,
