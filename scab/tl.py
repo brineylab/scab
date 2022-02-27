@@ -37,7 +37,7 @@ from sklearn.neighbors import KernelDensity
 
 from scipy import stats
 from scipy.signal import argrelextrema
-from scipy.stats import scoreatpercentile
+# from scipy.stats import scoreatpercentile
 
 import statsmodels.api as sm
 
@@ -323,8 +323,7 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
     Args:
     -----
 
-        df (pd.DataFrame): Squareform input dataframe, containing cellhash UMI counts. Indexes
-            should be cells, columns should be cell hashes.
+        adata (anndata.Anndata): AnnData object containing cellhash UMI counts in ``adata.obs``.
         
         hash_names (iterable): List of hashnames, which correspond to column names in ``adata.obs``. 
             Overrides cellhash name matching using ``cellhash_regex``. If not provided, all columns 
@@ -338,14 +337,14 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
         ignore_cellhash_regex_case (bool): If ``True``, searching for ``cellhash_regex`` will ignore case.
             Default is ``True``.
         
-        batch_names (dict): Dictionary relating hasnhames (column names in ``adata.obs``) to the preferred
+        rename (dict): Dictionary relating hasnhames (column names in ``adata.obs``) to the preferred
             batch name. For example, if the hashname ``'Cellhash1'`` corresponded to the sample 
-            ``'Sample1'``, an example ``batch_names`` argument would be::
+            ``'Sample1'``, an example ``rename`` argument would be::
 
                 {'Cellhash1': 'Sample1'}
 
-        batch_key (str): Column name (in ``adata.obs``) into which cellhash classifications will be 
-            stored. Default is ``'batch'``.
+        assignment_key (str): Column name (in ``adata.obs``) into which cellhash classifications will be 
+            stored. Default is ``'cellhash_assignment'``.
 
         threshold_minimum (float): Minimum acceptable kig2-normalized UMI threshold. Potential 
             thresholds below this value will be ignored. Default is ``4.0``.
@@ -522,7 +521,7 @@ def negative_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0,
 
 def _bw_silverman(x):
     normalize = 1.349
-    IQR = (scoreatpercentile(x, 75) - scoreatpercentile(x, 25)) / normalize
+    IQR = (np.percentile(x, 75) - np.percentile(x, 25)) / normalize
     std_dev = np.std(x, axis=0, ddof=1)
     if IQR > 0:
         A = np.minimum(std_dev, IQR)

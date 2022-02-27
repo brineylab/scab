@@ -1,7 +1,6 @@
 abstar
 abutils>=0.2.5
 anndata
-doubletdetection
 harmonypy
 leidenalg
 matplotlib
