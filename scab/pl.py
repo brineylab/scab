@@ -155,8 +155,7 @@ def feature_kde(data, x, y, hue=None, hue_order=None, colors=None, thresh=0.1,
                 highlight_index=None, highlight_x=None, highlight_y=None, highlight_marker='x',
                 highlight_size=90, highlight_color='k', highlight_name=None, highlight_alpha=0.8,
                 xlabel=None, ylabel=None, equal_axes=True,
-                legend_loc='best', legend_title=None, show_legend_title=True, legend_fontsize=12,
-                return_ax=False, figsize=[6, 6], figfile=None, **kwargs):
+                legend_kwargs=None, return_ax=False, figsize=[6, 6], figfile=None, **kwargs):
     '''
     Produces a 2-dimensional KDE plot of two features.
 
@@ -226,12 +225,7 @@ def feature_kde(data, x, y, hue=None, hue_order=None, colors=None, thresh=0.1,
         equal_axes (bool): If ```True```, the the limits of the x- and y-axis will be equal.
                            Default is ```True```.
         
-        legend_loc (str): Location for the legend. Uses standard matplotlib locations. Default
-                          is ```'best'```.
-
-        legend title (str): Title for the legend. By default, ```hue``` is used.
-
-        show_legend_title (bool): Whether or not to show the legend title. Default is ```True```.
+        legend_kwargs (dict): Dictionary of keyword arguments for the legend.
 
         return_ax (bool): If ```True```, return the plot's ```ax``` object. Will not show or save
                           the plot. Default is ```False```.
@@ -322,6 +316,11 @@ def feature_kde(data, x, y, hue=None, hue_order=None, colors=None, thresh=0.1,
                     marker=highlight_marker)
 
     # legend
+    legend_params = {'loc': 'best',
+                     'title': None,
+                     'fontsize': 12,
+                     'frameon': False}
+    legend_params.update(legend_kwargs if legend_kwargs is not None else {})
     legend_labels = hue_order
     if fill:
         handles = []
@@ -329,7 +328,6 @@ def feature_kde(data, x, y, hue=None, hue_order=None, colors=None, thresh=0.1,
             f = Patch(fc=c, alpha=kde_fill_alpha / 3)
             e = Patch(ec=c, fill=False, lw=1.5)
             handles.append((f, e))
-#         handles = [Patch(fc=c, ec=c, alpha=kde_fill_alpha / 3, label=h) for c, h in zip(colors, hue_order)]
     else:
         handles = [Line2D([0], [0], color=c) for c in colors]
     if highlight_name is not None:
@@ -338,11 +336,7 @@ def feature_kde(data, x, y, hue=None, hue_order=None, colors=None, thresh=0.1,
                               mec=highlight_color,
                               mfc=highlight_color,
                               ms=highlight_size / 10))
-    if show_legend_title:
-        legend_title = legend_title if legend_title is not None else hue
-    else:
-        legend_title = None
-    ax.legend(handles, legend_labels, loc=legend_loc, fontsize=legend_fontsize, title=legend_title, frameon=False)
+    ax.legend(handles, legend_labels, **legend_params)
     
     # style the plot
     ax.set_xlabel(xlabel if xlabel is not None else x, fontsize=16)
@@ -375,11 +369,11 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
                     highlight_index=None, highlight_x=None, highlight_y=None, highlight_marker='x',
                     highlight_size=90, highlight_color='k', highlight_name=None, highlight_alpha=0.9,
                     xlabel=None, ylabel=None, equal_axes=True, force_categorical_hue=False,
-                    legend_loc='best', legend_title=None, legend_fontsize=13, legend_frameon=True,
+                    legend_kwargs=None,
                     cbar_width=35, cbar_height=5, cbar_loc='lower right', cbar_orientation='horizontal', 
                     cbar_bbox_to_anchor=None, cbar_flip_ticks=False,
                     cbar_title=None, cbar_title_loc=None, cbar_title_fontsize=12, 
-                    return_ax=False, figsize=[6, 6], figfile=None):
+                    return_ax=False, figsize=[6, 6], figfile=None, **kwargs):
     '''
     Produces a scatter plot of two features, optionally colored by a third feature.
 
@@ -450,12 +444,7 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
         equal_axes (bool): If ``True``, the the limits of the x- and y-axis will be equal.
                            Default is ``True``.
         
-        legend_loc (str): Location for the legend. Uses standard matplotlib locations. Default
-                          is ``'best'``.
-
-        legend title (str): Title for the legend. By default, ``hue`` is used.
-
-        show_legend_title (bool): Whether or not to show the legend title. Default is ``True``.
+        legend_kwargs (dict): Dictionary of keyword arguments for the legend.
 
         return_ax (bool): If ``True``, return the plot's ``ax`` object. Will not show or save
                           the plot. Default is ``False``.
@@ -464,6 +453,8 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
 
         figfile (str): Path to which the figure will be saved. If not provided, the figure will be
                        shown but not saved to file.
+
+        kwargs: All other keyword arguments are passed to ``matplotlib.pyplot.scatter()``
     '''
     # input data
     if isinstance(data, AnnData):
@@ -524,10 +515,10 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
         for h in hue_order[::-1]:
             d = df[df[hue] == h]
             plt.scatter(d[x], d[y], c=d['color'], s=size, marker=marker,
-                        alpha=alpha, linewidths=0, label=h)
+                        alpha=alpha, linewidths=0, label=h, **kwargs)
     else:
         plt.scatter(df[x], df[y], c=df['color'], s=size, marker=marker,
-                        alpha=alpha, linewidths=0)
+                        alpha=alpha, linewidths=0, **kwargs)
 
     # highlighted points
     highlight = any([highlight_index is not None, all([highlight_x is not None, highlight_y is not None])])
@@ -546,7 +537,12 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
     # legend
     if not continuous_hue:
         if hue is not None:
-            ax.legend(loc=legend_loc, fontsize=legend_fontsize, title=legend_title, frameon=legend_frameon)
+            legend_params = {'loc': 'best',
+                             'title': None,
+                             'fontsize': 12,
+                             'frameon': False}
+            legend_params.update(legend_kwargs if legend_kwargs is not None else {})
+            ax.legend(**legend_params)
     # colorbar
     else:
         cbax = inset_axes(ax, width=f'{cbar_width}%', height=f'{cbar_height}%',
@@ -589,6 +585,13 @@ def feature_scatter(data, x, y, hue=None, hue_order=None, color=None, cmap=None,
         plt.savefig(figfile)
     else:
         plt.show()
+
+
+
+def feature_histogram(data, x, hue=None):
+    pass
+
+
 
 
 def cellhash_ridge(adata, hashname, category, colors=None, alpha=1.0,
