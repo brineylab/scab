@@ -37,6 +37,8 @@ from Levenshtein import distance
 import fastcluster as fc
 from scipy.cluster.hierarchy import fcluster
 
+from mnemonic import Mnemonic
+
 from abutils.core.pair import Pair
 from abutils.core.sequence import Sequence
 from abutils.utils.cluster import cluster
@@ -230,8 +232,10 @@ def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65,
                                     criterion='distance')
             # rename clusters
             cluster_ids = list(set(cluster_list))
-            characters = string.ascii_letters + string.digits
-            cluster_names = {c: ''.join(random.sample(characters, 12)) for c in cluster_ids}
+            # characters = string.ascii_letters + string.digits
+            # cluster_names = {c: ''.join(random.sample(characters, 12)) for c in cluster_ids}
+            mnemo = Mnemonic('english')
+            cluster_names = {c: '_'.join(mnemo.generate(strength=128)[:6]) for c in cluster_ids}
             renamed_clusters = [cluster_names[c] for c in cluster_list]
             # assign sequences
             for seq, name in zip(vj_group, renamed_clusters):

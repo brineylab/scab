@@ -5,6 +5,7 @@ fastcluster
 harmonypy
 leidenalg
 matplotlib
+mnemonic
 natsort
 numpy
 pandas
