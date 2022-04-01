@@ -39,6 +39,7 @@ from scipy.cluster.hierarchy import fcluster
 
 from abutils.core.pair import Pair
 from abutils.core.sequence import Sequence
+from abutils.utils.cluster import cluster
 from abutils.utils.utilities import nested_dict_lookup
 
 
@@ -114,14 +115,44 @@ def umi_selector(seqs):
 
 
 
-
 def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_penalty_multiplier=2,
                         preclustering_threshold=0.65, preclustering_field='cdr3_nt', preclustering=False,
                         annotation_format='airr', return_assignment_dict=False):
     '''
-    TODO: docstring for assign_bcr_lineages()
+    Assigns BCR lineages using the clonify algorithm.
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): ``AnnData`` object containing annotated sequence data at ``adata.obs.bcr``. If
+            data was read using ``scab.read_10x_mtx()``, BCR data should already be in the correct location.
+
+        distance_cutoff (float): Distance threshold for lineage clustering. Default is ``0.32``.
+
+        shared_mutation_bonus (float): Bonus applied for each shared V-gene mutation. Default is ``0.65``.
+
+        length_penalty_multiplier (int): Multiplier for the CDR3 length penalty. Default is ``2``, resulting in
+            CDR3s that differ by ``n`` amino acids being penalized ``n * 2``.
+
+        preclustering_threshold (float): Identity threshold for pre-clustering the V/J groups prior to lineage 
+            assignment. Default is ``0.65``.
+
+        preclustering_field (str): Annotation field on which to pre-cluster sequences. Default is ``'cdr3_nt'``.
+
+        preclustering (bool): If ``True``, V/J groups are pre-clustered, which can potentially speed up lineage assignment
+            and reduce memory usage. If ``False``, each V/J group is processed in its entirety without pre-clustering. 
+            Default is ``False``.
+
+        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
+            Default is ``'airr'``.
+        
+        return_assignment_dict (bool): If ``True``, a dictionary linking sequence IDs to lineage names will be returned.
+            If ``False``, the input ``anndata.AnnData`` object will be returned, with lineage annotations included.
+            Default is ``False``.
+
     
     '''
+    # select the appropriate data fields
     if annotation_format.lower() == 'airr':
         vgene_key = 'v_call'
         jgene_key = 'j_call'
@@ -139,12 +170,11 @@ def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65,
         print(error)
         print('\n')
         sys.exit()
-    
+    # group sequences by V/J genes
     vj_group_dict = {}
     for p in adata.obs.bcr:
         if p.heavy is None:
             continue
-            
         # build new Sequence objects using just the data we need
         h = p.heavy
         s = Sequence(h.sequence, id=p.name)
@@ -163,56 +193,58 @@ def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65,
             required_fields.append('preclustering')
         if any([s[v] is None for v in required_fields]):
             continue
-            
         # group sequences by VJ gene use
         vj = f"{s['v_call']}__{s['j_call']}"
         if vj not in vj_group_dict:
             vj_group_dict[vj] = []
         vj_group_dict[vj].append(s)
-        
+    # assign lineages
     assignment_dict = {}
     for vj_group in vj_group_dict.values():
-        if len(vj_group) == 1:
-            seq = vj_group[0]
-            assignment_dict[seq.id] = ''.join(random.sample(characters, 12))
-            continue
-        # build a distance matrix
-        # TODO: multiprocess the distance matrix computations.
-        # It's currently plenty fast for a few thousand sequences, but bigger batches
-        # might start having problems
-        dist_matrix = []
-        for s1, s2 in itertools.combinations(vj_group, 2):
-            d = _clonify_distance(s1, s2,
-                                  shared_mutation_bonus,
-                                  length_penalty_multiplier)
-            dist_matrix.append(d)
-        # cluster
-        linkage_matrix = fc.linkage(dist_matrix, 
-                                    method='average',
-                                    preserve_input=False)
-        cluster_list = fcluster(linkage_matrix,
-                                distance_cutoff,
-                                criterion='distance')
-        # rename clusters
-        cluster_ids = list(set(cluster_list))
-        characters = string.ascii_letters + string.digits
-        cluster_names = {c: ''.join(random.sample(characters, 12)) for c in cluster_ids}
-        renamed_clusters = [cluster_names[c] for c in cluster_list]
-        # assign sequences
-        for seq, name in zip(vj_group, renamed_clusters):
-            assignment_dict[seq.id] = name
-        lineage_size_dict = Counter(assignment_dict.values())
-        
+        # preclustering
+        if preclustering:
+            seq_dict = {s.id: s for s in vj_group}
+            cluster_seqs = [Sequence(s[preclustering_field], id=s.id) for s in vj_group]
+            clusters = cluster(cluster_seqs, threshold=preclustering_threshold)
+            groups = [[seq_dict[i] for i in c.seq_ids] for c in clusters]
+        else:
+            groups = [vj_group, ]
+        for group in groups:
+            if len(group) == 1:
+                seq = group[0]
+                assignment_dict[seq.id] = ''.join(random.sample(characters, 12))
+                continue
+            # build a distance matrix
+            dist_matrix = []
+            for s1, s2 in itertools.combinations(group, 2):
+                d = _clonify_distance(s1, s2,
+                                        shared_mutation_bonus,
+                                        length_penalty_multiplier)
+                dist_matrix.append(d)
+            # cluster
+            linkage_matrix = fc.linkage(dist_matrix, 
+                                        method='average',
+                                        preserve_input=False)
+            cluster_list = fcluster(linkage_matrix,
+                                    distance_cutoff,
+                                    criterion='distance')
+            # rename clusters
+            cluster_ids = list(set(cluster_list))
+            characters = string.ascii_letters + string.digits
+            cluster_names = {c: ''.join(random.sample(characters, 12)) for c in cluster_ids}
+            renamed_clusters = [cluster_names[c] for c in cluster_list]
+            # assign sequences
+            for seq, name in zip(vj_group, renamed_clusters):
+                assignment_dict[seq.id] = name
+            lineage_size_dict = Counter(assignment_dict.values())
+    # return assignments
     if return_assignment_dict:
         return assignment_dict
-    
     lineage_assignments = [assignment_dict.get(n, np.nan) for n in adata.obs_names]
     lineage_sizes = [lineage_size_dict.get(l, np.nan) for l in lineage_assignments]
-
     adata.obs['bcr_lineage'] = lineage_assignments
     adata.obs['bcr_lineage_size'] = lineage_sizes
     return adata
-        
 
         
 def _clonify_distance(s1, s2, shared_mutation_bonus, length_penalty_multiplier):
