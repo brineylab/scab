@@ -1,6 +1,7 @@
 abstar
 abutils>=0.2.5
 anndata
+fastcluster
 harmonypy
 leidenalg
 matplotlib
@@ -8,8 +9,10 @@ natsort
 numpy
 pandas
 pytest
+python-Levenshtein
 scanpy
 scanorama
+scipy
 scrublet
 scvelo
 seaborn>=0.11
