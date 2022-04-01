@@ -156,8 +156,8 @@ def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65,
     '''
     # select the appropriate data fields
     if annotation_format.lower() == 'airr':
-        vgene_key = 'v_call'
-        jgene_key = 'j_call'
+        vgene_key = 'v_gene'
+        jgene_key = 'j_gene'
         cdr3_key = 'cdr3_aa'
         muts_key = 'v_mutations'
     elif annotation_format.lower() == 'json':
@@ -180,28 +180,29 @@ def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65,
         # build new Sequence objects using just the data we need
         h = p.heavy
         s = Sequence(h.sequence, id=p.name)
-        s['v_call'] = nested_dict_lookup(h, vgene_key.split('.'))
-        s['j_call'] = nested_dict_lookup(h, jgene_key.split('.'))
+        s['v_gene'] = nested_dict_lookup(h, vgene_key.split('.'))
+        s['j_gene'] = nested_dict_lookup(h, jgene_key.split('.'))
         s['cdr3'] = nested_dict_lookup(h, cdr3_key.split('.'))
         if annotation_format.lower() == 'json':
             muts = nested_dict_lookup(h, muts_key.split('.'), [])
             s['mutations'] = [f"{m['position']}:{m['was']}>{m['is']}" for m in muts]
         else:
-            nested_dict_lookup(h, muts_key.split('.'), '').split('|')
+            muts = nested_dict_lookup(h, muts_key.split('.'), '').split('|')
             s['mutations'] = [m for m in muts if m.strip()]
-        required_fields = ['v_call', 'j_call', 'cdr3', 'mutations']
+        required_fields = ['v_gene', 'j_gene', 'cdr3', 'mutations']
         if preclustering:
             s['preclustering'] = nested_dict_lookup(h, preclustering_field.split('.'))
             required_fields.append('preclustering')
         if any([s[v] is None for v in required_fields]):
             continue
         # group sequences by VJ gene use
-        vj = f"{s['v_call']}__{s['j_call']}"
+        vj = f"{s['v_gene']}__{s['j_gene']}"
         if vj not in vj_group_dict:
             vj_group_dict[vj] = []
         vj_group_dict[vj].append(s)
     # assign lineages
     assignment_dict = {}
+    mnemo = Mnemonic('english')
     for vj_group in vj_group_dict.values():
         # preclustering
         if preclustering:
@@ -214,7 +215,7 @@ def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65,
         for group in groups:
             if len(group) == 1:
                 seq = group[0]
-                assignment_dict[seq.id] = ''.join(random.sample(characters, 12))
+                assignment_dict[seq.id] = '_'.join(mnemo.generate(strength=128)[:6])
                 continue
             # build a distance matrix
             dist_matrix = []
@@ -234,7 +235,6 @@ def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65,
             cluster_ids = list(set(cluster_list))
             # characters = string.ascii_letters + string.digits
             # cluster_names = {c: ''.join(random.sample(characters, 12)) for c in cluster_ids}
-            mnemo = Mnemonic('english')
             cluster_names = {c: '_'.join(mnemo.generate(strength=128)[:6]) for c in cluster_ids}
             renamed_clusters = [cluster_names[c] for c in cluster_list]
             # assign sequences
