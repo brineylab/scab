@@ -23,10 +23,24 @@
 #
 
 
+from collections import Counter
+import itertools
+import random
+import string
+import sys
+
 import pandas as pd
+import numpy as np
+
+from Levenshtein import distance
+
+import fastcluster as fc
+from scipy.cluster.hierarchy import fcluster
 
 from abutils.core.pair import Pair
 from abutils.core.sequence import Sequence
+from abutils.utils.utilities import nested_dict_lookup
+
 
 
 def merge_vdj(adata, vdj_file, tenx_annotation_csv=None, high_confidence=True,
@@ -101,7 +115,117 @@ def umi_selector(seqs):
 
 
 
+def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_penalty_multiplier=2,
+                        preclustering_threshold=0.65, preclustering_field='cdr3_nt', preclustering=False,
+                        annotation_format='airr', return_assignment_dict=False):
+    '''
+    TODO: docstring for assign_bcr_lineages()
+    
+    '''
+    if annotation_format.lower() == 'airr':
+        vgene_key = 'v_call'
+        jgene_key = 'j_call'
+        cdr3_key = 'cdr3_aa'
+        muts_key = 'v_mutations'
+    elif annotation_format.lower() == 'json':
+        vgene_key = 'v_gene.gene'
+        jgene_key = 'j_gene.gene'
+        cdr3_key = 'cdr3_aa'
+        muts_key = 'var_muts_nt.muts'
+    else:
+        error = 'ERROR: '
+        error += f'annotation_format must be either "airr" or "json", but you provided {annotation_format}'
+        print('\n')
+        print(error)
+        print('\n')
+        sys.exit()
+    
+    vj_group_dict = {}
+    for p in adata.obs.bcr:
+        if p.heavy is None:
+            continue
+            
+        # build new Sequence objects using just the data we need
+        h = p.heavy
+        s = Sequence(h.sequence, id=p.name)
+        s['v_call'] = nested_dict_lookup(h, vgene_key.split('.'))
+        s['j_call'] = nested_dict_lookup(h, jgene_key.split('.'))
+        s['cdr3'] = nested_dict_lookup(h, cdr3_key.split('.'))
+        if annotation_format.lower() == 'json':
+            muts = nested_dict_lookup(h, muts_key.split('.'), [])
+            s['mutations'] = [f"{m['position']}:{m['was']}>{m['is']}" for m in muts]
+        else:
+            nested_dict_lookup(h, muts_key.split('.'), '').split('|')
+            s['mutations'] = [m for m in muts if m.strip()]
+        required_fields = ['v_call', 'j_call', 'cdr3', 'mutations']
+        if preclustering:
+            s['preclustering'] = nested_dict_lookup(h, preclustering_field.split('.'))
+            required_fields.append('preclustering')
+        if any([s[v] is None for v in required_fields]):
+            continue
+            
+        # group sequences by VJ gene use
+        vj = f"{s['v_call']}__{s['j_call']}"
+        if vj not in vj_group_dict:
+            vj_group_dict[vj] = []
+        vj_group_dict[vj].append(s)
+        
+    assignment_dict = {}
+    for vj_group in vj_group_dict.values():
+        if len(vj_group) == 1:
+            seq = vj_group[0]
+            assignment_dict[seq.id] = ''.join(random.sample(characters, 12))
+            continue
+        # build a distance matrix
+        # TODO: multiprocess the distance matrix computations.
+        # It's currently plenty fast for a few thousand sequences, but bigger batches
+        # might start having problems
+        dist_matrix = []
+        for s1, s2 in itertools.combinations(vj_group, 2):
+            d = _clonify_distance(s1, s2,
+                                  shared_mutation_bonus,
+                                  length_penalty_multiplier)
+            dist_matrix.append(d)
+        # cluster
+        linkage_matrix = fc.linkage(dist_matrix, 
+                                    method='average',
+                                    preserve_input=False)
+        cluster_list = fcluster(linkage_matrix,
+                                distance_cutoff,
+                                criterion='distance')
+        # rename clusters
+        cluster_ids = list(set(cluster_list))
+        characters = string.ascii_letters + string.digits
+        cluster_names = {c: ''.join(random.sample(characters, 12)) for c in cluster_ids}
+        renamed_clusters = [cluster_names[c] for c in cluster_list]
+        # assign sequences
+        for seq, name in zip(vj_group, renamed_clusters):
+            assignment_dict[seq.id] = name
+        lineage_size_dict = Counter(assignment_dict.values())
+        
+    if return_assignment_dict:
+        return assignment_dict
+    
+    lineage_assignments = [assignment_dict.get(n, np.nan) for n in adata.obs_names]
+    lineage_sizes = [lineage_size_dict.get(l, np.nan) for l in lineage_assignments]
 
+    adata.obs['bcr_lineage'] = lineage_assignments
+    adata.obs['bcr_lineage_size'] = lineage_sizes
+    return adata
+        
+
+        
+def _clonify_distance(s1, s2, shared_mutation_bonus, length_penalty_multiplier):
+    if len(s1['cdr3']) == len(s2['cdr3']):
+        dist = sum([i != j for i, j in zip(s1['cdr3'], s2['cdr3'])])
+    else:
+        dist = distance(s1['cdr3'], s2['cdr3'])
+    length_penalty = abs(len(s1['cdr3']) - len(s2['cdr3'])) * length_penalty_multiplier
+    length = min(len(s1['cdr3']), len(s2['cdr3']))
+    shared_mutations = list(set(s1['mutations']) & set(s2['mutations']))
+    mutation_bonus = len(shared_mutations) * shared_mutation_bonus
+    score = (dist + length_penalty - mutation_bonus) / length
+    return max(score, 0.001) # distance values can't be negative
 
 
 
