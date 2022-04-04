@@ -117,9 +117,9 @@ def umi_selector(seqs):
 
 
 
-def assign_bcr_lineages(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_penalty_multiplier=2,
-                        preclustering_threshold=0.65, preclustering_field='cdr3_nt', preclustering=False,
-                        annotation_format='airr', return_assignment_dict=False):
+def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_penalty_multiplier=2,
+            preclustering_threshold=0.65, preclustering_field='cdr3_nt', preclustering=False,
+            annotation_format='airr', return_assignment_dict=False):
     '''
     Assigns BCR lineages using the clonify algorithm.
 
