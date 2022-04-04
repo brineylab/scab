@@ -1,6 +1,7 @@
 abstar
 abutils>=0.2.5
 anndata
+dnachisel
 fastcluster
 harmonypy
 leidenalg

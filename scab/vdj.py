@@ -39,6 +39,10 @@ from scipy.cluster.hierarchy import fcluster
 
 from mnemonic import Mnemonic
 
+import dnachisel as dc
+
+from natsort import natsorted
+
 from abutils.core.pair import Pair
 from abutils.core.sequence import Sequence
 from abutils.utils.cluster import cluster
@@ -119,6 +123,7 @@ def umi_selector(seqs):
 
 def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_penalty_multiplier=2,
             preclustering_threshold=0.65, preclustering_field='cdr3_nt', preclustering=False,
+            lineage_field='bcr_lineage', lineage_size_field='bcr_lineage_size',
             annotation_format='airr', return_assignment_dict=False):
     '''
     Assigns BCR lineages using the clonify algorithm.
@@ -145,12 +150,26 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
             and reduce memory usage. If ``False``, each V/J group is processed in its entirety without pre-clustering. 
             Default is ``False``.
 
+        lineage_field (str): Name of the lineage assignment field. Default is ``bcr_lineage``.
+
+        lineage_size_field (str): Name of the lineage size field. Default is ``bcr_lineage_size``.
+
         annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
             Default is ``'airr'``.
         
         return_assignment_dict (bool): If ``True``, a dictionary linking sequence IDs to lineage names will be returned.
             If ``False``, the input ``anndata.AnnData`` object will be returned, with lineage annotations included.
             Default is ``False``.
+
+    Returns:
+    --------
+
+        By default (``return_assignment_dict == False``), returns the input ``anndata.AnnData`` object with two additional
+        columns: ``adata.obs.bcr_lineage``, which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, 
+        which contains the lineage size. Field names can be changed using ``lineage_field`` and ``lineage_size_field``.
+
+        If ``return_assignment_dict == True``, a ``dict`` mapping droplet barcodes (``adata.obs_names``) to lineage 
+        names is returned. 
 
     
     '''
@@ -233,8 +252,6 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
                                     criterion='distance')
             # rename clusters
             cluster_ids = list(set(cluster_list))
-            # characters = string.ascii_letters + string.digits
-            # cluster_names = {c: ''.join(random.sample(characters, 12)) for c in cluster_ids}
             cluster_names = {c: '_'.join(mnemo.generate(strength=128).split()[:6]) for c in cluster_ids}
             renamed_clusters = [cluster_names[c] for c in cluster_list]
             # assign sequences
@@ -246,8 +263,8 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
         return assignment_dict
     lineage_assignments = [assignment_dict.get(n, np.nan) for n in adata.obs_names]
     lineage_sizes = [lineage_size_dict.get(l, np.nan) for l in lineage_assignments]
-    adata.obs['bcr_lineage'] = lineage_assignments
-    adata.obs['bcr_lineage_size'] = lineage_sizes
+    adata.obs[lineage_field] = lineage_assignments
+    adata.obs[lineage_size_field] = lineage_sizes
     return adata
 
         
@@ -262,6 +279,149 @@ def _clonify_distance(s1, s2, shared_mutation_bonus, length_penalty_multiplier):
     mutation_bonus = len(shared_mutations) * shared_mutation_bonus
     score = (dist + length_penalty - mutation_bonus) / length
     return max(score, 0.001) # distance values can't be negative
+
+
+
+
+
+def build_synthesis_constructs(adata, overhang_5=GIBSON5, overhang_3=GIBSON3, annotation_format='airr', 
+                               sequence_key=None, locus_key=None, name_key=None, bcr_key='bcr', sort=True):
+    '''
+    Builds codon-optimized synthesis constructs, including Gibson overhangs suitable 
+    for cloning IGH, IGK and IGL constructs into expression vectors (Tiller et al., 2008).
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): An anndata.AnnData object containing annotated BCR sequences.
+
+        overhang_5 (dict): Dictionary mapping locus to 5' Gibson overhangs. By default, Gibson
+            overhangs corresponding to the expression vectors in Tiller, et al 2008:
+
+              * heavy/IGH: catcctttttctagtagcaactgcaaccggtgtacac
+              * kappa/IGK: atcctttttctagtagcaactgcaaccggtgtacac
+              * lambda/IGL: atcctttttctagtagcaactgcaaccggtgtacac
+
+            To produce constructs without overhangs, provide an empty dictionary.
+
+        overhang_3 (dict): Dictionary mapping locus to 3' Gibson overhangs. By default, Gibson
+            overhangs corresponding to the expression vectors in Tiller, et al 2008: 
+
+              * heavy/IGH: gcgtcgaccaagggcccatcggtcttcc
+              * kappa/IGK: cgtacggtggctgcaccatctgtcttcatc
+              * lambda/IGL: ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc
+
+            To produce constructs without overhangs, provide an empty dictionary.
+
+        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
+            Default is ``'airr'``.
+
+        sequence_key (str): Field containing the sequence to be codon optimized. Default is ``'sequence_aa'`` if
+            ``annotation_format == 'airr'`` or ``'vdj_aa'`` if ``annotation_format == 'json'``. Either nucleotide 
+            or amino acid sequences are acceptable.
+
+        locus_key (str): Field containing the sequence locus. Default is ``'locus'`` if ``annotation_key == 'airr'``,
+            or ``'chain'`` if ``annotation_key == 'json'``. Note that values in ``locus_key`` should match
+            the keys in ``overhang_5`` and ``overhang_3``.
+
+        name_key (str): Field (in ``adata.obs``) containing the name of the BCR pair. If not provided, the
+            droplet barcode will be used.
+
+        bcr_key (str): Field (in ``adata.obs``) containing the annotated BCR pair. Default is ``'bcr'``.
+
+        sort (bool): If ``True``, output will be sorted by sequence name. Default is ``True``.
+
+
+    Returns:
+    --------
+
+        sequences (list): A list of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
+            descriptive properties:
+
+              * id: The sequence ID, which includes the pair name and the locus.
+              * sequence: The codon-optimized sequence, including Gibson overhangs.
+
+            The following information is available using dictionary-style lookup:
+
+             * ``sequence[sequence_key]``: The input sequence, derived from the ``sequence_key`` field of the 
+                annotated input sequence.
+             * ``sequence[locus_key]``: The input sequence locus, derived from the ``locus_key`` field of the 
+                annotated input sequence.
+             * ``sequence['obs_name']: The droplet barcode.
+
+            If ``sort == True``, the output ``Sequence`` list will be sorted by name (using ``natsort.natsorted``).
+    '''
+    if any([locus_key is None, sequence_key is None]):
+        if annotation_format.lower() == 'airr':
+            sequence_key = sequence_key if sequence_key is not None else 'sequence_aa'
+            locus_key = locus_key if locus_key is not None else 'locus'
+        elif annotation_format.lower() == 'json':
+            sequence_key = sequence_key if sequence_key is not None else 'vdj_aa'
+            locus_key = locus_key if locus_key is not None else 'chain'
+        else:
+            err = '\nERROR: annotation format must be either "json" or "airr". '
+            err += f'You provided {annotation_format}\n'
+            print(err)
+            sys.exit()
+    # parse sequences
+    sequences = []
+    for i, r in adata.obs.iterrows():
+        bcr = r[bcr_key]
+        pair_name = r[name_key] if name_key is not None else bcr.name
+        for seq in [bcr.heavy, bcr.light]:
+            if seq is None:
+                continue
+            l = seq[locus_key]
+            n = f'{pair_name}_{l}'
+            optimized = _optimize_codons(seq, sequence_key)
+            s = overhang_5.get(l, '') + optimized.sequence + overhang_3.get(l, '')
+            opt_seq = Sequence(s, id=n)
+            opt_seq[sequence_key] = seq[sequence_key]
+            opt_seq[locus_key] = l
+            opt_seq['obs_name'] = i
+            sequences.append(opt_seq)
+    return sequences
+
+
+def _optimize_codons(sequence, sequence_key='vdj_aa'):
+    if all([res.upper() in ['A', 'C', 'G', 'T', 'N', '-'] for res in sequence[sequence_key]]):
+        dna_seq = sequence[sequence_key]
+    else:
+        dna_seq = dc.reverse_translate(sequence[sequence_key])
+    problem = dc.DnaOptimizationProblem(
+        sequence=dna_seq,
+        constraints=[dc.EnforceTranslation(),
+                     dc.EnforceGCContent(maxi=0.56),
+                     dc.EnforceGCContent(maxi=0.64, window=100),
+                     dc.UniquifyAllKmers(10)],
+        objectives=[dc.CodonOptimize(species="h_sapiens")],
+        logger=None)
+    problem.resolve_constraints(final_check=True)
+    problem.optimize()
+    return problem
+
+
+
+
+GIBSON5 = {'IGH': 'catcctttttctagtagcaactgcaaccggtgtacac',
+           'IGK': 'atcctttttctagtagcaactgcaaccggtgtacac',
+           'IGL': 'atcctttttctagtagcaactgcaaccggtgtacac',
+           'heavy': 'catcctttttctagtagcaactgcaaccggtgtacac',
+           'kappa': 'atcctttttctagtagcaactgcaaccggtgtacac',
+           'lambda': 'atcctttttctagtagcaactgcaaccggtgtacac'}
+
+GIBSON3 = {'IGH': 'gcgtcgaccaagggcccatcggtcttcc',
+           'IGK': 'cgtacggtggctgcaccatctgtcttcatc',
+           'IGL': 'ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc',
+           'heavy': 'gcgtcgaccaagggcccatcggtcttcc',
+           'kappa': 'cgtacggtggctgcaccatctgtcttcatc',
+           'lambda': 'ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc'}
+
+
+
+
+
+
 
 
 
