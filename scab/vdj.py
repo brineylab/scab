@@ -25,8 +25,8 @@
 
 from collections import Counter
 import itertools
-import random
-import string
+# import random
+# import string
 import sys
 
 import pandas as pd
@@ -380,6 +380,8 @@ def build_synthesis_constructs(adata, overhang_5=GIBSON5, overhang_3=GIBSON3, an
             opt_seq[locus_key] = l
             opt_seq['obs_name'] = i
             sequences.append(opt_seq)
+    if sort:
+        sequences = natsorted(sequences, key=lambda x: x.id)
     return sequences
 
 
@@ -402,6 +404,89 @@ def _optimize_codons(sequence, sequence_key='vdj_aa'):
 
 
 
+def bcr_summary_csv(adata, leading_fields=None, include=None, exclude=None,
+                    rename=None, annotation_format='airr', output_file=None):
+    '''
+    docstring for bcr_summary_csv.
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): An anndata.AnnData object containing annotated BCR sequences.
+
+        leading_fields (list): A list of fields in ``adata.obs`` that should be at the start
+            of the output data. Default is ``None``, which uses the column orders found in 
+            ``adata.obs``.
+
+        include (list): A list of columns in ``adata.obs`` that should be included in the 
+            summary output. Default is ``None``, which includes all columns in ``adata.obs``.
+
+        exclude (list): A list of columns in ``adata.obs`` that should be excluded from the 
+            summary output. Default is ``None``, which does not exclude any columns.
+
+        rename (dict): A dictionary mapping ``adata.obs`` columns to new column names. Any column
+            names not included in ``rename`` will not be renamed.
+
+        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
+            Default is ``'airr'``.
+
+        output_file (str): Path to the output file. If not provided, the summary output will
+            be returned as a Pandas ``DataFrame``.
+
+    
+    Returns:
+    --------
+
+        If ``output_file`` is provided, the summary output will be written to the file in CSV
+        format and noting is returned. If ``output_file`` is not provided, the summary data will
+        be returned as a Pandas ``DataFrame``.
+    
+    '''
+    # data fields
+    if rename is None:
+        rename = {}
+    if leading_fields is None:
+        leading_fields = []
+    if exclude is None:
+        exclude = []
+    if include is None:
+        include = adata.obs.columns
+    include = [c for c in include if c not in ['bcr', 'tcr']]
+    cols = leading_fields
+    cols += [c for c in include if c not in leading_fields + exclude]
+    # BCR fields
+    if annotation_format.lower() == 'airr':
+        bcr_fields = AIRR_SUMMARY_FIELDS
+    elif annotation_format.lower() == 'json':
+        bcr_fields = JSON_SUMMARY_FIELDS
+    else:
+        err = '\nERROR: annotation format must be either "json" or "airr". '
+        err += f'You provided {annotation_format}\n'
+        print(err)
+        sys.exit()
+    # parse row data
+    data = []
+    for i, r in adata.obs.iterrows():
+        d = {}
+        d['barcode'] = i
+        for c in cols:
+            d[rename.get(c, c)] = r[c]
+        h = r['bcr'].heavy
+        l = r['bcr'].light
+        for n, seq in [h, l]:
+            if seq is None:
+                continue
+            for f in bcr_fields:
+                d[f'{f}:{n}'] = seq.annotations.get(f, '')
+        data.append(d)
+    df = pd.DataFrame(data)
+    if output_file is not None:
+        df.to_csv(output_file, index=False)
+    else:
+        return df
+
+
+
 
 GIBSON5 = {'IGH': 'catcctttttctagtagcaactgcaaccggtgtacac',
            'IGK': 'atcctttttctagtagcaactgcaaccggtgtacac',
@@ -418,7 +503,51 @@ GIBSON3 = {'IGH': 'gcgtcgaccaagggcccatcggtcttcc',
            'lambda': 'ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc'}
 
 
+AIRR_SUMMARY_FIELDS = ['v_gene',
+                       'd_gene',
+                       'j_gene',
+                       'junction_aa',
+                       'cdr3_length',
+                       'fr1_aa',
+                       'cdr1_aa',
+                       'fr2_aa',
+                       'cdr2_aa',
+                       'fr3_aa',
+                       'cdr3_aa',
+                       'fr4_aa',
+                       'v_identity',
+                       'v_identity_aa',
+                       'v_mutations',
+                       'v_mutations_aa',
+                       'v_insertions',
+                       'v_deletions',
+                       'isotype',
+                       'locus',
+                       'sequence',
+                       'sequence_aa',
+                       'raw_input']
 
+JSON_SUMMARY_FIELDS = ['v_gene.gene',
+                       'd_gene.gene',
+                       'j_gene.gene',
+                       'junction_aa',
+                       'cdr3_len',
+                       'fr1_aa',
+                       'cdr1_aa',
+                       'fr2_aa',
+                       'cdr2_aa',
+                       'fr3_aa',
+                       'cdr3_aa',
+                       'fr4_aa',
+                       'nt_identity.v',
+                       'aa_identity.v',
+                       'v_insertions',
+                       'v_deletions',
+                       'isotype',
+                       'chain',
+                       'vdj_nt',
+                       'vdj_aa',
+                       'raw_input']
 
 
 
