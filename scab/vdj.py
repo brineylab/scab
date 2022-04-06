@@ -31,6 +31,7 @@ import sys
 
 import pandas as pd
 import numpy as np
+from sqlalchemy import over
 
 from Levenshtein import distance
 
@@ -284,7 +285,7 @@ def _clonify_distance(s1, s2, shared_mutation_bonus, length_penalty_multiplier):
 
 
 
-def build_synthesis_constructs(adata, overhang_5=GIBSON5, overhang_3=GIBSON3, annotation_format='airr', 
+def build_synthesis_constructs(adata, overhang_5=None, overhang_3=None, annotation_format='airr', 
                                sequence_key=None, locus_key=None, name_key=None, bcr_key='bcr', sort=True):
     '''
     Builds codon-optimized synthesis constructs, including Gibson overhangs suitable 
@@ -363,6 +364,11 @@ def build_synthesis_constructs(adata, overhang_5=GIBSON5, overhang_3=GIBSON3, an
             err += f'You provided {annotation_format}\n'
             print(err)
             sys.exit()
+    # get overhangs
+    if overhang_3 is None:
+        overhang_3 = GIBSON3
+    if overhang_5 is None:
+        overhang_5 = GIBSON5
     # parse sequences
     sequences = []
     for i, r in adata.obs.iterrows():
