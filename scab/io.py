@@ -43,10 +43,10 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
                  chain_selection_func=None, abstar_output_format='airr',
                  gex_only=False, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
                  agbc_regex='agbc', ignore_agbc_case=True,
-                 log_transform_cellhashes=True, ignore_zero_median_cellhashes=True, rename_cellhashes=None,
-                 log_transform_agbcs=True, ignore_zero_median_agbcs=True, rename_agbcs=None,
-                 log_transform_features=True, ignore_zero_median_features=True, rename_features=None, feature_suffix='_FBC',
-                 verbose=True):
+                 log_transform_cellhashes=True, ignore_zero_quantile_cellhashes=True, rename_cellhashes=None, 
+                 log_transform_agbcs=True, ignore_zero_quantile_agbcs=True, rename_agbcs=None, 
+                 log_transform_features=True, ignore_zero_quantile_features=True, rename_features=None, feature_suffix='_FBC', 
+                 cellhash_quantile=0.95, agbc_quantile=0.95, feature_quantile=0.95, verbose=True):
 
     '''
     Reads 10x Genomics matrix and VDJ files and outputs GEX, cellhash, feature barcode and VDJ data in a single AnnData object.
@@ -118,17 +118,20 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
         log_transform_features (bool): If ``True``, feature UMI counts will be log2 transformed 
             (after adding 1 to the raw count). Default is ``True``.
 
-        ignore_zero_median_cellhashes (bool): If ``True``, any hashes containing a meadian
-            count of ``0`` will be ignored and not returned in the hash dataframe. Default
-            is ``True``.
+        ignore_zero_quantile_cellhashes (bool): If ``True``, any hashes for which the ``cellhash_quantile``
+            percentile have a count of zero are ignored. Default is ``True`` and the default 
+            ``cellhash_quantile`` is ``0.95``, resulting in cellhashes with zero counts for the 95th
+            percentile being ignored.
         
-        ignore_zero_median_agbcs (bool): If ``True``, any AgBCs containing a meadian
-            count of ``0`` will be ignored and not returned in the AgBC dataframe. Default
-            is ``True``.
+        ignore_zero_median_agbcs (bool): If ``True``, any AgBCs for which the ``agbc_quantile``
+            percentile have a count of zero are ignored. Default is ``True`` and the default 
+            ``agbc_quantile`` is ``0.95``, resulting in AgBCs with zero counts for the 95th
+            percentile being ignored.
 
-        ignore_zero_median_features (bool): If ``True``, any features containing a meadian
-            count of ``0`` will be ignored and not returned in the feature dataframe. Default
-            is ``True``.
+        ignore_zero_median_features (bool): If ``True``, any features for which the ``feature_quantile``
+            percentile have a count of zero are ignored. Default is ``True`` and the default 
+            ``feature_quantile`` is ``0.95``, resulting in features with zero counts for the 95th
+            percentile being ignored.
 
         rename_cellhashes (dict): A dictionary with keys and values corresponding to the existing and 
             new cellhash names, respectively. For example, ``{'CellHash1': 'donorABC}`` would result in the 
@@ -149,6 +152,18 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
             names may overlap with gene names. Default is ``'_FBC'`` which would result in the feature 
             ``'CD19'`` being renamed to ``'CD19_FBC'``. The suffix is added after feature renaming. 
             To skip the addition of a feature suffix, simply supply an empty string (``''``) as the argument.
+
+        cellhash_quantile (float): Percentile for which cellhashes with zero counts will be ignored if
+            ``ignore_zero_quantile_cellhashes`` is ``True``. Default is ``0.95``, which is equivalent to the
+            95th percentile.
+
+        agbc_quantile (float): Percentile for which AgBCs with zero counts will be ignored if
+            ``ignore_zero_quantile_agbcs`` is ``True``. Default is ``0.95``, which is equivalent to the
+            95th percentile.
+
+        feature_quantile (float): Percentile for which features with zero counts will be ignored if
+            ``ignore_zero_quantile_features`` is ``True``. Default is ``0.95``, which is equivalent to the
+            95th percentile.
 
         verbose (bool): Print progress updates. Default is ``True``.
     
@@ -237,8 +252,8 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
     if verbose:
         print('processing cellhash data...')
     hash_df = hashes.to_df()[hashes.var_names]
-    if ignore_zero_median_cellhashes:
-        hash_df = hash_df[[h for h in hash_df.columns.values if hash_df[h].median() > 0]]
+    if ignore_zero_quantile_cellhashes:
+        hash_df = hash_df[[h for h in hash_df.columns.values if hash_df[h].quantile(q=cellhash_quantile) > 0]]
     if log_transform_cellhashes:
         hash_df += 1
         hash_df = hash_df.apply(np.log2)
@@ -247,12 +262,12 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
     for h in hash_df:
         gex.obs[rename_cellhashes.get(h, h)] = hash_df[h]
 
-    # process cellhash data
+    # process AgBC data
     if verbose:
         print('processing AgBC data...')
     agbc_df = agbcs.to_df()[agbcs.var_names]
-    if ignore_zero_median_agbcs:
-        agbc_df = agbc_df[[a for a in agbc_df.columns.values if agbc_df[a].median() > 0]]
+    if ignore_zero_quantile_agbcs:
+        agbc_df = agbc_df[[a for a in agbc_df.columns.values if agbc_df[a].quantile(q=agbc_quantile) > 0]]
     if log_transform_agbcs:
         agbc_df += 1
         agbc_df = agbc_df.apply(np.log2)
@@ -261,12 +276,12 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
     for a in agbc_df:
         gex.obs[rename_agbcs.get(a, a)] = agbc_df[a]
     
-    # make feature dataframe
+    # process feature barcode data
     if verbose:
         print('processing feature barcode data...')
     feature_df = features.to_df()[features.var_names]
-    if ignore_zero_median_features:
-        feature_df = feature_df[[h for h in feature_df.columns.values if feature_df[h].median() > 0]]
+    if ignore_zero_quantile_features:
+        feature_df = feature_df[[h for h in feature_df.columns.values if feature_df[h].quantile(q=feature_quantile) > 0]]
     if log_transform_features:
         feature_df += 1
         feature_df = feature_df.apply(np.log2)
