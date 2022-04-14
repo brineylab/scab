@@ -22,6 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
+import os
+import sys
 import re
 
 from natsort import natsorted
@@ -40,6 +42,8 @@ from scipy.signal import argrelextrema
 # from scipy.stats import scoreatpercentile
 
 import statsmodels.api as sm
+
+from .io import read_10x_mtx
 
 
 def dimensionality_reduction(adata, solver='arpack', n_neighbors=20, n_pcs=40,
@@ -222,6 +226,125 @@ def scanorama(adata, batch_key='sample', dim_red=True):
     if dim_red:
         adata_scanorama = dimensionality_reduction(adata_scanorama, rep="Scanorama")
     return adata_scanorama
+
+
+
+def classify_specificity(adata, raw, agbcs=None, groups=None, rename=None,
+                         percentile=0.997, percentile_dict=None, update=True, verbose=True):
+    '''
+    Classifies BCR specificity using antigen barcodes (AgBCs). Thresholds are computed by analyzing background 
+    AgBC UMIs in empty droplets.
+    
+    Args:
+    -----
+    
+        adata (anndata.AnnData): Input AnnData object. Log2-normalized AgBC UMI counts should be found in 
+            ``adata.obs``. If data was read using ``scab.read_10x_mtx()``, the resulting AnnData object 
+            will already be correctly formatted. Required.
+            
+        raw (anndata.AnnData or str): Raw matrix data. Either a path to a directory containing the fraw ``.mtx`` file,
+            or an ``anndata.AnnData`` object containing the raw matrix data. As with ``adata``, log2-normalized AgBC 
+            UMIs should be found at ``raw.obs``. Required.
+            
+        agbcs (list): A list of AgBCs to be classified. Either ``agbcs`` or ``groups`` is required. If both are 
+            provided, ``groups`` will be used.
+        
+        groups (dict): A dictionary mapping specificity names to a list of one or more AgBCs. This is useful when
+            multiple AgBCs correspond to the same antigen (either because dual-labeled AgBCs were used, or 
+            because several AgBCs are closely-related variants that would be expected to compete for BCR binding). 
+            Either ``agbcs`` or ``groups`` is required. If both are provided, ``groups`` will be used.
+            
+        rename (dict): A dictionary mapping AgBC or group names to a new name. Keys should be present in either 
+            ``agbcs`` or ``groups.keys()``. If only a subset of AgBCs or groups are provided in ``rename``, then 
+            only those AgBCs or groups will be renamed.
+            
+        percentile (float): Percentile used to compute the AgBC classification threshold using ``raw`` data. Default 
+            is ``0.997``, which corresponds to three standard deviations.
+            
+        percentile_dict (dict): Dictionary mapping AgBC or group names to the desired ``percentile``. If only a subset 
+            of AgBCs or groups are provided in ``percentile_dict``, all others will use ``percentile``.
+            
+        update (bool): If ``True``, update the ``adata`` with grouped UMI counts and classifications. If ``False``, 
+            a pandas ``DataFrame`` containg classifications will be returned and ``adata`` will not be modified. 
+            Default is ``True``.
+
+        verbose (bool): If ``True``, calculated threshold values are printed. Default is ``True``.
+            
+    
+    Returns:
+    --------
+    
+        If ``update == True``, an updated ``adata`` object containing specificity classifications is returned. Otherwhise,
+        a pandas ``DataFrame`` containing specificity classifications is returned.
+    
+    '''
+    adata_groups = {}
+    classifications = {}
+    percentiles = percentile_dict if percentile_dict is not None else {}
+    rename = rename if rename is not None else {}
+
+    # process AgBCs and specificity groups
+    if all([agbcs is None, groups is None]):
+        err = 'ERROR: either agbcs or groups must be provided.'
+        print('\n' + err + '\n')
+        sys.exit()
+    if agbcs is not None and groups is None:
+        groups = {a: [a] for a in agbcs}
+
+    # load raw data, if necessary
+    if isinstance(raw, str):
+        if os.path.isdir(raw):
+            raw = read_10x_mtx(raw, ignore_zero_quantile_agbcs=False)
+        else:
+            err = '\nERROR: raw must be either an anndata.AnnData object or a path to the raw matrix output folder from CellRanger.\n'
+            print(err)
+            sys.exit()
+            
+    # remove cell-containing droplets from raw
+    no_cell = [o not in adata.obs_names for o in raw.obs_names]
+    raw = raw[no_cell]
+        
+    # classify AgBC specificities
+    if verbose:
+        print('')
+        print('  THRESHOLDS  ')
+        print('--------------')
+    for group, barcodes in groups.items():
+        # remove missing AgBCs
+        in_adata = [b for b in barcodes if b in adata.obs]
+        in_raw = [b for b in barcodes if b in raw.obs]
+        in_both = list(set(in_adata) & set(in_raw))
+        if any([not in_adata, not in_raw]):
+            err = f"\nERROR: group {group} cannot be processed because all AgBCs are missing from input or raw datasets.\n"
+            if not in_adata:
+                err += f"input is missing {', '.join([b for b in barcodes if b not in in_adata])}\n"
+            if not in_raw:
+                err += f"raw is missing {', '.join([b for b in barcodes if b not in in_raw])}\n"
+            print(err)
+            del groups[group]
+            continue
+        if len(in_adata) != len(in_raw):
+            warn = f'\nWARNING: not all AgBCs for group {group} can be found in data and raw.\n'
+            warn += f"input contains {', '.join(in_adata)}\n"
+            warn += f"raw contains {', '.join(in_raw)}\n"
+            print(warn)
+            groups[group] = [bc for bc in barcodes if bc in in_both]
+        # calculate threshold and classify
+        group_name = rename.get(group, group)
+        _data = np.sum([np.exp2(adata.obs[bc]) - 1 for bc in in_adata], axis=0)
+        adata_groups[group_name] = np.log2(_data + 1)
+        _raw = np.sum([np.exp2(raw.obs[bc]) - 1 for bc in in_raw], axis=0) 
+        threshold = np.quantile(np.log2(_raw + 1), percentiles.get(group_name, percentile))
+        classifications[group_name] = adata_groups[group_name] >= threshold
+        if verbose:
+            print(f"{group_name}: {threshold} ({percentiles.get(group_name, percentile)})")
+    if update:
+        for g, group_data in adata_groups.items():
+            adata.obs[g] = group_data
+            adata.obs[f'is_{g}'] = classifications[g]
+        return adata
+    else:
+        return pd.DataFrame(classifications, index=adata.obs_names)
 
 
 
