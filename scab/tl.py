@@ -274,7 +274,7 @@ def classify_specificity(adata, raw, agbcs=None, groups=None, rename=None,
     Returns:
     --------
     
-        If ``update == True``, an updated ``adata`` object containing specificity classifications is returned. Otherwhise,
+        If ``update == True``, an updated ``adata`` object containing specificity classifications is returned. Otherwise,
         a pandas ``DataFrame`` containing specificity classifications is returned.
     
     '''
@@ -335,7 +335,7 @@ def classify_specificity(adata, raw, agbcs=None, groups=None, rename=None,
         adata_groups[group_name] = np.log2(_data + 1)
         _raw = np.sum([np.exp2(raw.obs[bc]) - 1 for bc in in_raw], axis=0) 
         threshold = np.quantile(np.log2(_raw + 1), percentiles.get(group_name, percentile))
-        classifications[group_name] = adata_groups[group_name] >= threshold
+        classifications[group_name] = adata_groups[group_name] > threshold
         if verbose:
             print(f"{group_name}: {threshold} ({percentiles.get(group_name, percentile)})")
     if update:
