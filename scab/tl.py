@@ -234,6 +234,14 @@ def classify_specificity(adata, raw, agbcs=None, groups=None, rename=None,
     '''
     Classifies BCR specificity using antigen barcodes (AgBCs). Thresholds are computed by analyzing background 
     AgBC UMIs in empty droplets.
+
+    NOTE: In order to set accurate thresholds, we must remove all cell-containing droplets from ``raw``. Because 
+    ``adata`` comprises only cell-containing droplets, we simply remove all of the droplet barcodes in ``adata``
+    from ``raw``. Thus, it is important that ``adata`` and ``raw`` are well matched. Ror example, if the entire 
+    Chromium reaction contained several multiplexed samples, ``adata`` must contain all of the multiplexed samples, 
+    since the raw matrix output by CellRanger includes all droplets in the reaction. If ``adata`` was missing one 
+    or more samples, cell-containing droplets cannot accurately be removed from ``raw`` and classification accuracy 
+    will be adversely affected.
     
     Args:
     -----
@@ -296,13 +304,13 @@ def classify_specificity(adata, raw, agbcs=None, groups=None, rename=None,
         if os.path.isdir(raw):
             raw = read_10x_mtx(raw, ignore_zero_quantile_agbcs=False)
         else:
-            err = '\nERROR: raw must be either an anndata.AnnData object or a path to the raw matrix output folder from CellRanger.\n'
+            err = '\nERROR: raw must be either an AnnData object or a path to the raw matrix output folder from CellRanger.\n'
             print(err)
             sys.exit()
             
     # remove cell-containing droplets from raw
     no_cell = [o not in adata.obs_names for o in raw.obs_names]
-    raw = raw[no_cell]
+    empty = raw[no_cell]
         
     # classify AgBC specificities
     if verbose:
@@ -312,32 +320,42 @@ def classify_specificity(adata, raw, agbcs=None, groups=None, rename=None,
     for group, barcodes in groups.items():
         # remove missing AgBCs
         in_adata = [b for b in barcodes if b in adata.obs]
-        in_raw = [b for b in barcodes if b in raw.obs]
-        in_both = list(set(in_adata) & set(in_raw))
-        if any([not in_adata, not in_raw]):
+        in_empty = [b for b in barcodes if b in empty.obs]
+        in_both = list(set(in_adata) & set(in_empty))
+        if any([not in_adata, not in_empty]):
             err = f"\nERROR: group {group} cannot be processed because all AgBCs are missing from input or raw datasets.\n"
             if not in_adata:
                 err += f"input is missing {', '.join([b for b in barcodes if b not in in_adata])}\n"
-            if not in_raw:
-                err += f"raw is missing {', '.join([b for b in barcodes if b not in in_raw])}\n"
+            if not in_empty:
+                err += f"raw is missing {', '.join([b for b in barcodes if b not in in_empty])}\n"
             print(err)
             del groups[group]
             continue
-        if len(in_adata) != len(in_raw):
+        if len(in_adata) != len(in_empty):
             warn = f'\nWARNING: not all AgBCs for group {group} can be found in data and raw.\n'
             warn += f"input contains {', '.join(in_adata)}\n"
-            warn += f"raw contains {', '.join(in_raw)}\n"
+            warn += f"raw contains {', '.join(in_empty)}\n"
             print(warn)
             groups[group] = [bc for bc in barcodes if bc in in_both]
-        # calculate threshold and classify
         group_name = rename.get(group, group)
+        pctile = percentiles.get(group_name, percentile)
+        # thresholds for each barcode
+        _empty = np.array([np.exp2(empty.obs[bc]) - 1 for bc in in_empty])
+        raw_bc_thresholds = {bc: np.quantile(_e, pctile) for _e, bc in zip(_empty, in_empty)}
+        # UMI counts for the entire group
         _data = np.sum([np.exp2(adata.obs[bc]) - 1 for bc in in_adata], axis=0)
         adata_groups[group_name] = np.log2(_data + 1)
-        _raw = np.sum([np.exp2(raw.obs[bc]) - 1 for bc in in_raw], axis=0) 
-        threshold = np.quantile(np.log2(_raw + 1), percentiles.get(group_name, percentile))
+        # threshold for the entire group (sum of the individual barcode thresholds)
+        raw_threshold = np.sum(list(raw_bc_thresholds.values()))
+        threshold = np.log2(raw_threshold + 1)
         classifications[group_name] = adata_groups[group_name] > threshold
         if verbose:
-            print(f"{group_name}: {threshold} ({percentiles.get(group_name, percentile)})")
+            print(group_name)
+            print(f"percentile: {pctile}")
+            print(f"threshold: {threshold}")
+            for bc, rt in raw_bc_thresholds.items():
+                print(f"  - {bc}: {np.log2(rt + 1)}")
+            print('')
     if update:
         for g, group_data in adata_groups.items():
             adata.obs[g] = group_data
