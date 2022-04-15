@@ -365,10 +365,8 @@ def build_synthesis_constructs(adata, overhang_5=None, overhang_3=None, annotati
             print(err)
             sys.exit()
     # get overhangs
-    if overhang_3 is None:
-        overhang_3 = GIBSON3
-    if overhang_5 is None:
-        overhang_5 = GIBSON5
+    overhang_3 = overhang_3 if overhang_3 is not None else GIBSON3
+    overhang_5 = overhang_5 if overhang_5 is not None else GIBSON5
     # parse sequences
     sequences = []
     for i, r in adata.obs.iterrows():
