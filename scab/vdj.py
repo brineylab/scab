@@ -124,7 +124,7 @@ def umi_selector(seqs):
 
 def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_penalty_multiplier=2,
             preclustering_threshold=0.65, preclustering_field='cdr3_nt', preclustering=False,
-            lineage_field='bcr_lineage', lineage_size_field='bcr_lineage_size',
+            lineage_field='lineage', lineage_size_field='lineage_size',
             annotation_format='airr', return_assignment_dict=False):
     '''
     Assigns BCR lineages using the clonify algorithm.
@@ -151,9 +151,9 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
             and reduce memory usage. If ``False``, each V/J group is processed in its entirety without pre-clustering. 
             Default is ``False``.
 
-        lineage_field (str): Name of the lineage assignment field. Default is ``bcr_lineage``.
+        lineage_field (str): Name of the lineage assignment field. Default is ``lineage``.
 
-        lineage_size_field (str): Name of the lineage size field. Default is ``bcr_lineage_size``.
+        lineage_size_field (str): Name of the lineage size field. Default is ``lineage_size``.
 
         annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
             Default is ``'airr'``.
