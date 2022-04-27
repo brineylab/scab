@@ -501,6 +501,8 @@ def group_lineages(adata, lineage_names=None, sort_by_size=True, lineage_key='li
         lineage_names = adata.obs[lineage_key].unique()
     lineages = []
     for lname in lineage_names:
+        if np.isnan(lname):
+            continue
         _adata = adata[adata.obs[lineage_key] == lname]
         lineages.append(Lineage(_adata))
     if sort_by_size:

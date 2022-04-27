@@ -61,7 +61,10 @@ class Lineage():
             if 'bcr_lineage' in self.adata.obs:
                 self._name = self.adata.obs.bcr_lineage.value_counts().index[0]
             elif 'lineage' in self.adata.obs:
-                self._name = self.adata.obs.lineage.value_counts().index[0]
+                try:
+                    self._name = self.adata.obs.lineage.value_counts().index[0]
+                except IndexError:
+                    pass
         return self._name
     
     @name.setter
