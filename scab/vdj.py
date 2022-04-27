@@ -504,7 +504,7 @@ def group_lineages(adata, lineage_names=None, sort_by_size=True, lineage_key='li
         _adata = adata[adata.obs[lineage_key] == lname]
         lineages.append(Lineage(_adata))
     if sort_by_size:
-        lineages = sorted(lineages, key=lambda x: x.size(), reverse=True)
+        lineages = sorted(lineages, key=lambda x: x.size, reverse=True)
     return lineages
 
 
