@@ -49,6 +49,8 @@ from abutils.core.sequence import Sequence
 from abutils.utils.cluster import cluster
 from abutils.utils.utilities import nested_dict_lookup
 
+from .models.lineage import Lineage
+
 
 
 def merge_vdj(adata, vdj_file, tenx_annotation_csv=None, high_confidence=True,
@@ -488,6 +490,22 @@ def bcr_summary_csv(adata, leading_fields=None, include=None, exclude=None,
         df.to_csv(output_file, index=False)
     else:
         return df
+
+
+def group_lineages(adata, lineage_names=None, sort_by_size=True, lineage_key='lineage'):
+    if lineage_key not in adata.obs:
+        err = f"\nERROR: {lineage_key} was not found in adata.obs\n"
+        print(err)
+        sys.exit()
+    if lineage_names is None:
+        lineage_names = adata.obs[lineage_key].unique()
+    lineages = []
+    for lname in lineage_names:
+        _adata = adata[adata.obs[lineage_key] == lname]
+        lineages.append(Lineage(_adata))
+    if sort_by_size:
+        lineages = sorted(lineages, key=lambda x: x.size(), reverse=True)
+    return lineages
 
 
 
