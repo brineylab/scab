@@ -90,11 +90,14 @@ class Lineage():
         return [b.light for b in self.bcrs if b.light is not None]
     
 
-    def summarize(self, agbcs=None, specificities=None, dot_alignment=True,
+    def summarize(self, agbcs=None, specificities=None, extra_blocks=None, dot_alignment=True,
                   in_color=True, pairs_only=False, padding_width=2):
+        if isinstance(extra_blocks, str):
+            extra_blocks = [extra_blocks, ]
         return LineageSummary(self,
                               agbcs=agbcs,
                               specificities=specificities,
+                              extra_blocks=extra_blocks,
                               dot_alignment=dot_alignment,
                               in_color=in_color,
                               pairs_only=pairs_only,
@@ -107,7 +110,7 @@ class LineageSummary():
     docstring for LineageSummary
     '''
     
-    def __init__(self, lineage, agbcs=None, specificities=None, 
+    def __init__(self, lineage, agbcs=None, specificities=None, extra_blocks=None,
                  dot_alignment=True, in_color=True, pairs_only=False,
                  padding_width=1):
         self.lineage = lineage
@@ -117,6 +120,7 @@ class LineageSummary():
         self.bcrs = lineage.bcrs
         self.agbcs = agbcs
         self.specificities = specificities
+        self.extra_blocks = extra_blocks if extra_blocks is not None else []
         self.dot_alignment = dot_alignment
         self.in_color = in_color
         self.pairs_only = pairs_only
@@ -186,6 +190,11 @@ class LineageSummary():
         if self.agbcs is not None:
             agbc_block = self._agbc_block(identical_groups)
             x.add_column('agbcs', ['', agbc_block], align='r')
+        
+        # extra blocks
+        for xblock in self.extra_blocks:
+            extra_block = self._extra_block(xblock, identical_groups)
+            x.add_column(xblock, ['', extra_block], align='r')
             
         # HC and LC blocks
         hgene_block = self._germline_block(self.lineage.heavies)
@@ -284,6 +293,29 @@ class LineageSummary():
         unpadded = '\n'.join([l.strip() for l in table_string.split('\n')])
         return unpadded
     
+
+    def _extra_block(self, column, identical_groups):
+        categories = natsorted(self.adata.obs[column].unique())
+        extra_dict = {}
+        for c in categories:
+            extra_dict[c] = []
+            for ig in identical_groups:
+                names = [b.name for b in ig]
+                _adata = self.adata[names]
+                extra_dict[c].append(_adata[_adata.obs[column] == c].shape[0])
+            extra_dict[c] = [c, sum(extra_dict[c])] + extra_dict[c]
+        # build the block
+        x = pt.PrettyTable()
+        for c in categories:
+            x.add_column(c, extra_dict[c])
+        x.set_style(pt.PLAIN_COLUMNS)
+        x.header = False
+        x.left_padding_width = 0
+        x.right_padding_width = self.padding_width
+        x.align = 'r'
+        table_string = x.get_string()
+        unpadded = '\n'.join([l.strip() for l in table_string.split('\n')])
+        return unpadded
     
     
     def _germline_block(self, sequences):
