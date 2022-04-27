@@ -781,7 +781,7 @@ def feature_ridge(data, features, colors=None, rename=None,
 # ===========================
 
 
-def germline_use_barplot(adata, gene_names=None, chain='heavy',
+def germline_use_barplot(adata, gene_names=None, chain='heavy', vdj_key='bcr',
                          germline_key='v_gene', batch_key=None, batch_names=None,
                          palette=None, color=None, germline_colors=None,
                          pairs_only=False, normalize=False,
@@ -876,7 +876,7 @@ def germline_use_barplot(adata, gene_names=None, chain='heavy',
     batch_data = []
     all_gene_names = []
     for batch in batches:
-        vdjs = batch.obs.vdj
+        vdjs = batch.obs[vdj_key]
         if pairs_only:
             vdjs = [v for v in vdjs if v.is_pair]
         # parse sequences
