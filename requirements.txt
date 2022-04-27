@@ -10,6 +10,7 @@ mnemonic
 natsort
 numpy
 pandas
+prettytable
 pytest
 python-Levenshtein
 scanpy
