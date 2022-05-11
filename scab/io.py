@@ -36,19 +36,49 @@ from abutils.core.pair import Pair, assign_pairs
 from abutils.core.sequence import read_csv, read_fasta, read_json
 
 
-def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='fasta', bcr_delimiter='\t',
-                 bcr_id_key='sequence_id', bcr_sequence_key='sequence', bcr_id_delimiter='_', bcr_id_delimiter_num=1,
-                 tcr_file=None, tcr_annotations=None, tcr_format='fasta', tcr_delimiter='\t',
-                 tcr_id_key='sequence_id', tcr_sequence_key='sequence', tcr_id_delimiter='_', tcr_id_delimiter_num=1,
-                 chain_selection_func=None, abstar_output_format='airr', abstar_germ_db='human',
-                 gex_only=False, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
-                 agbc_regex='agbc', ignore_agbc_case=True,
-                 log_transform_cellhashes=True, ignore_zero_quantile_cellhashes=True, rename_cellhashes=None, 
-                 log_transform_agbcs=True, ignore_zero_quantile_agbcs=True, rename_agbcs=None, 
-                 log_transform_features=True, ignore_zero_quantile_features=True, rename_features=None, feature_suffix='_FBC', 
-                 cellhash_quantile=0.95, agbc_quantile=0.95, feature_quantile=0.95, verbose=True):
+def read_10x_mtx(
+    mtx_path,
+    bcr_file=None,
+    bcr_annotations=None,
+    bcr_format="fasta",
+    bcr_delimiter="\t",
+    bcr_id_key="sequence_id",
+    bcr_sequence_key="sequence",
+    bcr_id_delimiter="_",
+    bcr_id_delimiter_num=1,
+    tcr_file=None,
+    tcr_annotations=None,
+    tcr_format="fasta",
+    tcr_delimiter="\t",
+    tcr_id_key="sequence_id",
+    tcr_sequence_key="sequence",
+    tcr_id_delimiter="_",
+    tcr_id_delimiter_num=1,
+    chain_selection_func=None,
+    abstar_output_format="airr",
+    abstar_germ_db="human",
+    gex_only=False,
+    cellhash_regex="cell ?hash",
+    ignore_cellhash_case=True,
+    agbc_regex="agbc",
+    ignore_agbc_case=True,
+    log_transform_cellhashes=True,
+    ignore_zero_quantile_cellhashes=True,
+    rename_cellhashes=None,
+    log_transform_agbcs=True,
+    ignore_zero_quantile_agbcs=True,
+    rename_agbcs=None,
+    log_transform_features=True,
+    ignore_zero_quantile_features=True,
+    rename_features=None,
+    feature_suffix="_FBC",
+    cellhash_quantile=0.95,
+    agbc_quantile=0.95,
+    feature_quantile=0.95,
+    verbose=True,
+):
 
-    '''
+    """
     Reads 10x Genomics matrix and VDJ files and outputs GEX, cellhash, feature barcode and VDJ data in a single AnnData object.
 
     Args:
@@ -174,72 +204,94 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='fast
             at ``adata.obs.vdj``, and cellhash and feature barcode data found in ``adata.obs``. If ``gex_only`` 
             is ``True``, cellhash and feature barcode data are not returned. If ``vdj_file`` is ``None``, 
             VDJ information is not returned.
-    '''
+    """
     # read 10x matrix file
     if verbose:
-                print('reading 10x Genomics matrix file...')
+        print("reading 10x Genomics matrix file...")
     adata = sc.read_10x_mtx(mtx_path, gex_only=False)
-    gex = adata[:,adata.var.feature_types == 'Gene Expression']
+    gex = adata[:, adata.var.feature_types == "Gene Expression"]
 
     # process BCR data:
     if bcr_file is not None:
-        if bcr_format == 'csv':
+        if bcr_format == "csv":
             if verbose:
-                print('reading CSV-formatted BCR data...')
-            sequences = read_csv(bcr_file, delimiter=bcr_delimiter,
-                                 id_key=bcr_id_key, sequence_key=bcr_sequence_key)
-        elif bcr_format == 'json':
+                print("reading CSV-formatted BCR data...")
+            sequences = read_csv(
+                bcr_file,
+                delimiter=bcr_delimiter,
+                id_key=bcr_id_key,
+                sequence_key=bcr_sequence_key,
+            )
+        elif bcr_format == "json":
             if verbose:
-                print('reading JSON-formatted BCR data...')
-            sequences = read_json(bcr_file, id_key=bcr_id_key, sequence_key=bcr_sequence_key)
-        elif bcr_format == 'fasta':
+                print("reading JSON-formatted BCR data...")
+            sequences = read_json(
+                bcr_file, id_key=bcr_id_key, sequence_key=bcr_sequence_key
+            )
+        elif bcr_format == "fasta":
             if verbose:
-                print('reading FASTA-formatted BCR data...')
+                print("reading FASTA-formatted BCR data...")
             raw_seqs = read_fasta(bcr_file)
             if verbose:
-                print('annotating BCR sequences with abstar...')
-            sequences = abstar.run(raw_seqs,
-                                   output_type=abstar_output_format,
-                                   germ_db=abstar_germ_db)
-        pairs = assign_pairs(sequences, id_key=bcr_id_key,
-                             delim=bcr_id_delimiter, delim_occurance=bcr_id_delimiter_num,
-                             chain_selection_func=chain_selection_func,
-                             tenx_annot_file=bcr_annotations)
+                print("annotating BCR sequences with abstar...")
+            sequences = abstar.run(
+                raw_seqs, output_type=abstar_output_format, germ_db=abstar_germ_db
+            )
+        pairs = assign_pairs(
+            sequences,
+            id_key=bcr_id_key,
+            delim=bcr_id_delimiter,
+            delim_occurance=bcr_id_delimiter_num,
+            chain_selection_func=chain_selection_func,
+            tenx_annot_file=bcr_annotations,
+        )
         pdict = {p.name: p for p in pairs}
-        gex.obs['bcr'] = [pdict.get(o, Pair([])) for o in gex.obs_names]
+        gex.obs["bcr"] = [pdict.get(o, Pair([])) for o in gex.obs_names]
 
     # process TCR data:
     if tcr_file is not None:
-        if tcr_format == 'csv':
+        if tcr_format == "csv":
             if verbose:
-                print('reading CSV-formatted TCR data...')
-            sequences = read_csv(tcr_file, delimiter=tcr_delimiter,
-                                 id_key=tcr_id_key, sequence_key=tcr_sequence_key)
-        elif tcr_format == 'json':
+                print("reading CSV-formatted TCR data...")
+            sequences = read_csv(
+                tcr_file,
+                delimiter=tcr_delimiter,
+                id_key=tcr_id_key,
+                sequence_key=tcr_sequence_key,
+            )
+        elif tcr_format == "json":
             if verbose:
-                print('reading JSON-formatted TCR data...')
-            sequences = read_json(tcr_file, id_key=tcr_id_key, sequence_key=tcr_sequence_key)
-        elif tcr_format == 'fasta':
+                print("reading JSON-formatted TCR data...")
+            sequences = read_json(
+                tcr_file, id_key=tcr_id_key, sequence_key=tcr_sequence_key
+            )
+        elif tcr_format == "fasta":
             if verbose:
-                print('reading FASTA-formatted TCR data...')
+                print("reading FASTA-formatted TCR data...")
             raw_seqs = read_fasta(tcr_file)
             if verbose:
-                print('annotating TCR sequences with abstar...')
-            sequences = abstar.run(raw_seqs,
-                                   receptor='tcr',
-                                   output_type=abstar_output_format,
-                                   germ_db=abstar_germ_db)
-        pairs = assign_pairs(sequences, id_key=tcr_id_key,
-                             delim=tcr_id_delimiter, delim_occurance=tcr_id_delimiter_num,
-                             chain_selection_func=chain_selection_func,
-                             tenx_annot_file=tcr_annotations)
+                print("annotating TCR sequences with abstar...")
+            sequences = abstar.run(
+                raw_seqs,
+                receptor="tcr",
+                output_type=abstar_output_format,
+                germ_db=abstar_germ_db,
+            )
+        pairs = assign_pairs(
+            sequences,
+            id_key=tcr_id_key,
+            delim=tcr_id_delimiter,
+            delim_occurance=tcr_id_delimiter_num,
+            chain_selection_func=chain_selection_func,
+            tenx_annot_file=tcr_annotations,
+        )
         pdict = {p.name: p for p in pairs}
-        gex.obs['tcr'] = [pdict.get(o, Pair([])) for o in gex.obs_names]
+        gex.obs["tcr"] = [pdict.get(o, Pair([])) for o in gex.obs_names]
     if gex_only:
         return gex
-    
+
     # parse out features and cellhashes
-    non_gex = adata[:, adata.var.feature_types != 'Gene Expression']
+    non_gex = adata[:, adata.var.feature_types != "Gene Expression"]
     if ignore_cellhash_case:
         cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
     else:
@@ -248,17 +300,37 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='fast
         agbc_pattern = re.compile(agbc_regex, flags=re.IGNORECASE)
     else:
         agbc_pattern = re.compile(agbc_regex)
-    hashes = non_gex[:, [re.search(cellhash_pattern, i) is not None for i in non_gex.var.gene_ids]]
-    agbcs = non_gex[:, [re.search(agbc_pattern, i) is not None for i in non_gex.var.gene_ids]]
-    features = non_gex[:, [all([re.search(cellhash_pattern, i) is None,
-                                re.search(agbc_pattern, i) is None]) for i in non_gex.var.gene_ids]]
-    
+    hashes = non_gex[
+        :, [re.search(cellhash_pattern, i) is not None for i in non_gex.var.gene_ids]
+    ]
+    agbcs = non_gex[
+        :, [re.search(agbc_pattern, i) is not None for i in non_gex.var.gene_ids]
+    ]
+    features = non_gex[
+        :,
+        [
+            all(
+                [
+                    re.search(cellhash_pattern, i) is None,
+                    re.search(agbc_pattern, i) is None,
+                ]
+            )
+            for i in non_gex.var.gene_ids
+        ],
+    ]
+
     # process cellhash data
     if verbose:
-        print('processing cellhash data...')
+        print("processing cellhash data...")
     hash_df = hashes.to_df()[hashes.var_names]
     if ignore_zero_quantile_cellhashes:
-        hash_df = hash_df[[h for h in hash_df.columns.values if hash_df[h].quantile(q=cellhash_quantile) > 0]]
+        hash_df = hash_df[
+            [
+                h
+                for h in hash_df.columns.values
+                if hash_df[h].quantile(q=cellhash_quantile) > 0
+            ]
+        ]
     if log_transform_cellhashes:
         hash_df += 1
         hash_df = hash_df.apply(np.log2)
@@ -269,10 +341,16 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='fast
 
     # process AgBC data
     if verbose:
-        print('processing AgBC data...')
+        print("processing AgBC data...")
     agbc_df = agbcs.to_df()[agbcs.var_names]
     if ignore_zero_quantile_agbcs:
-        agbc_df = agbc_df[[a for a in agbc_df.columns.values if agbc_df[a].quantile(q=agbc_quantile) > 0]]
+        agbc_df = agbc_df[
+            [
+                a
+                for a in agbc_df.columns.values
+                if agbc_df[a].quantile(q=agbc_quantile) > 0
+            ]
+        ]
     if log_transform_agbcs:
         agbc_df += 1
         agbc_df = agbc_df.apply(np.log2)
@@ -280,26 +358,31 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='fast
         rename_agbcs = {}
     for a in agbc_df:
         gex.obs[rename_agbcs.get(a, a)] = agbc_df[a]
-    
+
     # process feature barcode data
     if verbose:
-        print('processing feature barcode data...')
+        print("processing feature barcode data...")
     feature_df = features.to_df()[features.var_names]
     if ignore_zero_quantile_features:
-        feature_df = feature_df[[h for h in feature_df.columns.values if feature_df[h].quantile(q=feature_quantile) > 0]]
+        feature_df = feature_df[
+            [
+                h
+                for h in feature_df.columns.values
+                if feature_df[h].quantile(q=feature_quantile) > 0
+            ]
+        ]
     if log_transform_features:
         feature_df += 1
         feature_df = feature_df.apply(np.log2)
     if rename_features is None:
-        rename_features = {f: f'{f}{feature_suffix}' for f in feature_df}
+        rename_features = {f: f"{f}{feature_suffix}" for f in feature_df}
     for f in feature_df:
         gex.obs[rename_features.get(f, f)] = feature_df[f]
     return gex
 
 
-
 def read(h5ad_file):
-    '''
+    """
     Reads a serialized ``AnnData`` object. Similar to ``scanpy.read()``, except that ``scanpy`` 
     does not support serializing BCR/TCR data. If BCR/TCR data is included in the serialized ``AnnData``
     file, it will be separately deserialized into the original ``abutils.Pair`` objects.
@@ -314,19 +397,23 @@ def read(h5ad_file):
         h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
             include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
             be added. Required.    
-    '''
+    """
     adata = sc.read(h5ad_file)
-    if 'bcr' in adata.obs:
+    if "bcr" in adata.obs:
         # unpickle BCR data
-        adata.obs['bcr'] = [pickle.loads(codecs.decode(b.encode(), "base64")) for b in adata.obs.bcr]
-    if 'tcr' in adata.obs:
+        adata.obs["bcr"] = [
+            pickle.loads(codecs.decode(b.encode(), "base64")) for b in adata.obs.bcr
+        ]
+    if "tcr" in adata.obs:
         # unpickle TCR data
-        adata.obs['tcr'] = [pickle.loads(codecs.decode(t.encode(), "base64")) for t in adata.obs.tcr]
+        adata.obs["tcr"] = [
+            pickle.loads(codecs.decode(t.encode(), "base64")) for t in adata.obs.tcr
+        ]
     return adata
 
 
 def write(adata, h5ad_file):
-    '''
+    """
     Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to 
     ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
     function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or 
@@ -342,21 +429,25 @@ def write(adata, h5ad_file):
         h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
             include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
             be added. Required.    
-    '''
-    if not h5ad_file.endswith('h5ad'):
-        h5ad_file += '.h5ad'
+    """
+    if not h5ad_file.endswith("h5ad"):
+        h5ad_file += ".h5ad"
     _adata = adata.copy()
-    if 'bcr' in _adata.obs:
+    if "bcr" in _adata.obs:
         # pickle BCR data
-        _adata.obs['bcr'] = [codecs.encode(pickle.dumps(b), "base64").decode() for b in _adata.obs.bcr]
-    if 'tcr' in adata.obs:
+        _adata.obs["bcr"] = [
+            codecs.encode(pickle.dumps(b), "base64").decode() for b in _adata.obs.bcr
+        ]
+    if "tcr" in adata.obs:
         # pickle TCR data
-        _adata.obs['tcr'] = [codecs.encode(pickle.dumps(t), "base64").decode() for t in _adata.obs.tcr]
+        _adata.obs["tcr"] = [
+            codecs.encode(pickle.dumps(t), "base64").decode() for t in _adata.obs.tcr
+        ]
     _adata.write(h5ad_file)
 
 
 def save(adata, h5ad_file):
-    '''
+    """
     Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to 
     ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
     function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or 
@@ -372,9 +463,5 @@ def save(adata, h5ad_file):
         h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
             include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
             be added. Required.    
-    '''
+    """
     write(adata, h5ad_file)
-
-
-
-

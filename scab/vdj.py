@@ -25,12 +25,14 @@
 
 from collections import Counter
 import itertools
+
 # import random
 # import string
 import sys
 
 import pandas as pd
 import numpy as np
+
 # from sqlalchemy import over
 
 from Levenshtein import distance
@@ -52,10 +54,16 @@ from abutils.utils.utilities import nested_dict_lookup
 from .models.lineage import Lineage
 
 
-
-def merge_vdj(adata, vdj_file, tenx_annotation_csv=None, high_confidence=True,
-              vdj_delimiter='\t', vdj_id_key='seq_id', vdj_sequence_key='vdj_nt'):
-    '''
+def merge_vdj(
+    adata,
+    vdj_file,
+    tenx_annotation_csv=None,
+    high_confidence=True,
+    vdj_delimiter="\t",
+    vdj_id_key="seq_id",
+    vdj_sequence_key="vdj_nt",
+):
+    """
     Merges VDJ information into an AnnData object containing gene expression and/or feature barcode data.
 
     Args:
@@ -86,49 +94,70 @@ def merge_vdj(adata, vdj_file, tenx_annotation_csv=None, high_confidence=True,
 
         Returns an ``anndata.AnnData`` object with merged VDJ data.
 
-    '''
+    """
     # read sequences
     vdj_df = pd.read_csv(vdj_file, sep=vdj_delimiter)
-    seqs = [Sequence(row.where(pd.notnull(row), None).to_dict(), id_key=vdj_id_key, seq_key=vdj_sequence_key) for index, row in vdj_df.iterrows()]
+    seqs = [
+        Sequence(
+            row.where(pd.notnull(row), None).to_dict(),
+            id_key=vdj_id_key,
+            seq_key=vdj_sequence_key,
+        )
+        for index, row in vdj_df.iterrows()
+    ]
     # read 10xG annotation file
     if tenx_annotation_csv is not None:
         annot_df = pd.read_csv(tenx_annotation_csv)
-        key = 'contig_id' if 'contig_id' in annot_df.columns.values else 'consensus_id'
+        key = "contig_id" if "contig_id" in annot_df.columns.values else "consensus_id"
         annots = {row[key]: row.to_dict() for index, row in annot_df.iterrows()}
         for s in seqs:
             s.tenx = annots.get(s[vdj_id_key], {})
         if high_confidence:
-            seqs = [s for s in seqs if s.tenx.get('high_confidence', False)]
+            seqs = [s for s in seqs if s.tenx.get("high_confidence", False)]
     # identify pairs
     pdict = {}
     for s in seqs:
-        pname = s[vdj_id_key].split('_')[0]
+        pname = s[vdj_id_key].split("_")[0]
         if pname not in pdict:
-            pdict[pname] = [s, ]
+            pdict[pname] = [
+                s,
+            ]
         else:
             pdict[pname].append(s)
-    pair_dict = {n: Pair(pdict[n],
-                         name=n,
-                         h_selection_func=umi_selector,
-                         l_selection_func=umi_selector) 
-             for n in pdict.keys()}
+    pair_dict = {
+        n: Pair(
+            pdict[n],
+            name=n,
+            h_selection_func=umi_selector,
+            l_selection_func=umi_selector,
+        )
+        for n in pdict.keys()
+    }
     # update adata
     vdjs = [pair_dict.get(o, Pair([], name=o)) for o in adata.obs_names]
-    adata.obs['vdj'] = vdjs
+    adata.obs["vdj"] = vdjs
     return adata
 
 
 def umi_selector(seqs):
-    sorted_seqs = sorted(seqs, key=lambda x: int(x.tenx.get('unis'), 0), reverse=True)
+    sorted_seqs = sorted(seqs, key=lambda x: int(x.tenx.get("unis"), 0), reverse=True)
     return sorted_seqs[0]
 
 
-
-def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_penalty_multiplier=2,
-            preclustering_threshold=0.65, preclustering_field='cdr3_nt', preclustering=False,
-            lineage_field='lineage', lineage_size_field='lineage_size',
-            annotation_format='airr', return_assignment_dict=False):
-    '''
+def clonify(
+    adata,
+    distance_cutoff=0.32,
+    shared_mutation_bonus=0.65,
+    length_penalty_multiplier=2,
+    preclustering_threshold=0.65,
+    preclustering_field="cdr3_nt",
+    preclustering=False,
+    lineage_field="lineage",
+    lineage_size_field="lineage_size",
+    annotation_format="airr",
+    return_assignment_dict=False,
+):
+    """
     Assigns BCR lineages using the clonify algorithm.
 
     Args:
@@ -175,24 +204,24 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
         names is returned. 
 
     
-    '''
+    """
     # select the appropriate data fields
-    if annotation_format.lower() == 'airr':
-        vgene_key = 'v_gene'
-        jgene_key = 'j_gene'
-        cdr3_key = 'cdr3_aa'
-        muts_key = 'v_mutations'
-    elif annotation_format.lower() == 'json':
-        vgene_key = 'v_gene.gene'
-        jgene_key = 'j_gene.gene'
-        cdr3_key = 'cdr3_aa'
-        muts_key = 'var_muts_nt.muts'
+    if annotation_format.lower() == "airr":
+        vgene_key = "v_gene"
+        jgene_key = "j_gene"
+        cdr3_key = "cdr3_aa"
+        muts_key = "v_mutations"
+    elif annotation_format.lower() == "json":
+        vgene_key = "v_gene.gene"
+        jgene_key = "j_gene.gene"
+        cdr3_key = "cdr3_aa"
+        muts_key = "var_muts_nt.muts"
     else:
-        error = 'ERROR: '
+        error = "ERROR: "
         error += f'annotation_format must be either "airr" or "json", but you provided {annotation_format}'
-        print('\n')
+        print("\n")
         print(error)
-        print('\n')
+        print("\n")
         sys.exit()
     # group sequences by V/J genes
     vj_group_dict = {}
@@ -202,19 +231,19 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
         # build new Sequence objects using just the data we need
         h = p.heavy
         s = Sequence(h.sequence, id=p.name)
-        s['v_gene'] = nested_dict_lookup(h, vgene_key.split('.'))
-        s['j_gene'] = nested_dict_lookup(h, jgene_key.split('.'))
-        s['cdr3'] = nested_dict_lookup(h, cdr3_key.split('.'))
-        if annotation_format.lower() == 'json':
-            muts = nested_dict_lookup(h, muts_key.split('.'), [])
-            s['mutations'] = [f"{m['position']}:{m['was']}>{m['is']}" for m in muts]
+        s["v_gene"] = nested_dict_lookup(h, vgene_key.split("."))
+        s["j_gene"] = nested_dict_lookup(h, jgene_key.split("."))
+        s["cdr3"] = nested_dict_lookup(h, cdr3_key.split("."))
+        if annotation_format.lower() == "json":
+            muts = nested_dict_lookup(h, muts_key.split("."), [])
+            s["mutations"] = [f"{m['position']}:{m['was']}>{m['is']}" for m in muts]
         else:
-            muts = nested_dict_lookup(h, muts_key.split('.'), '').split('|')
-            s['mutations'] = [m for m in muts if m.strip()]
-        required_fields = ['v_gene', 'j_gene', 'cdr3', 'mutations']
+            muts = nested_dict_lookup(h, muts_key.split("."), "").split("|")
+            s["mutations"] = [m for m in muts if m.strip()]
+        required_fields = ["v_gene", "j_gene", "cdr3", "mutations"]
         if preclustering:
-            s['preclustering'] = nested_dict_lookup(h, preclustering_field.split('.'))
-            required_fields.append('preclustering')
+            s["preclustering"] = nested_dict_lookup(h, preclustering_field.split("."))
+            required_fields.append("preclustering")
         if any([s[v] is None for v in required_fields]):
             continue
         # group sequences by VJ gene use
@@ -224,7 +253,7 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
         vj_group_dict[vj].append(s)
     # assign lineages
     assignment_dict = {}
-    mnemo = Mnemonic('english')
+    mnemo = Mnemonic("english")
     for vj_group in vj_group_dict.values():
         # preclustering
         if preclustering:
@@ -233,29 +262,36 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
             clusters = cluster(cluster_seqs, threshold=preclustering_threshold)
             groups = [[seq_dict[i] for i in c.seq_ids] for c in clusters]
         else:
-            groups = [vj_group, ]
+            groups = [
+                vj_group,
+            ]
         for group in groups:
             if len(group) == 1:
                 seq = group[0]
-                assignment_dict[seq.id] = '_'.join(mnemo.generate(strength=128).split()[:6])
+                assignment_dict[seq.id] = "_".join(
+                    mnemo.generate(strength=128).split()[:6]
+                )
                 continue
             # build a distance matrix
             dist_matrix = []
             for s1, s2 in itertools.combinations(group, 2):
-                d = _clonify_distance(s1, s2,
-                                        shared_mutation_bonus,
-                                        length_penalty_multiplier)
+                d = _clonify_distance(
+                    s1, s2, shared_mutation_bonus, length_penalty_multiplier
+                )
                 dist_matrix.append(d)
             # cluster
-            linkage_matrix = fc.linkage(dist_matrix, 
-                                        method='average',
-                                        preserve_input=False)
-            cluster_list = fcluster(linkage_matrix,
-                                    distance_cutoff,
-                                    criterion='distance')
+            linkage_matrix = fc.linkage(
+                dist_matrix, method="average", preserve_input=False
+            )
+            cluster_list = fcluster(
+                linkage_matrix, distance_cutoff, criterion="distance"
+            )
             # rename clusters
             cluster_ids = list(set(cluster_list))
-            cluster_names = {c: '_'.join(mnemo.generate(strength=128).split()[:6]) for c in cluster_ids}
+            cluster_names = {
+                c: "_".join(mnemo.generate(strength=128).split()[:6])
+                for c in cluster_ids
+            }
             renamed_clusters = [cluster_names[c] for c in cluster_list]
             # assign sequences
             for seq, name in zip(vj_group, renamed_clusters):
@@ -270,26 +306,32 @@ def clonify(adata, distance_cutoff=0.32, shared_mutation_bonus=0.65, length_pena
     adata.obs[lineage_size_field] = lineage_sizes
     return adata
 
-        
+
 def _clonify_distance(s1, s2, shared_mutation_bonus, length_penalty_multiplier):
-    if len(s1['cdr3']) == len(s2['cdr3']):
-        dist = sum([i != j for i, j in zip(s1['cdr3'], s2['cdr3'])])
+    if len(s1["cdr3"]) == len(s2["cdr3"]):
+        dist = sum([i != j for i, j in zip(s1["cdr3"], s2["cdr3"])])
     else:
-        dist = distance(s1['cdr3'], s2['cdr3'])
-    length_penalty = abs(len(s1['cdr3']) - len(s2['cdr3'])) * length_penalty_multiplier
-    length = min(len(s1['cdr3']), len(s2['cdr3']))
-    shared_mutations = list(set(s1['mutations']) & set(s2['mutations']))
+        dist = distance(s1["cdr3"], s2["cdr3"])
+    length_penalty = abs(len(s1["cdr3"]) - len(s2["cdr3"])) * length_penalty_multiplier
+    length = min(len(s1["cdr3"]), len(s2["cdr3"]))
+    shared_mutations = list(set(s1["mutations"]) & set(s2["mutations"]))
     mutation_bonus = len(shared_mutations) * shared_mutation_bonus
     score = (dist + length_penalty - mutation_bonus) / length
-    return max(score, 0.001) # distance values can't be negative
+    return max(score, 0.001)  # distance values can't be negative
 
 
-
-
-
-def build_synthesis_constructs(adata, overhang_5=None, overhang_3=None, annotation_format='airr', 
-                               sequence_key=None, locus_key=None, name_key=None, bcr_key='bcr', sort=True):
-    '''
+def build_synthesis_constructs(
+    adata,
+    overhang_5=None,
+    overhang_3=None,
+    annotation_format="airr",
+    sequence_key=None,
+    locus_key=None,
+    name_key=None,
+    bcr_key="bcr",
+    sort=True,
+):
+    """
     Builds codon-optimized synthesis constructs, including Gibson overhangs suitable 
     for cloning IGH, IGK and IGL constructs into expression vectors (Tiller et al., 2008).
 
@@ -353,17 +395,17 @@ def build_synthesis_constructs(adata, overhang_5=None, overhang_3=None, annotati
              * ``sequence['obs_name']: The droplet barcode.
 
             If ``sort == True``, the output ``Sequence`` list will be sorted by name (using ``natsort.natsorted``).
-    '''
+    """
     if any([locus_key is None, sequence_key is None]):
-        if annotation_format.lower() == 'airr':
-            sequence_key = sequence_key if sequence_key is not None else 'sequence_aa'
-            locus_key = locus_key if locus_key is not None else 'locus'
-        elif annotation_format.lower() == 'json':
-            sequence_key = sequence_key if sequence_key is not None else 'vdj_aa'
-            locus_key = locus_key if locus_key is not None else 'chain'
+        if annotation_format.lower() == "airr":
+            sequence_key = sequence_key if sequence_key is not None else "sequence_aa"
+            locus_key = locus_key if locus_key is not None else "locus"
+        elif annotation_format.lower() == "json":
+            sequence_key = sequence_key if sequence_key is not None else "vdj_aa"
+            locus_key = locus_key if locus_key is not None else "chain"
         else:
             err = '\nERROR: annotation format must be either "json" or "airr". '
-            err += f'You provided {annotation_format}\n'
+            err += f"You provided {annotation_format}\n"
             print(err)
             sys.exit()
     # get overhangs
@@ -378,41 +420,55 @@ def build_synthesis_constructs(adata, overhang_5=None, overhang_3=None, annotati
             if seq is None:
                 continue
             l = seq[locus_key]
-            n = f'{pair_name}_{l}'
+            n = f"{pair_name}_{l}"
             optimized = _optimize_codons(seq, sequence_key)
-            s = overhang_5.get(l, '') + optimized.sequence + overhang_3.get(l, '')
+            s = overhang_5.get(l, "") + optimized.sequence + overhang_3.get(l, "")
             opt_seq = Sequence(s, id=n)
             opt_seq[sequence_key] = seq[sequence_key]
             opt_seq[locus_key] = l
-            opt_seq['obs_name'] = i
+            opt_seq["obs_name"] = i
             sequences.append(opt_seq)
     if sort:
         sequences = natsorted(sequences, key=lambda x: x.id)
     return sequences
 
 
-def _optimize_codons(sequence, sequence_key='vdj_aa'):
-    if all([res.upper() in ['A', 'C', 'G', 'T', 'N', '-'] for res in sequence[sequence_key]]):
+def _optimize_codons(sequence, sequence_key="vdj_aa"):
+    if all(
+        [
+            res.upper() in ["A", "C", "G", "T", "N", "-"]
+            for res in sequence[sequence_key]
+        ]
+    ):
         dna_seq = sequence[sequence_key]
     else:
         dna_seq = dc.reverse_translate(sequence[sequence_key])
     problem = dc.DnaOptimizationProblem(
         sequence=dna_seq,
-        constraints=[dc.EnforceTranslation(),
-                     dc.EnforceGCContent(maxi=0.56),
-                     dc.EnforceGCContent(maxi=0.64, window=100),
-                     dc.UniquifyAllKmers(10)],
+        constraints=[
+            dc.EnforceTranslation(),
+            dc.EnforceGCContent(maxi=0.56),
+            dc.EnforceGCContent(maxi=0.64, window=100),
+            dc.UniquifyAllKmers(10),
+        ],
         objectives=[dc.CodonOptimize(species="h_sapiens")],
-        logger=None)
+        logger=None,
+    )
     problem.resolve_constraints(final_check=True)
     problem.optimize()
     return problem
 
 
-
-def bcr_summary_csv(adata, leading_fields=None, include=None, exclude=None,
-                    rename=None, annotation_format='airr', output_file=None):
-    '''
+def bcr_summary_csv(
+    adata,
+    leading_fields=None,
+    include=None,
+    exclude=None,
+    rename=None,
+    annotation_format="airr",
+    output_file=None,
+):
+    """
     docstring for bcr_summary_csv.
 
     Args:
@@ -447,7 +503,7 @@ def bcr_summary_csv(adata, leading_fields=None, include=None, exclude=None,
         format and noting is returned. If ``output_file`` is not provided, the summary data will
         be returned as a Pandas ``DataFrame``.
     
-    '''
+    """
     # data fields
     if rename is None:
         rename = {}
@@ -457,33 +513,33 @@ def bcr_summary_csv(adata, leading_fields=None, include=None, exclude=None,
         exclude = []
     if include is None:
         include = adata.obs.columns
-    include = [c for c in include if c not in ['bcr', 'tcr']]
+    include = [c for c in include if c not in ["bcr", "tcr"]]
     cols = leading_fields
     cols += [c for c in include if c not in leading_fields + exclude]
     # BCR fields
-    if annotation_format.lower() == 'airr':
+    if annotation_format.lower() == "airr":
         bcr_fields = AIRR_SUMMARY_FIELDS
-    elif annotation_format.lower() == 'json':
+    elif annotation_format.lower() == "json":
         bcr_fields = JSON_SUMMARY_FIELDS
     else:
         err = '\nERROR: annotation format must be either "json" or "airr". '
-        err += f'You provided {annotation_format}\n'
+        err += f"You provided {annotation_format}\n"
         print(err)
         sys.exit()
     # parse row data
     data = []
     for i, r in adata.obs.iterrows():
         d = {}
-        d['barcode'] = i
+        d["barcode"] = i
         for c in cols:
             d[rename.get(c, c)] = r[c]
-        h = r['bcr'].heavy
-        l = r['bcr'].light
+        h = r["bcr"].heavy
+        l = r["bcr"].light
         for n, seq in [h, l]:
             if seq is None:
                 continue
             for f in bcr_fields:
-                d[f'{f}:{n}'] = seq.annotations.get(f, '')
+                d[f"{f}:{n}"] = seq.annotations.get(f, "")
         data.append(d)
     df = pd.DataFrame(data)
     if output_file is not None:
@@ -492,7 +548,7 @@ def bcr_summary_csv(adata, leading_fields=None, include=None, exclude=None,
         return df
 
 
-def group_lineages(adata, lineage_names=None, sort_by_size=True, lineage_key='lineage'):
+def group_lineages(adata, lineage_names=None, sort_by_size=True, lineage_key="lineage"):
     if lineage_key not in adata.obs:
         err = f"\nERROR: {lineage_key} was not found in adata.obs\n"
         print(err)
@@ -510,73 +566,71 @@ def group_lineages(adata, lineage_names=None, sort_by_size=True, lineage_key='li
     return lineages
 
 
+GIBSON5 = {
+    "IGH": "catcctttttctagtagcaactgcaaccggtgtacac",
+    "IGK": "atcctttttctagtagcaactgcaaccggtgtacac",
+    "IGL": "atcctttttctagtagcaactgcaaccggtgtacac",
+    "heavy": "catcctttttctagtagcaactgcaaccggtgtacac",
+    "kappa": "atcctttttctagtagcaactgcaaccggtgtacac",
+    "lambda": "atcctttttctagtagcaactgcaaccggtgtacac",
+}
+
+GIBSON3 = {
+    "IGH": "gcgtcgaccaagggcccatcggtcttcc",
+    "IGK": "cgtacggtggctgcaccatctgtcttcatc",
+    "IGL": "ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc",
+    "heavy": "gcgtcgaccaagggcccatcggtcttcc",
+    "kappa": "cgtacggtggctgcaccatctgtcttcatc",
+    "lambda": "ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc",
+}
 
 
-GIBSON5 = {'IGH': 'catcctttttctagtagcaactgcaaccggtgtacac',
-           'IGK': 'atcctttttctagtagcaactgcaaccggtgtacac',
-           'IGL': 'atcctttttctagtagcaactgcaaccggtgtacac',
-           'heavy': 'catcctttttctagtagcaactgcaaccggtgtacac',
-           'kappa': 'atcctttttctagtagcaactgcaaccggtgtacac',
-           'lambda': 'atcctttttctagtagcaactgcaaccggtgtacac'}
+AIRR_SUMMARY_FIELDS = [
+    "v_gene",
+    "d_gene",
+    "j_gene",
+    "junction_aa",
+    "cdr3_length",
+    "fr1_aa",
+    "cdr1_aa",
+    "fr2_aa",
+    "cdr2_aa",
+    "fr3_aa",
+    "cdr3_aa",
+    "fr4_aa",
+    "v_identity",
+    "v_identity_aa",
+    "v_mutations",
+    "v_mutations_aa",
+    "v_insertions",
+    "v_deletions",
+    "isotype",
+    "locus",
+    "sequence",
+    "sequence_aa",
+    "raw_input",
+]
 
-GIBSON3 = {'IGH': 'gcgtcgaccaagggcccatcggtcttcc',
-           'IGK': 'cgtacggtggctgcaccatctgtcttcatc',
-           'IGL': 'ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc',
-           'heavy': 'gcgtcgaccaagggcccatcggtcttcc',
-           'kappa': 'cgtacggtggctgcaccatctgtcttcatc',
-           'lambda': 'ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc'}
-
-
-AIRR_SUMMARY_FIELDS = ['v_gene',
-                       'd_gene',
-                       'j_gene',
-                       'junction_aa',
-                       'cdr3_length',
-                       'fr1_aa',
-                       'cdr1_aa',
-                       'fr2_aa',
-                       'cdr2_aa',
-                       'fr3_aa',
-                       'cdr3_aa',
-                       'fr4_aa',
-                       'v_identity',
-                       'v_identity_aa',
-                       'v_mutations',
-                       'v_mutations_aa',
-                       'v_insertions',
-                       'v_deletions',
-                       'isotype',
-                       'locus',
-                       'sequence',
-                       'sequence_aa',
-                       'raw_input']
-
-JSON_SUMMARY_FIELDS = ['v_gene.gene',
-                       'd_gene.gene',
-                       'j_gene.gene',
-                       'junction_aa',
-                       'cdr3_len',
-                       'fr1_aa',
-                       'cdr1_aa',
-                       'fr2_aa',
-                       'cdr2_aa',
-                       'fr3_aa',
-                       'cdr3_aa',
-                       'fr4_aa',
-                       'nt_identity.v',
-                       'aa_identity.v',
-                       'v_insertions',
-                       'v_deletions',
-                       'isotype',
-                       'chain',
-                       'vdj_nt',
-                       'vdj_aa',
-                       'raw_input']
-
-
-
-
-
-
-
-
+JSON_SUMMARY_FIELDS = [
+    "v_gene.gene",
+    "d_gene.gene",
+    "j_gene.gene",
+    "junction_aa",
+    "cdr3_len",
+    "fr1_aa",
+    "cdr1_aa",
+    "fr2_aa",
+    "cdr2_aa",
+    "fr3_aa",
+    "cdr3_aa",
+    "fr4_aa",
+    "nt_identity.v",
+    "aa_identity.v",
+    "v_insertions",
+    "v_deletions",
+    "isotype",
+    "chain",
+    "vdj_nt",
+    "vdj_aa",
+    "raw_input",
+]

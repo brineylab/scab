@@ -28,14 +28,27 @@ import re
 import scanpy as sc
 
 
-
-def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_cells=None,
-                         n_genes_by_counts=2500, percent_mito=10, percent_ig=50, hvg_batch_key=None,
-                         ig_regex_pattern='IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]',
-                         regress_out_mt=True, regress_out_ig=True,
-                         target_sum=None, n_top_genes=None, normalization_flavor='cell_ranger', log=True,
-                         scale_max_value=None, save_raw=True, verbose=True):
-    '''
+def filter_and_normalize(
+    adata,
+    make_var_names_unique=True,
+    min_genes=200,
+    min_cells=None,
+    n_genes_by_counts=2500,
+    percent_mito=10,
+    percent_ig=50,
+    hvg_batch_key=None,
+    ig_regex_pattern="IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]",
+    regress_out_mt=True,
+    regress_out_ig=True,
+    target_sum=None,
+    n_top_genes=None,
+    normalization_flavor="cell_ranger",
+    log=True,
+    scale_max_value=None,
+    save_raw=True,
+    verbose=True,
+):
+    """
     performs quality filtering and normalization of 10x Genomics count data
 
     Args:
@@ -89,38 +102,43 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
                          scaling and regressing out mitochondrial/immmunoglobulin genes. Default is ``True``.
 
         verbose (bool): If ``True``, progress updates will be printed. Default is ``True``.
-    '''
+    """
 
     if make_var_names_unique:
         adata.var_names_make_unique()
     if verbose:
-        print(f'filtering cells with fewer than {min_genes} genes...')
+        print(f"filtering cells with fewer than {min_genes} genes...")
     sc.pp.filter_cells(adata, min_genes=min_genes)
     if min_cells is None:
         min_cells = int(0.001 * adata.shape[0])
     if verbose:
-        print(f'filtering genes found in fewer than {min_cells} cells...')
+        print(f"filtering genes found in fewer than {min_cells} cells...")
     sc.pp.filter_genes(adata, min_cells=min_cells)
     if verbose:
-        print('QC...')
+        print("QC...")
     ig_pattern = re.compile(ig_regex_pattern)
-    adata.var['ig'] = [re.match(ig_pattern, g) is not None for g in adata.var.index]
-    adata.var['mt'] = adata.var_names.str.startswith('MT-')
-    sc.pp.calculate_qc_metrics(adata, qc_vars=['mt', 'ig'],
-                               percent_top=None, log1p=False, inplace=True)
+    adata.var["ig"] = [re.match(ig_pattern, g) is not None for g in adata.var.index]
+    adata.var["mt"] = adata.var_names.str.startswith("MT-")
+    sc.pp.calculate_qc_metrics(
+        adata, qc_vars=["mt", "ig"], percent_top=None, log1p=False, inplace=True
+    )
     if verbose:
-        print('filtering based on percent Ig and percent mito...')
+        print("filtering based on percent Ig and percent mito...")
     adata = adata[adata.obs.pct_counts_ig < percent_ig, :]
     adata = adata[adata.obs.pct_counts_mt < percent_mito, :]
     adata = adata[adata.obs.n_genes_by_counts < n_genes_by_counts, :]
     # normalize and log transform
     if verbose:
-        print('normalizing...')
-    if normalization_flavor == 'seurat_v3':
+        print("normalizing...")
+    if normalization_flavor == "seurat_v3":
         if n_top_genes is None:
             n_top_genes = 3500
-        sc.pp.highly_variable_genes(adata, n_top_genes=n_top_genes, batch_key=hvg_batch_key, 
-                                    flavor=normalization_flavor)
+        sc.pp.highly_variable_genes(
+            adata,
+            n_top_genes=n_top_genes,
+            batch_key=hvg_batch_key,
+            flavor=normalization_flavor,
+        )
         sc.pp.normalize_total(adata, target_sum=target_sum)
         if log:
             sc.pp.log1p(adata)
@@ -128,26 +146,30 @@ def filter_and_normalize(adata, make_var_names_unique=True, min_genes=200, min_c
         sc.pp.normalize_total(adata, target_sum=target_sum)
         if log:
             sc.pp.log1p(adata)
-        sc.pp.highly_variable_genes(adata, n_top_genes=n_top_genes, batch_key=hvg_batch_key,
-                                    flavor=normalization_flavor)
+        sc.pp.highly_variable_genes(
+            adata,
+            n_top_genes=n_top_genes,
+            batch_key=hvg_batch_key,
+            flavor=normalization_flavor,
+        )
     if save_raw:
         adata.raw = adata
     if regress_out_mt:
         if verbose:
-            print('regressing out mitochondrial genes...')
-        sc.pp.regress_out(adata, ['total_counts', 'pct_counts_mt'])
+            print("regressing out mitochondrial genes...")
+        sc.pp.regress_out(adata, ["total_counts", "pct_counts_mt"])
     if regress_out_ig:
         if verbose:
-            print('regressing out immunoglobulin genes...')
-        sc.pp.regress_out(adata, ['total_counts', 'pct_counts_ig'])
+            print("regressing out immunoglobulin genes...")
+        sc.pp.regress_out(adata, ["total_counts", "pct_counts_ig"])
     if verbose:
-        print('scaling...')
+        print("scaling...")
     sc.pp.scale(adata, max_value=scale_max_value)
     return adata
 
 
 def scrublet(adata, verbose=True):
-    '''
+    """
     Predicts doublets using scrublet.
 
     Args:
@@ -162,19 +184,29 @@ def scrublet(adata, verbose=True):
 
         Returns an anndata.AnnData object with doublet predictions found at ``adata.obs.is_doublet`` 
         and doublet scores at ``adata.obs.doublet_score``.
-    '''
+    """
     import scrublet
+
     scrub = scrublet.Scrublet(adata.raw.X)
-    adata.obs['doublet_score'], adata.obs['is_doublet'] = scrub.scrub_doublets(verbose=verbose)
+    adata.obs["doublet_score"], adata.obs["is_doublet"] = scrub.scrub_doublets(
+        verbose=verbose
+    )
     if verbose:
         scrub.plot_histogram()
-        print('Identified {} potential doublets'.format(sum(adata.obs['is_doublet'])))
+        print("Identified {} potential doublets".format(sum(adata.obs["is_doublet"])))
     return adata
 
 
-def doubletdetection(adata, verbose=False, n_iters=25, use_phenograph=False,
-                     standard_scaling=True, p_thresh=1e-16, voter_thresh=0.5):
-    '''
+def doubletdetection(
+    adata,
+    verbose=False,
+    n_iters=25,
+    use_phenograph=False,
+    standard_scaling=True,
+    p_thresh=1e-16,
+    voter_thresh=0.5,
+):
+    """
     Predicts doublets using doubletdetection.
 
     Args:
@@ -202,23 +234,24 @@ def doubletdetection(adata, verbose=False, n_iters=25, use_phenograph=False,
         ``0.0`` and ``1.0``, not ``True`` and ``False``. This is the default output of ``doubletdetection``
         and is useful for plotting doublets using ``scanpy.pl.umap``, which does not handle boolean
         color values well.
-    '''
+    """
     import doubletdetection
+
     clf = doubletdetection.BoostClassifier(
         n_iters=n_iters,
         use_phenograph=use_phenograph,
         verbose=verbose,
-        standard_scaling=standard_scaling)
+        standard_scaling=standard_scaling,
+    )
     fit = clf.fit(adata.raw.X)
-    doublets = fit.predict(p_thresh=p_thresh,
-                           voter_thresh=voter_thresh)
-    adata.obs['is_doublet'] = doublets
-    adata.obs['doublet_score'] = clf.doublet_score()
+    doublets = fit.predict(p_thresh=p_thresh, voter_thresh=voter_thresh)
+    adata.obs["is_doublet"] = doublets
+    adata.obs["doublet_score"] = clf.doublet_score()
     return adata
 
 
 def remove_doublets(adata, verbose=True, doublet_identification_function=None):
-    '''
+    """
     Removes doublets. If not already performed, doublet identification is performed 
     using either doubletdetection (default) or with scrublet if 
     ``doublet_identification_function`` is ``'scrublet'``.
@@ -234,12 +267,12 @@ def remove_doublets(adata, verbose=True, doublet_identification_function=None):
     --------
 
         Returns an anndata.AnnData object without observations that were identified as doublets.
-    '''
+    """
     if "is_doublet" not in adata.obs.columns:
-        if doublet_identification_function.lower() == 'scrublet':
+        if doublet_identification_function.lower() == "scrublet":
             adata = scrublet(adata, verbose=verbose)
         else:
             adata = doubletdetection(adata, verbose=verbose)
-    singlets = [not o for o in adata.obs['is_doublet']]
-    adata = adata[singlets,:]
+    singlets = [not o for o in adata.obs["is_doublet"]]
+    adata = adata[singlets, :]
     return adata
