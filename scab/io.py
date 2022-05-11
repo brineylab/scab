@@ -36,11 +36,11 @@ from abutils.core.pair import Pair, assign_pairs
 from abutils.core.sequence import read_csv, read_fasta, read_json
 
 
-def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv', bcr_delimiter='\t',
+def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='fasta', bcr_delimiter='\t',
                  bcr_id_key='sequence_id', bcr_sequence_key='sequence', bcr_id_delimiter='_', bcr_id_delimiter_num=1,
-                 tcr_file=None, tcr_annotations=None, tcr_format='csv', tcr_delimiter='\t',
+                 tcr_file=None, tcr_annotations=None, tcr_format='fasta', tcr_delimiter='\t',
                  tcr_id_key='sequence_id', tcr_sequence_key='sequence', tcr_id_delimiter='_', tcr_id_delimiter_num=1,
-                 chain_selection_func=None, abstar_output_format='airr',
+                 chain_selection_func=None, abstar_output_format='airr', abstar_germ_db='human',
                  gex_only=False, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
                  agbc_regex='agbc', ignore_agbc_case=True,
                  log_transform_cellhashes=True, ignore_zero_quantile_cellhashes=True, rename_cellhashes=None, 
@@ -198,7 +198,9 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
             raw_seqs = read_fasta(bcr_file)
             if verbose:
                 print('annotating BCR sequences with abstar...')
-            sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
+            sequences = abstar.run(raw_seqs,
+                                   output_type=abstar_output_format,
+                                   germ_db=abstar_germ_db)
         pairs = assign_pairs(sequences, id_key=bcr_id_key,
                              delim=bcr_id_delimiter, delim_occurance=bcr_id_delimiter_num,
                              chain_selection_func=chain_selection_func,
@@ -223,7 +225,10 @@ def read_10x_mtx(mtx_path, bcr_file=None, bcr_annotations=None, bcr_format='csv'
             raw_seqs = read_fasta(tcr_file)
             if verbose:
                 print('annotating TCR sequences with abstar...')
-            sequences = abstar.run(raw_seqs, receptor='tcr', output_type=abstar_output_format)
+            sequences = abstar.run(raw_seqs,
+                                   receptor='tcr',
+                                   output_type=abstar_output_format,
+                                   germ_db=abstar_germ_db)
         pairs = assign_pairs(sequences, id_key=tcr_id_key,
                              delim=tcr_id_delimiter, delim_occurance=tcr_id_delimiter_num,
                              chain_selection_func=chain_selection_func,
@@ -350,7 +355,25 @@ def write(adata, h5ad_file):
     _adata.write(h5ad_file)
 
 
+def save(adata, h5ad_file):
+    '''
+    Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to 
+    ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
+    function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or 
+    ``adata.obs.tcr`` using ``pickle`` prior to writing the ``AnnData`` object to disk.
 
+    Args:
+    -----
+
+        adata (anndata.AnnData): An ``AnnData`` object containing gene expression, feature barcode and 
+            VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
+            from raw CellRanger outputs. Required.
+
+        h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
+            include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
+            be added. Required.    
+    '''
+    write(adata, h5ad_file)
 
 
 
