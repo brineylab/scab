@@ -296,8 +296,11 @@ def classify_specificity(adata, raw, agbcs=None, groups=None, rename=None,
         err = 'ERROR: either agbcs or groups must be provided.'
         print('\n' + err + '\n')
         sys.exit()
-    if agbcs is not None and groups is None:
-        groups = {a: [a] for a in agbcs}
+    if groups is None:
+        groups = {}
+    if agbcs is not None:
+        for a in agbcs:
+            groups[a] = [a, ]
 
     # load raw data, if necessary
     if isinstance(raw, str):
