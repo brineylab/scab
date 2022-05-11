@@ -453,13 +453,17 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
         return pd.DataFrame(conf_data, index=adata.obs_names)
 
 
+# for backwards compatibility
+def assign_cellhashes(adata, **kwargs):
+    return demultiplex(adata, **kwargs)
 
-def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
-                      rename=None, assignment_key='cellhash_assignment',
+
+def demultiplex(adata, hash_names=None, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
+                      rename=None, assignment_key='batch',
                       threshold_minimum=4.0, threshold_maximum=10.0, kde_maximum=15.0, 
                       assignments_only=False, debug=False):
     '''
-    Assigns cells to hash groups based on cell hashing data.
+    Demultiplexes cells using cell hashes.
 
     Args:
     -----
