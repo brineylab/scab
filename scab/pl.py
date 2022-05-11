@@ -1717,7 +1717,7 @@ def lineage_donut(
     pctdistance = 1 - width / 2
     pie_kwargs = dict(startangle=90, radius=1, pctdistance=1 - width / 2)
     for k, v in pie_kws.items():
-        kwargs[k] = v
+        pie_kwargs[k] = v
     pie_kwargs["colors"] = df["color"]
     slices, _ = ax.pie(df["size"], **pie_kwargs)
     plt.setp(slices, width=width, edgecolor=edgecolor)
