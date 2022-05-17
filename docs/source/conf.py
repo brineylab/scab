@@ -20,30 +20,31 @@ import sphinx_rtd_theme
 # from ...scab.version import __version__
 # from abstar.version import __version__
 
-# from unittest.mock import MagicMock
+from unittest.mock import MagicMock
 
 
-# if os.environ.get('READTHEDOCS', None) == 'True':
-#     class Mock(MagicMock):
-#         @classmethod
-#         def __getattr__(cls, name):
-#                 return Mock()
+if os.environ.get('READTHEDOCS', None) == 'True':
+    class Mock(MagicMock):
+        @classmethod
+        def __getattr__(cls, name):
+                return Mock()
 
-#     MOCK_MODULES = ['pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'nwalign', 'pandas', 'abutils', 
-#                     'scanpy', 'anndata', 'dnachisel', 'fastcluster', 'harmonypy', 'leidenalg', 
-#                     'matplotlib', 'matplotlib.pyplot', 'matplotlib.lines', 'matplotlib.patches', 
-#                     # 'mpl_toolkits', 'mpl_toolkits.axes_grid1', 'mpl_toolkits.axes_grid1.inset_locator',
-#                     'sklearn', 'sklearn.neighbors', 
-#                     'mnemonic', 'natsort', 'prettytable', 'python-Levenshtein', 'Levenshtein', 'scanorama', 
-#                     'scipy', 'scipy.signal', 'scipy.cluster', 'scipy.cluster.hierarchy',
-#                     'statsmodels', 'statsmodels.api',
-#                     'scrublet', 'scvelo', 'seaborn', 'umap-learn',
-#                     'abutils.utils', 'abutils.core', 'abutils.core.sequence', 'abutils.core.pair',
-#                     'abutils.utils.alignment', 'abutils.utils.color', 
-#                     'abutils.utils.cluster', 'abutils.utils.utilities',
-#                     'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
-#                     ]
-#     sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+    MOCK_MODULES = ['abstar', 'abutils',
+                    # 'pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'nwalign', 'pandas', 'abutils', 
+                    # 'scanpy', 'anndata', 'dnachisel', 'fastcluster', 'harmonypy', 'leidenalg', 
+                    # 'matplotlib', 'matplotlib.pyplot', 'matplotlib.lines', 'matplotlib.patches', 
+                    # # 'mpl_toolkits', 'mpl_toolkits.axes_grid1', 'mpl_toolkits.axes_grid1.inset_locator',
+                    # 'sklearn', 'sklearn.neighbors', 
+                    # 'mnemonic', 'natsort', 'prettytable', 'python-Levenshtein', 'Levenshtein', 'scanorama', 
+                    # 'scipy', 'scipy.signal', 'scipy.cluster', 'scipy.cluster.hierarchy',
+                    # 'statsmodels', 'statsmodels.api',
+                    # 'scrublet', 'scvelo', 'seaborn', 'umap-learn',
+                    'abutils.utils', 'abutils.core', 'abutils.core.sequence', 'abutils.core.pair',
+                    'abutils.utils.alignment', 'abutils.utils.color', 
+                    'abutils.utils.cluster', 'abutils.utils.utilities',
+                    'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
+                    ]
+    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

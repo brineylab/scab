@@ -14,7 +14,7 @@ getting started
 
 .. toctree::
    :maxdepth: 1
-   :caption: getting started
+   .. :caption: getting started
 
    overview
    installation
@@ -25,7 +25,7 @@ usage
 
 .. toctree::
    :maxdepth: 1
-   :caption: usage
+   .. :caption: usage
 
    api_examples
    api
@@ -37,7 +37,7 @@ about
 
 .. toctree::
    :maxdepth: 1
-   :caption: about
+   .. :caption: about
 
    license
    news
@@ -48,7 +48,7 @@ related projects
 
 .. toctree::
    :maxdepth: 1
-   :caption: related projects
+   .. :caption: related projects
 
    abstar <https://github.com/briney/abstar>
    abutils <https://github.com/briney/abutils>
