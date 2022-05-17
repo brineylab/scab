@@ -39,10 +39,10 @@ if os.environ.get('READTHEDOCS', None) == 'True':
                     # 'scipy', 'scipy.signal', 'scipy.cluster', 'scipy.cluster.hierarchy',
                     # 'statsmodels', 'statsmodels.api',
                     # 'scrublet', 'scvelo', 'seaborn', 'umap-learn',
-                    'abutils.utils', 'abutils.core', 'abutils.core.sequence', 'abutils.core.pair',
-                    'abutils.utils.alignment', 'abutils.utils.color', 
-                    'abutils.utils.cluster', 'abutils.utils.utilities',
-                    'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
+                    # 'abutils.utils', 'abutils.core', 'abutils.core.sequence', 'abutils.core.pair',
+                    # 'abutils.utils.alignment', 'abutils.utils.color', 
+                    # 'abutils.utils.cluster', 'abutils.utils.utilities',
+                    # 'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
                     ]
     sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
