@@ -44,12 +44,3 @@ pl
 
     modules/pl
 
-
-
-
-helper utilities
-------------------
-
-.. toctree::
-
-    modules/utils
