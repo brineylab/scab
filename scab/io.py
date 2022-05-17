@@ -39,7 +39,7 @@ from abutils.core.sequence import read_csv, read_fasta, read_json
 def read_10x_mtx(
     mtx_path,
     bcr_file=None,
-    bcr_annotations=None,
+    bcr_annot=None,
     bcr_format="fasta",
     bcr_delimiter="\t",
     bcr_id_key="sequence_id",
@@ -47,7 +47,7 @@ def read_10x_mtx(
     bcr_id_delimiter="_",
     bcr_id_delimiter_num=1,
     tcr_file=None,
-    tcr_annotations=None,
+    tcr_annot=None,
     tcr_format="fasta",
     tcr_delimiter="\t",
     tcr_id_key="sequence_id",
@@ -243,7 +243,7 @@ def read_10x_mtx(
             delim=bcr_id_delimiter,
             delim_occurance=bcr_id_delimiter_num,
             chain_selection_func=chain_selection_func,
-            tenx_annot_file=bcr_annotations,
+            tenx_annot_file=bcr_annot,
         )
         pdict = {p.name: p for p in pairs}
         gex.obs["bcr"] = [pdict.get(o, Pair([])) for o in gex.obs_names]
@@ -283,7 +283,7 @@ def read_10x_mtx(
             delim=tcr_id_delimiter,
             delim_occurance=tcr_id_delimiter_num,
             chain_selection_func=chain_selection_func,
-            tenx_annot_file=tcr_annotations,
+            tenx_annot_file=tcr_annot,
         )
         pdict = {p.name: p for p in pairs}
         gex.obs["tcr"] = [pdict.get(o, Pair([])) for o in gex.obs_names]
