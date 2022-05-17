@@ -4,4 +4,4 @@ from . import pp
 from . import tl
 from . import vdj
 
-from .io import read_10x_mtx
+from .io import read_10x_mtx, read, write

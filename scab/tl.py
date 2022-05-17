@@ -22,6 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
+import os
+import sys
 import re
 
 from natsort import natsorted
@@ -37,15 +39,27 @@ from sklearn.neighbors import KernelDensity
 
 from scipy import stats
 from scipy.signal import argrelextrema
-from scipy.stats import scoreatpercentile
+
+# from scipy.stats import scoreatpercentile
 
 import statsmodels.api as sm
 
+from .io import read_10x_mtx
 
-def dimensionality_reduction(adata, solver='arpack', n_neighbors=20, n_pcs=40,
-                             paga=True, use_rna_velocity=False, rep=None,
-                             random_state=None, resolution=1.0, verbose=True):
-    '''
+
+def dimensionality_reduction(
+    adata,
+    solver="arpack",
+    n_neighbors=20,
+    n_pcs=40,
+    paga=True,
+    use_rna_velocity=False,
+    rep=None,
+    random_state=None,
+    resolution=1.0,
+    verbose=True,
+):
+    """
     performs PCA and UMAP embedding
 
     Args:
@@ -76,36 +90,40 @@ def dimensionality_reduction(adata, solver='arpack', n_neighbors=20, n_pcs=40,
         random_state (int): Seed for the random state used by ``sc.tl.umap``. Default is ``None``.
 
         resolution (float): Resolution for Leiden clustering. Default is ``1.0``.
-    '''    
+    """
     if verbose:
-        print('performing PCA...')
+        print("performing PCA...")
     sc.tl.pca(adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
     if verbose:
-        print('calculating neighbors...')
+        print("calculating neighbors...")
     sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, use_rep=rep)
     if verbose:
-        print('leiden clustering...')
+        print("leiden clustering...")
     sc.tl.leiden(adata, resolution=resolution)
     if paga:
         if verbose:
-            print('paga...')
-#         solid_edges = 'transitions_confidence' if use_rna_velocity else 'connectivities'
+            print("paga...")
+        #         solid_edges = 'transitions_confidence' if use_rna_velocity else 'connectivities'
         sc.tl.paga(adata, use_rna_velocity=use_rna_velocity)
         if use_rna_velocity:
-            adata.uns['paga']['connectivities'] = adata.uns['paga']['transitions_confidence']
+            adata.uns["paga"]["connectivities"] = adata.uns["paga"][
+                "transitions_confidence"
+            ]
         sc.pl.paga(adata, plot=False)
         if verbose:
-            print('umap...')
-        sc.tl.umap(adata, init_pos='paga', random_state=random_state, )
+            print("umap...")
+        sc.tl.umap(
+            adata, init_pos="paga", random_state=random_state,
+        )
     else:
         if verbose:
-            print('umap...')
+            print("umap...")
         sc.tl.umap(adata, random_state=random_state)
     return adata
 
 
-def combat(adata, batch_key='sample', covariates=None, dim_red=True):
-    '''
+def combat(adata, batch_key="sample", covariates=None, dim_red=True):
+    """
     Data integration and batch correction using mutual nearest neighbors. Uses the 
     ``scanpy.external.pp.mnn_correct()`` function.
 
@@ -127,7 +145,7 @@ def combat(adata, batch_key='sample', covariates=None, dim_red=True):
     --------
 
         anndata.AnnData
-    '''
+    """
     adata_combat = sc.AnnData(X=adata.raw.X, var=adata.raw.var, obs=adata.obs)
     adata_combat.layers = adata.layers
     adata_combat.raw = adata_combat
@@ -139,8 +157,8 @@ def combat(adata, batch_key='sample', covariates=None, dim_red=True):
     return adata_combat
 
 
-def mnn(adata, batch_key='sample', min_hvg_batches=1, dim_red=True):
-    '''
+def mnn(adata, batch_key="sample", min_hvg_batches=1, dim_red=True):
+    """
     Data integration and batch correction using mutual nearest neighbors. Uses the 
     ``scanpy.external.pp.mnn_correct()`` function.
 
@@ -162,32 +180,38 @@ def mnn(adata, batch_key='sample', min_hvg_batches=1, dim_red=True):
     --------
 
         anndata.AnnData
-    '''
+    """
     adata_mnn = adata.raw.to_adata()
     adata_mnn.layers = adata.layers
     # variable genes
-    sc.pp.highly_variable_genes(adata_mnn, min_mean=0.0125, max_mean=3, min_disp=0.5, batch_key=batch_key)
+    sc.pp.highly_variable_genes(
+        adata_mnn, min_mean=0.0125, max_mean=3, min_disp=0.5, batch_key=batch_key
+    )
     var_select = adata_mnn.var.highly_variable_nbatches >= min_hvg_batches
     var_genes = var_select.index[var_select]
     # split per batch into new objects.
     batches = adata_mnn.obs[batch_key].cat.categories.tolist()
     alldata = {}
     for batch in batches:
-        alldata[batch] = adata_mnn[adata_mnn.obs[batch_key] == batch,]
+        alldata[batch] = adata_mnn[
+            adata_mnn.obs[batch_key] == batch,
+        ]
     # run MNN correction
-    cdata = sc.external.pp.mnn_correct(*[alldata[b] for b in batches], 
-                                       svd_dim=50,
-                                       batch_key=batch_key,
-                                       save_raw=True,
-                                       var_subset=var_genes)
-    corr_data = cdata[0][:,var_genes]
+    cdata = sc.external.pp.mnn_correct(
+        *[alldata[b] for b in batches],
+        svd_dim=50,
+        batch_key=batch_key,
+        save_raw=True,
+        var_subset=var_genes,
+    )
+    corr_data = cdata[0][:, var_genes]
     if dim_red:
         corr_data = dimensionality_reduction(corr_data)
     return corr_data
 
 
-def scanorama(adata, batch_key='sample', dim_red=True):
-    '''
+def scanorama(adata, batch_key="sample", dim_red=True):
+    """
     Data integration and batch correction using Scanorama. Uses the ``scanorama.integrate_scanpy()`` function.
 
     Args:
@@ -204,19 +228,22 @@ def scanorama(adata, batch_key='sample', dim_red=True):
     --------
 
         anndata.AnnData
-    '''
+    """
     import scanorama
+
     adata_scanorama = adata.raw.to_adata()
     adata_scanorama.layers = adata.layers
     # split per batch into new objects.
     batches = adata_scanorama.obs[batch_key].cat.categories.tolist()
     alldata = {}
     for batch in batches:
-        alldata[batch] = adata_scanorama[adata_scanorama.obs[batch_key] == batch,]
+        alldata[batch] = adata_scanorama[
+            adata_scanorama.obs[batch_key] == batch,
+        ]
     adatas = [alldata[s] for s in alldata.keys()]
     # run scanorama
-    scanorama.integrate_scanpy(adatas,  dimred=50)
-    scanorama_int = [ad.obsm['X_scanorama'] for ad in adatas]
+    scanorama.integrate_scanpy(adatas, dimred=50)
+    scanorama_int = [ad.obsm["X_scanorama"] for ad in adatas]
     all_s = np.concatenate(scanorama_int)
     adata_scanorama.obsm["Scanorama"] = all_s
     if dim_red:
@@ -224,10 +251,168 @@ def scanorama(adata, batch_key='sample', dim_red=True):
     return adata_scanorama
 
 
+def classify_specificity(
+    adata,
+    raw,
+    agbcs=None,
+    groups=None,
+    rename=None,
+    percentile=0.997,
+    percentile_dict=None,
+    update=True,
+    verbose=True,
+):
+    """
+    Classifies BCR specificity using antigen barcodes (AgBCs). Thresholds are computed by analyzing background 
+    AgBC UMIs in empty droplets.
 
-def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
-                              batch_key=None, batch_control_data=True, verbose=True):
-    '''
+    NOTE: In order to set accurate thresholds, we must remove all cell-containing droplets from ``raw``. Because 
+    ``adata`` comprises only cell-containing droplets, we simply remove all of the droplet barcodes in ``adata``
+    from ``raw``. Thus, it is important that ``adata`` and ``raw`` are well matched. Ror example, if the entire 
+    Chromium reaction contained several multiplexed samples, ``adata`` must contain all of the multiplexed samples, 
+    since the raw matrix output by CellRanger includes all droplets in the reaction. If ``adata`` was missing one 
+    or more samples, cell-containing droplets cannot accurately be removed from ``raw`` and classification accuracy 
+    will be adversely affected.
+    
+    Args:
+    -----
+    
+        adata (anndata.AnnData): Input AnnData object. Log2-normalized AgBC UMI counts should be found in 
+            ``adata.obs``. If data was read using ``scab.read_10x_mtx()``, the resulting AnnData object 
+            will already be correctly formatted. Required.
+            
+        raw (anndata.AnnData or str): Raw matrix data. Either a path to a directory containing the fraw ``.mtx`` file,
+            or an ``anndata.AnnData`` object containing the raw matrix data. As with ``adata``, log2-normalized AgBC 
+            UMIs should be found at ``raw.obs``. Required.
+            
+        agbcs (list): A list of AgBCs to be classified. Either ``agbcs`` or ``groups`` is required. If both are 
+            provided, ``groups`` will be used.
+        
+        groups (dict): A dictionary mapping specificity names to a list of one or more AgBCs. This is useful when
+            multiple AgBCs correspond to the same antigen (either because dual-labeled AgBCs were used, or 
+            because several AgBCs are closely-related variants that would be expected to compete for BCR binding). 
+            Either ``agbcs`` or ``groups`` is required. If both are provided, ``groups`` will be used.
+            
+        rename (dict): A dictionary mapping AgBC or group names to a new name. Keys should be present in either 
+            ``agbcs`` or ``groups.keys()``. If only a subset of AgBCs or groups are provided in ``rename``, then 
+            only those AgBCs or groups will be renamed.
+            
+        percentile (float): Percentile used to compute the AgBC classification threshold using ``raw`` data. Default 
+            is ``0.997``, which corresponds to three standard deviations.
+            
+        percentile_dict (dict): Dictionary mapping AgBC or group names to the desired ``percentile``. If only a subset 
+            of AgBCs or groups are provided in ``percentile_dict``, all others will use ``percentile``.
+            
+        update (bool): If ``True``, update the ``adata`` with grouped UMI counts and classifications. If ``False``, 
+            a pandas ``DataFrame`` containg classifications will be returned and ``adata`` will not be modified. 
+            Default is ``True``.
+
+        verbose (bool): If ``True``, calculated threshold values are printed. Default is ``True``.
+            
+    
+    Returns:
+    --------
+    
+        If ``update == True``, an updated ``adata`` object containing specificity classifications is returned. Otherwise,
+        a pandas ``DataFrame`` containing specificity classifications is returned.
+    
+    """
+    adata_groups = {}
+    classifications = {}
+    percentiles = percentile_dict if percentile_dict is not None else {}
+    rename = rename if rename is not None else {}
+
+    # process AgBCs and specificity groups
+    if all([agbcs is None, groups is None]):
+        err = "ERROR: either agbcs or groups must be provided."
+        print("\n" + err + "\n")
+        sys.exit()
+    if groups is None:
+        groups = {}
+    if agbcs is not None:
+        for a in agbcs:
+            groups[a] = [
+                a,
+            ]
+
+    # load raw data, if necessary
+    if isinstance(raw, str):
+        if os.path.isdir(raw):
+            raw = read_10x_mtx(raw, ignore_zero_quantile_agbcs=False)
+        else:
+            err = "\nERROR: raw must be either an AnnData object or a path to the raw matrix output folder from CellRanger.\n"
+            print(err)
+            sys.exit()
+
+    # remove cell-containing droplets from raw
+    no_cell = [o not in adata.obs_names for o in raw.obs_names]
+    empty = raw[no_cell]
+
+    # classify AgBC specificities
+    if verbose:
+        print("")
+        print("  THRESHOLDS  ")
+        print("--------------")
+    for group, barcodes in groups.items():
+        # remove missing AgBCs
+        in_adata = [b for b in barcodes if b in adata.obs]
+        in_empty = [b for b in barcodes if b in empty.obs]
+        in_both = list(set(in_adata) & set(in_empty))
+        if any([not in_adata, not in_empty]):
+            err = f"\nERROR: group {group} cannot be processed because all AgBCs are missing from input or raw datasets.\n"
+            if not in_adata:
+                err += f"input is missing {', '.join([b for b in barcodes if b not in in_adata])}\n"
+            if not in_empty:
+                err += f"raw is missing {', '.join([b for b in barcodes if b not in in_empty])}\n"
+            print(err)
+            del groups[group]
+            continue
+        if len(in_adata) != len(in_empty):
+            warn = f"\nWARNING: not all AgBCs for group {group} can be found in data and raw.\n"
+            warn += f"input contains {', '.join(in_adata)}\n"
+            warn += f"raw contains {', '.join(in_empty)}\n"
+            print(warn)
+            groups[group] = [bc for bc in barcodes if bc in in_both]
+        group_name = rename.get(group, group)
+        pctile = percentiles.get(group_name, percentile)
+        # thresholds for each barcode
+        _empty = np.array([np.exp2(empty.obs[bc]) - 1 for bc in in_empty])
+        raw_bc_thresholds = {
+            bc: np.quantile(_e, pctile) for _e, bc in zip(_empty, in_empty)
+        }
+        # UMI counts for the entire group
+        _data = np.sum([np.exp2(adata.obs[bc]) - 1 for bc in in_adata], axis=0)
+        adata_groups[group_name] = np.log2(_data + 1)
+        # threshold for the entire group (sum of the individual barcode thresholds)
+        raw_threshold = np.sum(list(raw_bc_thresholds.values()))
+        threshold = np.log2(raw_threshold + 1)
+        classifications[group_name] = adata_groups[group_name] > threshold
+        if verbose:
+            print(group_name)
+            print(f"percentile: {pctile}")
+            print(f"threshold: {threshold}")
+            for bc, rt in raw_bc_thresholds.items():
+                print(f"  - {bc}: {np.log2(rt + 1)}")
+            print("")
+    if update:
+        for g, group_data in adata_groups.items():
+            adata.obs[g] = group_data
+            adata.obs[f"is_{g}"] = classifications[g]
+        return adata
+    else:
+        return pd.DataFrame(classifications, index=adata.obs_names)
+
+
+def calculate_agbc_confidence(
+    adata,
+    control_adata,
+    agbcs,
+    update=True,
+    batch_key=None,
+    batch_control_data=True,
+    verbose=True,
+):
+    """
     Computes AgBC confidence using a control dataset.
 
     Args:
@@ -249,25 +434,33 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
     --------
     Updated ``adata`` if ``update`` is ``True`` or a ``pandas.DataFrame`` if ``update`` is ``False``.
     
-    '''
+    """
     conf_data = {}
     # check to make sure AgBCs are in both datasets
     if any([a not in control_adata.obs for a in agbcs]):
         missing = [a for a in agbcs if a not in control_adata.obs]
         if verbose:
-            print('Ignoring the following AgBCs, as they were not found in the control data: ', end='')
-            print(', '.join(missing))
+            print(
+                "Ignoring the following AgBCs, as they were not found in the control data: ",
+                end="",
+            )
+            print(", ".join(missing))
         agbcs = [a for a in agbcs if a not in missing]
     if any([a not in adata.obs for a in agbcs]):
         missing = [a for a in agbcs if a not in adata.obs]
         if verbose:
-            print('Ignoring the following AgBCs, as they were not found in the data: ', end='')
-            print(', '.join(missing))
+            print(
+                "Ignoring the following AgBCs, as they were not found in the data: ",
+                end="",
+            )
+            print(", ".join(missing))
         agbcs = [a for a in agbcs if a not in missing]
     # split data into batches
     if batch_key is not None:
         if batch_key not in adata.obs:
-            print(f'ERROR: the supplied batch key ({batch_key}) was not found in the input data.')
+            print(
+                f"ERROR: the supplied batch key ({batch_key}) was not found in the input data."
+            )
             return
         batch_names = natsorted(adata.obs[batch_key].unique())
         if verbose:
@@ -275,9 +468,13 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
         batches = [adata[adata.obs[batch_key] == b] for b in batch_names]
         if batch_control_data:
             if batch_key not in control_adata.obs:
-                print(f'ERROR: the supplied batch key ({batch_key}) was not found in the control data.')
+                print(
+                    f"ERROR: the supplied batch key ({batch_key}) was not found in the control data."
+                )
                 return
-            control_batches = [control_adata[control_adata.obs[batch_key] == b] for b in batch_names]
+            control_batches = [
+                control_adata[control_adata.obs[batch_key] == b] for b in batch_names
+            ]
         else:
             control_batches = [control_adata] * len(batch_names)
     else:
@@ -294,7 +491,7 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
             res = sm.NegativeBinomial(y, x).fit(start_params=[0.1, 0.1], disp=False)
             mu = np.exp(res.params[0])
             alpha = res.params[1]
-            size = 1. / alpha
+            size = 1.0 / alpha
             prob = size / (size + mu)
             # estimate the distribution
             dist = stats.nbinom(size, prob)
@@ -303,28 +500,40 @@ def calculate_agbc_confidence(adata, control_adata, agbcs, update=True,
             bc_conf.update({k: v for k, v in zip(data.obs_names, conf)})
         confidence = [bc_conf[o] for o in adata.obs_names]
         if update:
-            adata.obs[f'{barcode}_confidence'] = confidence
+            adata.obs[f"{barcode}_confidence"] = confidence
         else:
-            conf_data[f'{barcode}_confidence'] = confidence
+            conf_data[f"{barcode}_confidence"] = confidence
     if update:
         return adata
     else:
         return pd.DataFrame(conf_data, index=adata.obs_names)
 
 
+# for backwards compatibility
+def assign_cellhashes(adata, **kwargs):
+    return demultiplex(adata, **kwargs)
 
-def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
-                      rename=None, assignment_key='cellhash_assignment',
-                      threshold_minimum=4.0, threshold_maximum=10.0, kde_maximum=15.0, 
-                      assignments_only=False, debug=False):
-    '''
-    Assigns cells to hash groups based on cell hashing data.
+
+def demultiplex(
+    adata,
+    hash_names=None,
+    cellhash_regex="cell ?hash",
+    ignore_cellhash_case=True,
+    rename=None,
+    assignment_key="batch",
+    threshold_minimum=4.0,
+    threshold_maximum=10.0,
+    kde_maximum=15.0,
+    assignments_only=False,
+    debug=False,
+):
+    """
+    Demultiplexes cells using cell hashes.
 
     Args:
     -----
 
-        df (pd.DataFrame): Squareform input dataframe, containing cellhash UMI counts. Indexes
-            should be cells, columns should be cell hashes.
+        adata (anndata.Anndata): AnnData object containing cellhash UMI counts in ``adata.obs``.
         
         hash_names (iterable): List of hashnames, which correspond to column names in ``adata.obs``. 
             Overrides cellhash name matching using ``cellhash_regex``. If not provided, all columns 
@@ -338,14 +547,14 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
         ignore_cellhash_regex_case (bool): If ``True``, searching for ``cellhash_regex`` will ignore case.
             Default is ``True``.
         
-        batch_names (dict): Dictionary relating hasnhames (column names in ``adata.obs``) to the preferred
+        rename (dict): Dictionary relating hasnhames (column names in ``adata.obs``) to the preferred
             batch name. For example, if the hashname ``'Cellhash1'`` corresponded to the sample 
-            ``'Sample1'``, an example ``batch_names`` argument would be::
+            ``'Sample1'``, an example ``rename`` argument would be::
 
                 {'Cellhash1': 'Sample1'}
 
-        batch_key (str): Column name (in ``adata.obs``) into which cellhash classifications will be 
-            stored. Default is ``'batch'``.
+        assignment_key (str): Column name (in ``adata.obs``) into which cellhash classifications will be 
+            stored. Default is ``'cellhash_assignment'``.
 
         threshold_minimum (float): Minimum acceptable kig2-normalized UMI threshold. Potential 
             thresholds below this value will be ignored. Default is ``4.0``.
@@ -362,15 +571,17 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
 
         debug (bool): produces plots and prints intermediate information for debugging. Default is 
             ``False``.
-    '''
+    """
     # parse hash names
     if hash_names is None:
         if ignore_cellhash_case:
             cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
         else:
             cellhash_pattern = re.compile(cellhash_regex)
-        hash_names = [o for o in adata.obs.columns if re.search(cellhash_pattern, o) is not None]
-    hash_names = [h for h in hash_names if h  != assignment_key]
+        hash_names = [
+            o for o in adata.obs.columns if re.search(cellhash_pattern, o) is not None
+        ]
+    hash_names = [h for h in hash_names if h != assignment_key]
     if rename is None:
         rename = {}
     # compute thresholds
@@ -378,25 +589,27 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
     for hash_name in hash_names:
         if debug:
             print(hash_name)
-        thresholds[hash_name] = positive_feature_cutoff(adata.obs[hash_name],
-                                                        threshold_minimum=threshold_minimum,
-                                                        threshold_maximum=threshold_maximum,
-                                                        kde_maximum=kde_maximum,
-                                                        debug=debug)
+        thresholds[hash_name] = positive_feature_cutoff(
+            adata.obs[hash_name],
+            threshold_minimum=threshold_minimum,
+            threshold_maximum=threshold_maximum,
+            kde_maximum=kde_maximum,
+            debug=debug,
+        )
     if debug:
-        print('THRESHOLDS')
-        print('----------')
+        print("THRESHOLDS")
+        print("----------")
         for hash_name in hash_names:
-            print(f'{hash_name}: {thresholds[hash_name]}')
+            print(f"{hash_name}: {thresholds[hash_name]}")
     assignments = []
     for _, row in adata.obs[hash_names].iterrows():
         a = [h for h in hash_names if row[h] >= thresholds[h]]
         if len(a) == 1:
             assignment = rename.get(a[0], a[0])
         elif len(a) > 1:
-            assignment = 'doublet'
+            assignment = "doublet"
         else:
-            assignment = 'unassigned'
+            assignment = "unassigned"
         assignments.append(assignment)
     if assignments_only:
         return pd.Series(assignments, index=adata.obs_names)
@@ -405,17 +618,31 @@ def assign_cellhashes(adata, hash_names=None, cellhash_regex='cell ?hash', ignor
         return adata
 
 
-def positive_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0, kde_maximum=15.0,
-                            debug=False, show_cutoff_value=False, cutoff_text='cutoff', debug_figfile=None):
+def positive_feature_cutoff(
+    vals,
+    threshold_maximum=10.0,
+    threshold_minimum=4.0,
+    kde_maximum=15.0,
+    debug=False,
+    show_cutoff_value=False,
+    cutoff_text="cutoff",
+    debug_figfile=None,
+):
     a = np.array(vals)
     k = _bw_silverman(a)
-    kde = KernelDensity(kernel='gaussian', bandwidth=k).fit(a.reshape(-1, 1))
+    kde = KernelDensity(kernel="gaussian", bandwidth=k).fit(a.reshape(-1, 1))
     s = np.linspace(0, kde_maximum, num=int(kde_maximum * 100))
-    e = kde.score_samples(s.reshape(-1,1))
-    
+    e = kde.score_samples(s.reshape(-1, 1))
+
     all_min, all_max = argrelextrema(e, np.less)[0], argrelextrema(e, np.greater)[0]
     if len(all_min) > 1:
-        _all_min = np.array([m for m in all_min if s[m] <= threshold_maximum and s[m] >= threshold_minimum])
+        _all_min = np.array(
+            [
+                m
+                for m in all_min
+                if s[m] <= threshold_maximum and s[m] >= threshold_minimum
+            ]
+        )
         min_vals = zip(_all_min, e[_all_min])
         mi = sorted(min_vals, key=lambda x: x[1])[0][0]
         cutoff = s[mi]
@@ -429,47 +656,82 @@ def positive_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0,
             # plot
             plt.plot(s, e)
             plt.fill_between(s, e, y2=[min(e)] * len(s), alpha=0.1)
-            plt.vlines(cutoff, min(e), max(e),
-                       colors='k', alpha=0.5, linestyles=':', linewidths=2)
+            plt.vlines(
+                cutoff,
+                min(e),
+                max(e),
+                colors="k",
+                alpha=0.5,
+                linestyles=":",
+                linewidths=2,
+            )
             # text
             text_xadj = 0.025 * (max(s) - min(s))
-            cutoff_string = f'{cutoff_text}: {round(cutoff, 3)}' if show_cutoff_value else cutoff_text
-            plt.text(cutoff - text_xadj, max(e), cutoff_string, ha='right', va='top', fontsize=14)
+            cutoff_string = (
+                f"{cutoff_text}: {round(cutoff, 3)}"
+                if show_cutoff_value
+                else cutoff_text
+            )
+            plt.text(
+                cutoff - text_xadj,
+                max(e),
+                cutoff_string,
+                ha="right",
+                va="top",
+                fontsize=14,
+            )
             # style
             ax = plt.gca()
-            for spine in ['right', 'top']:
+            for spine in ["right", "top"]:
                 ax.spines[spine].set_visible(False)
-            ax.tick_params(axis='both', labelsize=12)
-            ax.set_xlabel('$\mathregular{log_2}$ UMI counts', fontsize=14)
-            ax.set_ylabel('kernel density', fontsize=14)
+            ax.tick_params(axis="both", labelsize=12)
+            ax.set_xlabel("$\mathregular{log_2}$ UMI counts", fontsize=14)
+            ax.set_ylabel("kernel density", fontsize=14)
             # save or show
             if debug_figfile is not None:
                 plt.tight_layout()
                 plt.savefig(debug_figfile)
             else:
                 plt.show()
-        print('bandwidth: {}'.format(k))
-        print('local minima: {}'.format(s[all_min]))
-        print('local maxima: {}'.format(s[all_max]))
+        print("bandwidth: {}".format(k))
+        print("local minima: {}".format(s[all_min]))
+        print("local maxima: {}".format(s[all_max]))
         if cutoff is not None:
-            print('cutoff: {}'.format(cutoff))
+            print("cutoff: {}".format(cutoff))
         else:
-            print('WARNING: no local minima were found, so the threshold could not be calculated.')
-        print('\n\n')
+            print(
+                "WARNING: no local minima were found, so the threshold could not be calculated."
+            )
+        print("\n\n")
     return cutoff
 
 
-def negative_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0, kde_maximum=15.0, denominator=2.0,
-                            debug=False, show_cutoff_value=False, cutoff_text='cutoff', debug_figfile=None):
+def negative_feature_cutoff(
+    vals,
+    threshold_maximum=10.0,
+    threshold_minimum=4.0,
+    kde_maximum=15.0,
+    denominator=2.0,
+    debug=False,
+    show_cutoff_value=False,
+    cutoff_text="cutoff",
+    debug_figfile=None,
+):
     a = np.array(vals)
     k = _bw_silverman(a)
-    kde = KernelDensity(kernel='gaussian', bandwidth=k).fit(a.reshape(-1, 1))
+    kde = KernelDensity(kernel="gaussian", bandwidth=k).fit(a.reshape(-1, 1))
     s = np.linspace(0, kde_maximum, num=int(kde_maximum * 100))
-    e = kde.score_samples(s.reshape(-1,1))
-    
+    e = kde.score_samples(s.reshape(-1, 1))
+
     all_min, all_max = argrelextrema(e, np.less)[0], argrelextrema(e, np.greater)[0]
     if len(all_min) > 1:
-        _all_min = np.array([m for m in all_min if s[m] <= threshold_maximum and s[m] >= threshold_minimum])
+        _all_min = np.array(
+            [
+                m
+                for m in all_min
+                if s[m] <= threshold_maximum and s[m] >= threshold_minimum
+            ]
+        )
         min_vals = zip(_all_min, e[_all_min])
         mi = sorted(min_vals, key=lambda x: x[1])[0][0]
         ma = [m for m in all_max if s[m] < s[mi]][-1]
@@ -485,51 +747,82 @@ def negative_feature_cutoff(vals, threshold_maximum=10.0, threshold_minimum=4.0,
             # plot
             plt.plot(s, e)
             plt.fill_between(s, e, y2=[min(e)] * len(s), alpha=0.1)
-            plt.vlines(s[mi], min(e), e[mi], colors='k', alpha=0.5, linestyles=':')
-            plt.vlines(s[ma], min(e), e[ma], colors='k', alpha=0.5, linestyles=':')
-            plt.vlines(cutoff, min(e), max(e),
-                       colors='k', alpha=0.5, linestyles=':', linewidths=2)
+            plt.vlines(s[mi], min(e), e[mi], colors="k", alpha=0.5, linestyles=":")
+            plt.vlines(s[ma], min(e), e[ma], colors="k", alpha=0.5, linestyles=":")
+            plt.vlines(
+                cutoff,
+                min(e),
+                max(e),
+                colors="k",
+                alpha=0.5,
+                linestyles=":",
+                linewidths=2,
+            )
             # text
             text_ymin = min(e) + (0.025 * (max(e) - min(e)))
             text_xadj = 0.025 * (max(s) - min(s))
-            plt.text(s[mi] + text_xadj, text_ymin, 'local\nmin', ha='left', va='bottom', fontsize=12)
-            plt.text(s[ma] - text_xadj, text_ymin, 'local\nmax', ha='right', va='bottom', fontsize=12)
-            cutoff_string = f'{cutoff_text}: {round(cutoff, 3)}' if show_cutoff_value else cutoff_text
-            plt.text(cutoff + text_xadj, max(e), cutoff_string, ha='left', va='top', fontsize=14)
+            plt.text(
+                s[mi] + text_xadj,
+                text_ymin,
+                "local\nmin",
+                ha="left",
+                va="bottom",
+                fontsize=12,
+            )
+            plt.text(
+                s[ma] - text_xadj,
+                text_ymin,
+                "local\nmax",
+                ha="right",
+                va="bottom",
+                fontsize=12,
+            )
+            cutoff_string = (
+                f"{cutoff_text}: {round(cutoff, 3)}"
+                if show_cutoff_value
+                else cutoff_text
+            )
+            plt.text(
+                cutoff + text_xadj,
+                max(e),
+                cutoff_string,
+                ha="left",
+                va="top",
+                fontsize=14,
+            )
             # style
             ax = plt.gca()
-            for spine in ['right', 'top']:
+            for spine in ["right", "top"]:
                 ax.spines[spine].set_visible(False)
-            ax.tick_params(axis='both', labelsize=12)
-            ax.set_xlabel('$\mathregular{log_2}$ UMI counts', fontsize=14)
-            ax.set_ylabel('kernel density', fontsize=14)
+            ax.tick_params(axis="both", labelsize=12)
+            ax.set_xlabel("$\mathregular{log_2}$ UMI counts", fontsize=14)
+            ax.set_ylabel("kernel density", fontsize=14)
             # save or show
             if debug_figfile is not None:
                 plt.tight_layout()
                 plt.savefig(debug_figfile)
             else:
                 plt.show()
-        print('bandwidth: {}'.format(k))
-        print('local minima: {}'.format(s[all_min]))
-        print('local maxima: {}'.format(s[all_max]))
+        print("bandwidth: {}".format(k))
+        print("local minima: {}".format(s[all_min]))
+        print("local maxima: {}".format(s[all_max]))
         if cutoff is not None:
-            print('cutoff: {}'.format(cutoff))
+            print("cutoff: {}".format(cutoff))
         else:
-            print('WARNING: no local minima were found, so the threshold could not be calculated.')
-        print('\n\n')
+            print(
+                "WARNING: no local minima were found, so the threshold could not be calculated."
+            )
+        print("\n\n")
     return cutoff
 
 
 def _bw_silverman(x):
     normalize = 1.349
-    IQR = (scoreatpercentile(x, 75) - scoreatpercentile(x, 25)) / normalize
+    IQR = (np.percentile(x, 75) - np.percentile(x, 25)) / normalize
     std_dev = np.std(x, axis=0, ddof=1)
     if IQR > 0:
         A = np.minimum(std_dev, IQR)
     else:
         A = std_dev
     n = len(x)
-    return .9 * A * n ** (-0.2)
-
-
-
+    return 0.9 * A * n ** (-0.2)

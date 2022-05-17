@@ -2,3 +2,4 @@ include README.md
 include requirements*
 include docs/*.txt
 include scab/*
+include scab/models/*

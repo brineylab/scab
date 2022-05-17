@@ -23,6 +23,8 @@
 #
 
 
+import codecs
+import pickle
 import re
 
 import numpy as np
@@ -34,17 +36,49 @@ from abutils.core.pair import Pair, assign_pairs
 from abutils.core.sequence import read_csv, read_fasta, read_json
 
 
-def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv', vdj_delimiter='\t',
-                 vdj_id_key='sequence_id', vdj_sequence_key='sequence', vdj_id_delimiter='_', vdj_id_delimiter_num=1,
-                 h_selection_func=None, l_selection_func=None, abstar_output_format='airr',
-                 gex_only=False, cellhash_regex='cell ?hash', ignore_cellhash_case=True,
-                 agbc_regex='agbc', ignore_agbc_case=True,
-                 log_transform_cellhashes=True, ignore_zero_median_cellhashes=True, rename_cellhashes=None,
-                 log_transform_agbcs=True, ignore_zero_median_agbcs=True, rename_agbcs=None,
-                 log_transform_features=True, ignore_zero_median_features=True, rename_features=None, feature_suffix='_FBC',
-                 verbose=True):
+def read_10x_mtx(
+    mtx_path,
+    bcr_file=None,
+    bcr_annot=None,
+    bcr_format="fasta",
+    bcr_delimiter="\t",
+    bcr_id_key="sequence_id",
+    bcr_sequence_key="sequence",
+    bcr_id_delimiter="_",
+    bcr_id_delimiter_num=1,
+    tcr_file=None,
+    tcr_annot=None,
+    tcr_format="fasta",
+    tcr_delimiter="\t",
+    tcr_id_key="sequence_id",
+    tcr_sequence_key="sequence",
+    tcr_id_delimiter="_",
+    tcr_id_delimiter_num=1,
+    chain_selection_func=None,
+    abstar_output_format="airr",
+    abstar_germ_db="human",
+    gex_only=False,
+    cellhash_regex="cell ?hash",
+    ignore_cellhash_case=True,
+    agbc_regex="agbc",
+    ignore_agbc_case=True,
+    log_transform_cellhashes=True,
+    ignore_zero_quantile_cellhashes=True,
+    rename_cellhashes=None,
+    log_transform_agbcs=True,
+    ignore_zero_quantile_agbcs=True,
+    rename_agbcs=None,
+    log_transform_features=True,
+    ignore_zero_quantile_features=True,
+    rename_features=None,
+    feature_suffix="_FBC",
+    cellhash_quantile=0.95,
+    agbc_quantile=0.95,
+    feature_quantile=0.95,
+    verbose=True,
+):
 
-    '''
+    """
     Reads 10x Genomics matrix and VDJ files and outputs GEX, cellhash, feature barcode and VDJ data in a single AnnData object.
 
     Args:
@@ -52,40 +86,41 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
 
         mtx_path (str): Path to the 10x Genomics matrix folder (as accepted by ``scanpy.read_10x_mtx()``)
 
-        vdj_file (str): Path to a file containing VDJ data. The file can be in of the following formats:
-                            1) a FASTA-formatted file, as output by CellRanger
-                            2) a delimited text file, containing annotated VDJ sequences
-                            3) a JSON file, containing annotated VDJ sequences
+        [bcr|tcr]_file (str): Path to a file containing VDJ data. The file can be in of the following formats:
+                1) a FASTA-formatted file, as output by CellRanger
+                2) a delimited text file, containing annotated VDJ sequences
+                3) a JSON file, containing annotated VDJ sequences
 
-        vdj_annotations (str): Path to the CSV-formatted VDJ annotations file produced by CellRanger. 
+        [bcr|tcr]_annotations (str): Path to the CSV-formatted VDJ annotations file produced by CellRanger. 
             Matching the annotation file to ``vdj_file`` is preferred -- if ``all_contig.fasta`` is the supplied 
             ``vdj_file``, then ``all_contig_annotations.csv`` is the appropriate annotation file.
 
-        vdj_format (str): Format of the input ``vdj_file``. Options are: ``'fasta'``, ``'csv'``, and ``'json'``.
-            Default is ``'csv'``. If ``vdj_format`` is ``'fasta'``, ``abstar`` will be run on  =the input data to 
+        [bcr|tcr]_format (str): Format of the input ``[bcr|tcr]_file``. Options are: ``'fasta'``, ``'csv'``, and ``'json'``.
+            Default is ``'csv'``. If ``[bcr|tcr]_format`` is ``'fasta'``, ``abstar`` will be run on  the input data to 
             obtain annotated VDJ data. By default, ``abstar`` will produce AIRR-formatted (tab-delimited) annotations.
 
-        vdj_delimiter (str): Delimiter used in ``vdj_file``. Only used if ``vdj_format`` is ``'csv'``.
+        [bcr|tcr]_delimiter (str): Delimiter used in ``[bcr|tcr]_file``. Only used if ``[bcr|tcr]_format`` is ``'csv'``.
             Default is ``'\t'``, which conforms to AIRR-C data standards.
 
-        vdj_id_key (str): Name of the column or field in ``vdj_file`` that corresponds to the sequence ID. 
+        [bcr|tcr]_id_key (str): Name of the column or field in ``[bcr|tcr]_file`` that corresponds to the sequence ID. 
             Default is ``'sequence_id'``, which is compatible with standardized AIRR-C data formatting.
 
-        vdj_id_key (str): Name of the column or field in ``vdj_file`` that corresponds to the VDJ sequence. 
+        [bcr|tcr]_id_key (str): Name of the column or field in ``[bcr|tcr]_file`` that corresponds to the VDJ sequence. 
             Default is ``'sequence'``, which is compatible with standardized AIRR-C data formatting.
 
-        vdj_id_delimiter (str): The delimiter used to separate the droplet and contig components of the sequence ID.
+        [bcr|tcr]_id_delimiter (str): The delimiter used to separate the droplet and contig components of the sequence ID.
             For example, default CellRanger names are formatted as: ``'AAACCTGAGAACTGTA-1_contig_1'``, where 
             ``'AAACCTGAGAACTGTA-1'`` is the droplet identifier and ``'contig_1'`` is the contig identifier. 
             Default is '_', which matches the format used by CellRanger.
 
-        vdj_id_delimiter_num (str): The occurance (1-based numbering) of the ``vdj_id_delimiter``. Default is ``1``,
+        [bcr|tcr]_id_delimiter_num (str): The occurance (1-based numbering) of the ``[bcr|tcr]_id_delimiter``. Default is ``1``,
             which matches the format used by CellRanger.
 
-        abstar_output_format (str): Format for abstar annotations. Only used if ``vdj_format`` is ``'fasta'``. 
+        abstar_output_format (str): Format for abstar annotations. Only used if ``[bcr|tcr]_format`` is ``'fasta'``. 
             Options are ``'airr'``, ``'json'`` and ``'tabular'``. Default is ``'airr'``.
 
-        gex_only (bool): If ``True``, return only gene expression data and ignore features and hashes.
+        gex_only (bool): If ``True``, return only gene expression data and ignore features and hashes. Note that
+            VDJ data will still be included in the returned ``AnnData`` object if ``[bcr|tcr]_file`` is provided.
             Default is ``False``.
 
         cellhash_regex (str): A regular expression (regex) string used to identify cell hashes. The regex 
@@ -113,17 +148,20 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         log_transform_features (bool): If ``True``, feature UMI counts will be log2 transformed 
             (after adding 1 to the raw count). Default is ``True``.
 
-        ignore_zero_median_cellhashes (bool): If ``True``, any hashes containing a meadian
-            count of ``0`` will be ignored and not returned in the hash dataframe. Default
-            is ``True``.
+        ignore_zero_quantile_cellhashes (bool): If ``True``, any hashes for which the ``cellhash_quantile``
+            percentile have a count of zero are ignored. Default is ``True`` and the default 
+            ``cellhash_quantile`` is ``0.95``, resulting in cellhashes with zero counts for the 95th
+            percentile being ignored.
         
-        ignore_zero_median_agbcs (bool): If ``True``, any AgBCs containing a meadian
-            count of ``0`` will be ignored and not returned in the AgBC dataframe. Default
-            is ``True``.
+        ignore_zero_median_agbcs (bool): If ``True``, any AgBCs for which the ``agbc_quantile``
+            percentile have a count of zero are ignored. Default is ``True`` and the default 
+            ``agbc_quantile`` is ``0.95``, resulting in AgBCs with zero counts for the 95th
+            percentile being ignored.
 
-        ignore_zero_median_features (bool): If ``True``, any features containing a meadian
-            count of ``0`` will be ignored and not returned in the feature dataframe. Default
-            is ``True``.
+        ignore_zero_median_features (bool): If ``True``, any features for which the ``feature_quantile``
+            percentile have a count of zero are ignored. Default is ``True`` and the default 
+            ``feature_quantile`` is ``0.95``, resulting in features with zero counts for the 95th
+            percentile being ignored.
 
         rename_cellhashes (dict): A dictionary with keys and values corresponding to the existing and 
             new cellhash names, respectively. For example, ``{'CellHash1': 'donorABC}`` would result in the 
@@ -145,6 +183,18 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
             ``'CD19'`` being renamed to ``'CD19_FBC'``. The suffix is added after feature renaming. 
             To skip the addition of a feature suffix, simply supply an empty string (``''``) as the argument.
 
+        cellhash_quantile (float): Percentile for which cellhashes with zero counts will be ignored if
+            ``ignore_zero_quantile_cellhashes`` is ``True``. Default is ``0.95``, which is equivalent to the
+            95th percentile.
+
+        agbc_quantile (float): Percentile for which AgBCs with zero counts will be ignored if
+            ``ignore_zero_quantile_agbcs`` is ``True``. Default is ``0.95``, which is equivalent to the
+            95th percentile.
+
+        feature_quantile (float): Percentile for which features with zero counts will be ignored if
+            ``ignore_zero_quantile_features`` is ``True``. Default is ``0.95``, which is equivalent to the
+            95th percentile.
+
         verbose (bool): Print progress updates. Default is ``True``.
     
     Returns:
@@ -154,42 +204,94 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
             at ``adata.obs.vdj``, and cellhash and feature barcode data found in ``adata.obs``. If ``gex_only`` 
             is ``True``, cellhash and feature barcode data are not returned. If ``vdj_file`` is ``None``, 
             VDJ information is not returned.
-    '''
+    """
     # read 10x matrix file
     if verbose:
-                print('reading 10x Genomics matrix file...')
+        print("reading 10x Genomics matrix file...")
     adata = sc.read_10x_mtx(mtx_path, gex_only=False)
-    gex = adata[:,adata.var.feature_types == 'Gene Expression']
+    gex = adata[:, adata.var.feature_types == "Gene Expression"]
 
-    # process VDJ data:
-    if vdj_file is not None:
-        if vdj_format == 'csv':
+    # process BCR data:
+    if bcr_file is not None:
+        if bcr_format == "csv":
             if verbose:
-                print('reading CSV-formatted VDJ data...')
-            sequences = read_csv(vdj_file, delimiter=vdj_delimiter,
-                                 id_key=vdj_id_key, sequence_key=vdj_sequence_key)
-        elif vdj_format == 'json':
+                print("reading CSV-formatted BCR data...")
+            sequences = read_csv(
+                bcr_file,
+                delimiter=bcr_delimiter,
+                id_key=bcr_id_key,
+                sequence_key=bcr_sequence_key,
+            )
+        elif bcr_format == "json":
             if verbose:
-                print('reading JSON-formatted VDJ data...')
-            sequences = read_json(vdj_file, id_key=vdj_id_key, sequence_key=vdj_sequence_key)
-        elif vdj_format == 'fasta':
+                print("reading JSON-formatted BCR data...")
+            sequences = read_json(
+                bcr_file, id_key=bcr_id_key, sequence_key=bcr_sequence_key
+            )
+        elif bcr_format == "fasta":
             if verbose:
-                print('reading FASTA-formatted VDJ data...')
-            raw_seqs = read_fasta(vdj_file)
+                print("reading FASTA-formatted BCR data...")
+            raw_seqs = read_fasta(bcr_file)
             if verbose:
-                print('annotating VDJ sequences with abstar...')
-            sequences = abstar.run(raw_seqs, output_type=abstar_output_format)
-        pairs = assign_pairs(sequences, name=vdj_id_key,
-                             delim=vdj_id_delimiter, delim_occurance=vdj_id_delimiter_num,
-                             h_selection_func=h_selection_func, l_selection_func=l_selection_func,
-                             tenx_annot_file=vdj_annotations)
+                print("annotating BCR sequences with abstar...")
+            sequences = abstar.run(
+                raw_seqs, output_type=abstar_output_format, germ_db=abstar_germ_db
+            )
+        pairs = assign_pairs(
+            sequences,
+            id_key=bcr_id_key,
+            delim=bcr_id_delimiter,
+            delim_occurance=bcr_id_delimiter_num,
+            chain_selection_func=chain_selection_func,
+            tenx_annot_file=bcr_annot,
+        )
         pdict = {p.name: p for p in pairs}
-        gex.obs['vdj'] = [pdict.get(o, Pair([])) for o in gex.obs_names]
+        gex.obs["bcr"] = [pdict.get(o, Pair([])) for o in gex.obs_names]
+
+    # process TCR data:
+    if tcr_file is not None:
+        if tcr_format == "csv":
+            if verbose:
+                print("reading CSV-formatted TCR data...")
+            sequences = read_csv(
+                tcr_file,
+                delimiter=tcr_delimiter,
+                id_key=tcr_id_key,
+                sequence_key=tcr_sequence_key,
+            )
+        elif tcr_format == "json":
+            if verbose:
+                print("reading JSON-formatted TCR data...")
+            sequences = read_json(
+                tcr_file, id_key=tcr_id_key, sequence_key=tcr_sequence_key
+            )
+        elif tcr_format == "fasta":
+            if verbose:
+                print("reading FASTA-formatted TCR data...")
+            raw_seqs = read_fasta(tcr_file)
+            if verbose:
+                print("annotating TCR sequences with abstar...")
+            sequences = abstar.run(
+                raw_seqs,
+                receptor="tcr",
+                output_type=abstar_output_format,
+                germ_db=abstar_germ_db,
+            )
+        pairs = assign_pairs(
+            sequences,
+            id_key=tcr_id_key,
+            delim=tcr_id_delimiter,
+            delim_occurance=tcr_id_delimiter_num,
+            chain_selection_func=chain_selection_func,
+            tenx_annot_file=tcr_annot,
+        )
+        pdict = {p.name: p for p in pairs}
+        gex.obs["tcr"] = [pdict.get(o, Pair([])) for o in gex.obs_names]
     if gex_only:
         return gex
-    
+
     # parse out features and cellhashes
-    non_gex = adata[:, adata.var.feature_types != 'Gene Expression']
+    non_gex = adata[:, adata.var.feature_types != "Gene Expression"]
     if ignore_cellhash_case:
         cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
     else:
@@ -198,17 +300,37 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         agbc_pattern = re.compile(agbc_regex, flags=re.IGNORECASE)
     else:
         agbc_pattern = re.compile(agbc_regex)
-    hashes = non_gex[:, [re.search(cellhash_pattern, i) is not None for i in non_gex.var.gene_ids]]
-    agbcs = non_gex[:, [re.search(agbc_pattern, i) is not None for i in non_gex.var.gene_ids]]
-    features = non_gex[:, [all([re.search(cellhash_pattern, i) is None,
-                                re.search(agbc_pattern, i) is None]) for i in non_gex.var.gene_ids]]
-    
+    hashes = non_gex[
+        :, [re.search(cellhash_pattern, i) is not None for i in non_gex.var.gene_ids]
+    ]
+    agbcs = non_gex[
+        :, [re.search(agbc_pattern, i) is not None for i in non_gex.var.gene_ids]
+    ]
+    features = non_gex[
+        :,
+        [
+            all(
+                [
+                    re.search(cellhash_pattern, i) is None,
+                    re.search(agbc_pattern, i) is None,
+                ]
+            )
+            for i in non_gex.var.gene_ids
+        ],
+    ]
+
     # process cellhash data
     if verbose:
-        print('processing cellhash data...')
+        print("processing cellhash data...")
     hash_df = hashes.to_df()[hashes.var_names]
-    if ignore_zero_median_cellhashes:
-        hash_df = hash_df[[h for h in hash_df.columns.values if hash_df[h].median() > 0]]
+    if ignore_zero_quantile_cellhashes:
+        hash_df = hash_df[
+            [
+                h
+                for h in hash_df.columns.values
+                if hash_df[h].quantile(q=cellhash_quantile) > 0
+            ]
+        ]
     if log_transform_cellhashes:
         hash_df += 1
         hash_df = hash_df.apply(np.log2)
@@ -217,12 +339,18 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
     for h in hash_df:
         gex.obs[rename_cellhashes.get(h, h)] = hash_df[h]
 
-    # process cellhash data
+    # process AgBC data
     if verbose:
-        print('processing AgBC data...')
+        print("processing AgBC data...")
     agbc_df = agbcs.to_df()[agbcs.var_names]
-    if ignore_zero_median_agbcs:
-        agbc_df = agbc_df[[a for a in agbc_df.columns.values if agbc_df[a].median() > 0]]
+    if ignore_zero_quantile_agbcs:
+        agbc_df = agbc_df[
+            [
+                a
+                for a in agbc_df.columns.values
+                if agbc_df[a].quantile(q=agbc_quantile) > 0
+            ]
+        ]
     if log_transform_agbcs:
         agbc_df += 1
         agbc_df = agbc_df.apply(np.log2)
@@ -230,30 +358,110 @@ def read_10x_mtx(mtx_path, vdj_file=None, vdj_annotations=None, vdj_format='csv'
         rename_agbcs = {}
     for a in agbc_df:
         gex.obs[rename_agbcs.get(a, a)] = agbc_df[a]
-    
-    # make feature dataframe
+
+    # process feature barcode data
     if verbose:
-        print('processing feature barcode data...')
+        print("processing feature barcode data...")
     feature_df = features.to_df()[features.var_names]
-    if ignore_zero_median_features:
-        feature_df = feature_df[[h for h in feature_df.columns.values if feature_df[h].median() > 0]]
+    if ignore_zero_quantile_features:
+        feature_df = feature_df[
+            [
+                h
+                for h in feature_df.columns.values
+                if feature_df[h].quantile(q=feature_quantile) > 0
+            ]
+        ]
     if log_transform_features:
         feature_df += 1
         feature_df = feature_df.apply(np.log2)
     if rename_features is None:
-        rename_features = {f: f'{f}{feature_suffix}' for f in feature_df}
+        rename_features = {f: f"{f}{feature_suffix}" for f in feature_df}
     for f in feature_df:
         gex.obs[rename_features.get(f, f)] = feature_df[f]
     return gex
 
 
+def read(h5ad_file):
+    """
+    Reads a serialized ``AnnData`` object. Similar to ``scanpy.read()``, except that ``scanpy`` 
+    does not support serializing BCR/TCR data. If BCR/TCR data is included in the serialized ``AnnData``
+    file, it will be separately deserialized into the original ``abutils.Pair`` objects.
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): An ``AnnData`` object containing gene expression, feature barcode and 
+            VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
+            from raw CellRanger outputs. Required.
+
+        h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
+            include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
+            be added. Required.    
+    """
+    adata = sc.read(h5ad_file)
+    if "bcr" in adata.obs:
+        # unpickle BCR data
+        adata.obs["bcr"] = [
+            pickle.loads(codecs.decode(b.encode(), "base64")) for b in adata.obs.bcr
+        ]
+    if "tcr" in adata.obs:
+        # unpickle TCR data
+        adata.obs["tcr"] = [
+            pickle.loads(codecs.decode(t.encode(), "base64")) for t in adata.obs.tcr
+        ]
+    return adata
 
 
+def write(adata, h5ad_file):
+    """
+    Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to 
+    ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
+    function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or 
+    ``adata.obs.tcr`` using ``pickle`` prior to writing the ``AnnData`` object to disk.
+
+    Args:
+    -----
+
+        adata (anndata.AnnData): An ``AnnData`` object containing gene expression, feature barcode and 
+            VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
+            from raw CellRanger outputs. Required.
+
+        h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
+            include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
+            be added. Required.    
+    """
+    if not h5ad_file.endswith("h5ad"):
+        h5ad_file += ".h5ad"
+    _adata = adata.copy()
+    if "bcr" in _adata.obs:
+        # pickle BCR data
+        _adata.obs["bcr"] = [
+            codecs.encode(pickle.dumps(b), "base64").decode() for b in _adata.obs.bcr
+        ]
+    if "tcr" in adata.obs:
+        # pickle TCR data
+        _adata.obs["tcr"] = [
+            codecs.encode(pickle.dumps(t), "base64").decode() for t in _adata.obs.tcr
+        ]
+    _adata.write(h5ad_file)
 
 
+def save(adata, h5ad_file):
+    """
+    Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to 
+    ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
+    function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or 
+    ``adata.obs.tcr`` using ``pickle`` prior to writing the ``AnnData`` object to disk.
 
+    Args:
+    -----
 
+        adata (anndata.AnnData): An ``AnnData`` object containing gene expression, feature barcode and 
+            VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
+            from raw CellRanger outputs. Required.
 
-
-
-
+        h5ad_file (str): Path to the output file. The output will be written in ``h5ad`` format and must
+            include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
+            be added. Required.    
+    """
+    write(adata, h5ad_file)
