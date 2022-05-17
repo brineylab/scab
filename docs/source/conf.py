@@ -29,23 +29,20 @@ if os.environ.get('READTHEDOCS', None) == 'True':
         def __getattr__(cls, name):
                 return Mock()
 
-    MOCK_MODULES = ['pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'nwalign', 'pandas', 'abutils', 'dask', 'dask.dataframe',
+    MOCK_MODULES = ['pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'nwalign', 'pandas', 'abutils', 
                     'scanpy', 'anndata', 'dnachisel', 'fastcluster', 'harmonypy', 'leidenalg', 
                     'matplotlib', 'matplotlib.pyplot', 'matplotlib.lines', 'matplotlib.patches', 
-                    'mpl_toolkits', 'mpl_toolkits.axes_grid1', 'mpl_toolkits.axes_grid1.inset_locator',
+                    # 'mpl_toolkits', 'mpl_toolkits.axes_grid1', 'mpl_toolkits.axes_grid1.inset_locator',
                     'sklearn', 'sklearn.neighbors', 
                     'mnemonic', 'natsort', 'prettytable', 'python-Levenshtein', 'Levenshtein', 'scanorama', 
                     'scipy', 'scipy.signal', 'scipy.cluster', 'scipy.cluster.hierarchy',
                     'statsmodels', 'statsmodels.api',
                     'scrublet', 'scvelo', 'seaborn', 'umap-learn',
                     'abutils.utils', 'abutils.core', 'abutils.core.sequence', 'abutils.core.pair',
-                    'abutils.utils.log', 'abutils.utils.alignment', 'abutils.utils.color', 
+                    'abutils.utils.alignment', 'abutils.utils.color', 
                     'abutils.utils.cluster', 'abutils.utils.utilities',
-                    'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators', 'abutils.utils.progbar',
-                    'biopython', 'celery', 'pymongo', 'scikit-bio', 'BaseSpacePy', 'BaseSpacePy.api',
-                    'BaseSpacePy.model', 'BaseSpacePy.api.BaseSpaceAPI', 'BaseSpacePy.model.QueryParameters',
-                    'Bio', 'Bio.Align', 'Bio.Alphabet', 'Bio.SeqIO', 'Bio.Seq', 'Bio.SeqRecord',
-                    'Bio.Blast', 'Bio.Blast.Applications']
+                    'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
+                    ]
     sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # If extensions (or modules to document with autodoc) are in another directory,
