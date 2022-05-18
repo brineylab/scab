@@ -180,7 +180,11 @@ def filter_and_normalize(
 
 def scrublet(adata, verbose=True):
     """
-    Predicts doublets using scrublet_ [ref]_.
+    Predicts doublets using scrublet_.
+
+    | Samuel L. Wolock, Romain Lopez, Allon M. Klein  
+    | Scrublet: Computational Identification of Cell Doublets in Single-Cell Transcriptomic Data  
+    | *Cell Systems* 2019, doi: https://doi.org/10.1016/j.cels.2018.11.005  
 
     Parameters
     ----------
@@ -196,16 +200,6 @@ def scrublet(adata, verbose=True):
     Returns an updated `adata` object with doublet predictions found at 
     ``adata.obs.is_doublet`` and doublet scores at ``adata.obs.doublet_score``.
 
-
-    Citation
-        Samuel L. Wolock, Romain Lopez, Allon M. Klein
-        Scrublet: Computational Identification of Cell Doublets in Single-Cell Transcriptomic Data  
-        *Cell Systems.* doi: https://doi.org/10.1016/j.cels.2018.11.005
-
-
-    .. [ref] Samuel L. Wolock, Romain Lopez, Allon M. Klein  
-        Scrublet: Computational Identification of Cell Doublets in Single-Cell Transcriptomic Data  
-        *Cell Systems.* April 2019, doi: https://doi.org/10.1016/j.cels.2018.11.005  
 
     .. _scrublet
         https://github.com/swolock/scrublet
@@ -224,15 +218,20 @@ def scrublet(adata, verbose=True):
 
 def doubletdetection(
     adata,
-    verbose=False,
     n_iters=25,
     use_phenograph=False,
     standard_scaling=True,
     p_thresh=1e-16,
     voter_thresh=0.5,
+    verbose=False,
 ):
     """
-    Predicts doublets using doubletdetection_ [ref]_.
+    Predicts doublets using doubletdetection_.  
+
+    | Adam Gayoso, Jonathan Shor, Ambrose J Carr, Roshan Sharma, Dana Pe'er  
+    | DoubletDetection (Version v3.0)  
+    | *Zenodo* 2020, doi: http://doi.org/10.5281/zenodo.2678041  
+
 
     Parameters
     ----------
@@ -267,16 +266,6 @@ def doubletdetection(
     color values.  
 
 
-    Citation
-        Gayoso, Adam, Shor, Jonathan, Carr, Ambrose J., Sharma, Roshan, Pe'er, Dana (2020, December 18). 
-        DoubletDetection (Version v3.0)
-        *Zenodo.* doi: http://doi.org/10.5281/zenodo.2678041 
-
-
-    .. [ref] Adam Gayoso, Jonathan Shor, Ambrose J.Carr, Roshan Sharma, Dana Pe'er   
-        DoubletDetection (Version v3.0)  
-        *Zenodo.* 2020, doi: http://doi.org/10.5281/zenodo.2678041  
-
     .. _doubletdetection
         https://github.com/JonathanShor/DoubletDetection
 
@@ -296,26 +285,32 @@ def doubletdetection(
     return adata
 
 
-def remove_doublets(adata, verbose=True, doublet_identification_function=None):
+def remove_doublets(adata, doublet_identification_method=None, verbose=True):
     """
     Removes doublets. If not already performed, doublet identification is performed 
-    using either doubletdetection (default) or with scrublet if 
-    ``doublet_identification_function`` is ``'scrublet'``.
+    using either doubletdetection or scrublet.
 
-    Args:
-    -----
+    Parameters
+    ----------
 
-        adata (anndata.AnnData): AnnData object containing gene count data.
+    adata : anndata.AnnData): 
+        ``AnnData`` object containing gene count data.  
 
-        verbose (bool): If ``True``, progress updates will be printed. Default is ``True``.
+    doublet_identification_method : str, default='doubletdetection'  
+        Method for identifying doublets. Only used if ``adata.obs.is_doublet`` does not
+        already exist. Options are ``'doubletdetection'`` and ``'scrublet'``.
 
-    Returns:
-    --------
+    verbose : bool, default=True  
+        If ``True``, progress updates will be printed.  
 
-        Returns an anndata.AnnData object without observations that were identified as doublets.
+    Returns
+    -------
+    An updated ``adata`` object that does not contain observations that were 
+    identified as doublets.
+
     """
     if "is_doublet" not in adata.obs.columns:
-        if doublet_identification_function.lower() == "scrublet":
+        if doublet_identification_method.lower() == "scrublet":
             adata = scrublet(adata, verbose=verbose)
         else:
             adata = doubletdetection(adata, verbose=verbose)

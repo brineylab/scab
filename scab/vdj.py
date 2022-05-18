@@ -25,15 +25,10 @@
 
 from collections import Counter
 import itertools
-
-# import random
-# import string
 import sys
 
 import pandas as pd
 import numpy as np
-
-# from sqlalchemy import over
 
 from Levenshtein import distance
 
@@ -46,7 +41,6 @@ import dnachisel as dc
 
 from natsort import natsorted
 
-from abutils.core.pair import Pair
 from abutils.core.sequence import Sequence
 from abutils.utils.cluster import cluster
 from abutils.utils.utilities import nested_dict_lookup
@@ -54,156 +48,82 @@ from abutils.utils.utilities import nested_dict_lookup
 from .models.lineage import Lineage
 
 
-def merge_vdj(
-    adata,
-    vdj_file,
-    tenx_annotation_csv=None,
-    high_confidence=True,
-    vdj_delimiter="\t",
-    vdj_id_key="seq_id",
-    vdj_sequence_key="vdj_nt",
-):
-    """
-    Merges VDJ information into an AnnData object containing gene expression and/or feature barcode data.
-
-    Args:
-    -----
-
-        adata (anndata.AnnData): AnnData object containing gene expression and/or feature barcode count data.
-
-        vdj_file (str): Path to a file containing annotated VDJ data. Abstar's ``tabular`` 
-                        output format is assumed, but any delimited format can be accomodated. Required.
-
-        tenx_annotation_csv (str): Path to CellRanger's contig annotation file (in CSV format). Note that CellRanger
-                                   also outputs a JSON-formatted annotation file, which is not supported. Default is ``None``,
-                                   which results in CellRanger annotations not being included. Supplying the annotation CSV
-                                   is encouraged, as the UMI counts are used to identify potential background contigs.
-
-        high_confidence (bool): If ``True``, only sequences that have been identified as "high confidence" by CellRanger are
-                                merged. Default is ``True``. This option is ignored if ``tenx_annotation_csv`` is ``None``.
-
-        vdj_delimiter (str): Delimiter used in ``vdj_file``. Default is ``'\t'``.
-
-        vdj_id_key (str): Name of the field in ``vdj_file`` that corresponds to the sequence ID. Default is ``'seq_id'``.
-
-        vdj_sequence_key (str): Name of the field in ``vdj_file`` that corresponds to the sequence. Default is ``'vdj_nt'``.
-
-    
-    Returns:
-    --------
-
-        Returns an ``anndata.AnnData`` object with merged VDJ data.
-
-    """
-    # read sequences
-    vdj_df = pd.read_csv(vdj_file, sep=vdj_delimiter)
-    seqs = [
-        Sequence(
-            row.where(pd.notnull(row), None).to_dict(),
-            id_key=vdj_id_key,
-            seq_key=vdj_sequence_key,
-        )
-        for index, row in vdj_df.iterrows()
-    ]
-    # read 10xG annotation file
-    if tenx_annotation_csv is not None:
-        annot_df = pd.read_csv(tenx_annotation_csv)
-        key = "contig_id" if "contig_id" in annot_df.columns.values else "consensus_id"
-        annots = {row[key]: row.to_dict() for index, row in annot_df.iterrows()}
-        for s in seqs:
-            s.tenx = annots.get(s[vdj_id_key], {})
-        if high_confidence:
-            seqs = [s for s in seqs if s.tenx.get("high_confidence", False)]
-    # identify pairs
-    pdict = {}
-    for s in seqs:
-        pname = s[vdj_id_key].split("_")[0]
-        if pname not in pdict:
-            pdict[pname] = [
-                s,
-            ]
-        else:
-            pdict[pname].append(s)
-    pair_dict = {
-        n: Pair(
-            pdict[n],
-            name=n,
-            h_selection_func=umi_selector,
-            l_selection_func=umi_selector,
-        )
-        for n in pdict.keys()
-    }
-    # update adata
-    vdjs = [pair_dict.get(o, Pair([], name=o)) for o in adata.obs_names]
-    adata.obs["vdj"] = vdjs
-    return adata
-
-
-def umi_selector(seqs):
-    sorted_seqs = sorted(seqs, key=lambda x: int(x.tenx.get("unis"), 0), reverse=True)
-    return sorted_seqs[0]
-
-
 def clonify(
     adata,
     distance_cutoff=0.32,
     shared_mutation_bonus=0.65,
     length_penalty_multiplier=2,
+    preclustering=False,
     preclustering_threshold=0.65,
     preclustering_field="cdr3_nt",
-    preclustering=False,
     lineage_field="lineage",
     lineage_size_field="lineage_size",
     annotation_format="airr",
     return_assignment_dict=False,
 ):
     """
-    Assigns BCR lineages using the clonify algorithm.
+    Assigns BCR sequences to clonal lineages using the clonify_ algorithm.
 
-    Args:
-    -----
+    | Bryan Briney, Khoa Le, Jiang Zhu, and Dennis R Burton  
+    | Clonify: unseeded antibody lineage assignment from next-generation sequencing data.
+    | *Scientific Reports* 2016, doi: https://doi.org/10.1038/srep23901
 
-        adata (anndata.AnnData): ``AnnData`` object containing annotated sequence data at ``adata.obs.bcr``. If
-            data was read using ``scab.read_10x_mtx()``, BCR data should already be in the correct location.
+    Parameters  
+    ----------
+    adata : anndata.AnnData  
+        ``AnnData`` object containing annotated sequence data at ``adata.obs.bcr``. If
+        data was read using ``scab.read_10x_mtx()``, BCR data should already be in the 
+        correct location.
 
-        distance_cutoff (float): Distance threshold for lineage clustering. Default is ``0.32``.
+    distance_cutoff : float, default=0.32  
+        Distance threshold for lineage clustering.  
 
-        shared_mutation_bonus (float): Bonus applied for each shared V-gene mutation. Default is ``0.65``.
+    shared_mutation_bonus : float, default=0.65  
+        Bonus applied for each shared V-gene mutation.  
 
-        length_penalty_multiplier (int): Multiplier for the CDR3 length penalty. Default is ``2``, resulting in
-            CDR3s that differ by ``n`` amino acids being penalized ``n * 2``.
+    length_penalty_multiplier : int, default=2  
+        Multiplier for the CDR3 length penalty. Default is ``2``, resulting in CDR3s that 
+        differ by ``n`` amino acids being penalized ``n * 2``.
 
-        preclustering_threshold (float): Identity threshold for pre-clustering the V/J groups prior to lineage 
-            assignment. Default is ``0.65``.
+    preclustering : bool, default=False  
+        If ``True``, V/J groups are pre-clustered on the `preclustering_field` sequence, 
+        which can potentially speed up lineage assignment and reduce memory usage. 
+        If ``False``, each V/J group is processed in its entirety without pre-clustering. 
 
-        preclustering_field (str): Annotation field on which to pre-cluster sequences. Default is ``'cdr3_nt'``.
+    preclustering_threshold : float, default=0.65  
+        Identity threshold for pre-clustering the V/J groups prior to lineage assignment. 
 
-        preclustering (bool): If ``True``, V/J groups are pre-clustered, which can potentially speed up lineage assignment
-            and reduce memory usage. If ``False``, each V/J group is processed in its entirety without pre-clustering. 
-            Default is ``False``.
+    preclustering_field : str, default='cdr3_nt'  
+        Annotation field on which to pre-cluster sequences.  
 
-        lineage_field (str): Name of the lineage assignment field. Default is ``lineage``.
+    lineage_field : str, default='lineage'  
+        Name of the lineage assignment field.  
 
-        lineage_size_field (str): Name of the lineage size field. Default is ``lineage_size``.
+    lineage_size_field : str, default='lineage_size'  
+        Name of the lineage size field.  
 
-        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
-            Default is ``'airr'``.
+    annotation_format : str, default='airr'  
+        Format of the input sequence annotations. Choices are ``'airr'`` or ``'json'``.  
         
-        return_assignment_dict (bool): If ``True``, a dictionary linking sequence IDs to lineage names will be returned.
-            If ``False``, the input ``anndata.AnnData`` object will be returned, with lineage annotations included.
-            Default is ``False``.
+    return_assignment_dict : bool, default=False  
+        If ``True``, a dictionary linking sequence IDs to lineage names will be returned. 
+        If ``False``, the input ``anndata.AnnData`` object will be returned, with lineage 
+        annotations included.  
 
-    Returns:
-    --------
+    Returns
+    -------
+    By default (``return_assignment_dict == False``), an updated `adata` object is 
+    returned with two additional columns populated: ``adata.obs.bcr_lineage``, 
+    which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, 
+    which contains the lineage size. Field names can be changed using 
+    `lineage_field` and `lineage_size_field`.
 
-        By default (``return_assignment_dict == False``), returns the input ``anndata.AnnData`` object with two additional
-        columns: ``adata.obs.bcr_lineage``, which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, 
-        which contains the lineage size. Field names can be changed using ``lineage_field`` and ``lineage_size_field``.
+    If ``return_assignment_dict == True``, a ``dict`` mapping droplet barcodes 
+    (``adata.obs_names``) to lineage names is returned. 
 
-        If ``return_assignment_dict == True``, a ``dict`` mapping droplet barcodes (``adata.obs_names``) to lineage 
-        names is returned. 
 
-    
+    .. _clonify  
+        https://github.com/briney/clonify    
     """
     # select the appropriate data fields
     if annotation_format.lower() == "airr":
