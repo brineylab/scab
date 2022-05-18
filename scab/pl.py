@@ -1397,13 +1397,7 @@ def cdr3_length_barplot(
         assumed to be from a single batch and a standard bar plot is generated. 
 
     batch_names : iterable object, optional  
-        List of batch names to be plotted. Useful when only a subset of the
-            batches found in ``adata.obs.batch_key`` are to be plotted or when the desired order of batches
-            is something other than the order produced by ``natsort.natsorted()``. Default is ``None``, 
-            which results in all batches being plotted in ``natsort.natsorted()`` order.
-
-    batch_names : iterable object, optional  
-        List of batch names to be plotted. If `bnatch_names` contains a subset of all categories 
+        List of batch names to be plotted. If `batch_names` contains a subset of all categories 
         found in `batch_key`, only the supplied `batch_names` will be plotted.  If not provided, 
         all batches will be plotted in ``natsort.natsorted()`` order.
 

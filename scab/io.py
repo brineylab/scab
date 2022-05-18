@@ -89,7 +89,8 @@ def read_10x_mtx(
     Parameters  
     ----------  
     mtx_path : str  
-        Path to the 10x Genomics matrix folder (as accepted by `scanpy.read_10x_mtx()`)
+        Path to a CellRanger counts matrix folder, typically either ``'sample_feature_bc_matrix'`` 
+        or ``'raw_feature_bc_matrix'``.  
 
     [bcr|tcr]_file : str, optional  
         Path to a file containing BCR/TCR data. The file can be in one of several formats:  
