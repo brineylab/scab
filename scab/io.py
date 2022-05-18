@@ -81,35 +81,10 @@ def read_10x_mtx(
 ):
 
     """
-    Reads output files from 10x Genomics' CellRanger (counts matrix and VDJ contig files) 
-    and outputs GEX, cell hash, antigen barcode (AgBC), feature barcode and VDJ data integrated into 
-    a single ``AnnData`` object.  
-    
-    All non-GEX counts data (cell hashes, AgBCs and features) are log2-plus-one 
-    transformed and moved to ``adata.obs`` for easier access. Cell hash and AgBC names can 
-    be provided (using the ``hashes`` and ``agbcs`` arguments) or can be automatically identified 
-    by matching to a regular expression (``[cellhash|agbc]_regex``). All non-GEX items in the counts matrix
-    that are not classified as cell hashes or AgBCs are considered features.  
-    
-    We have included a few options for processing cell hashes, AgBCs and features to ease 
-    processing when using CellRanger with standardized config files. For example, we often run CellRanger
-    using a config file that contains all of our cell hash, AgBC and feature barcode sequences 
-    regardless of whether they are actually used in a given experiment. Therefore, we have provided
-    an option to rename cell hashes, AgBCs and features using ``rename_[cellhashes|agbcs|features]``. 
-    Each of the rename functions accepts a ``dict`` with 
-    'old' names as ``keys`` and 'new' names as ``values``. If a subset of cell hashes, AgBCs or features 
-    are provided in the rename ``dict``, only the provided items will be renamed. Additionally, 
-    we provide an option to ignore cell hashes, AgBCs and features not present in the dataset 
-    (``ignore_zero_quantile_[cellhashes|agbcs|features]``). This works by examining the log2-plus-1 
-    transformed UMI counts of each cell hash, AgBC or feature at a given quantile (default is 0.95, 
-    but is adjustable with ``[cellhash|agbc|feature]_quantile``) and ignoring cell hashes, AgBCs and
-    features with quantile counts that equal zero.  
-    
-    Several input file formats are accepted for VDJ contig data. If annotated data files are 
-    provided (either ``'json'`` or ``'delimited'`` format), ``Pair`` objects will constructed using the 
-    annotated data and added to ``adata.obs.bcr`` or ``adata.obs.tcr`` as appropriate. If 
-    ``'fasta'`` files are supplied, sequences will be automatically annotated with `abstar`_, 
-    using `AIRR-formatted`_ output.
+    Reads and integrates output files from 10x Genomics' CellRanger into a single ``AnnData`` object.  
+
+    Datasets can include gene expression (GEX), cell hashes, antigen barcodes (AgBCs), feature
+    barcodes, and assembled BCR or TCR contig sequences.
 
     Parameters  
     ----------  
@@ -117,20 +92,19 @@ def read_10x_mtx(
         Path to the 10x Genomics matrix folder (as accepted by `scanpy.read_10x_mtx()`)
 
     [bcr|tcr]_file : str, optional  
-        Path to a file containing VDJ data. The file can be in of the following formats:  
-        1) a FASTA-formatted file, as output by CellRanger
-        2) a delimited text file, containing annotated VDJ sequences
-        3) a JSON file, containing annotated VDJ sequences
+        Path to a file containing BCR/TCR data. The file can be in one of several formats:  
+        a FASTA-formatted file, as output by CellRanger; a delimited text file, containing 
+        annotated BCR/TCR sequences; or a JSON file, containing annotated BCR/TCR sequences.
 
     [bcr|tcr]_annot : str, optional  
-        Path to the CSV-formatted VDJ annotations file produced by CellRanger. Matching the 
-        annotation file to `vdj_file` is preferred -- if ``'all_contig.fasta'`` is the supplied 
-        `vdj_file`, then ``'all_contig_annotations.csv'`` is the appropriate annotation file.  
+        Path to the CSV-formatted BCR/TCR annotations file produced by CellRanger. Matching the 
+        annotation file to `[bcr|tcr]_file` is preferred -- if ``'all_contig.fasta'`` is the supplied 
+        `[bcr|tcr]_file`, then ``'all_contig_annotations.csv'`` is the appropriate annotation file.  
 
     [bcr|tcr]_format : str, default='fasta'  
         Format of the input `[bcr|tcr]_file`. Options are: ``'fasta'``, ``'delimited'``, and 
-        ``'json'``. Default is ``'fasta'``. If `[bcr|tcr]_format` is ``'fasta'``, abstar 
-        will be run on the input data to obtain annotated VDJ data. By default, abstar will 
+        ``'json'``. If `[bcr|tcr]_format` is ``'fasta'``, `abstar`_ 
+        will be run on the input data to obtain annotated BCR/TCR data. By default, abstar will 
         produce `AIRR-formatted`_  (tab-delimited) annotations.  
 
     [bcr|tcr]_delimiter : str, default='\t'  
@@ -138,58 +112,59 @@ def read_10x_mtx(
         Default is ``'\t'``, which conforms to AIRR-C data standards.  
 
     [bcr|tcr]_id_key : str, default='sequence_id'  
-        Name of the column or field in `[bcr|tcr]_file` that corresponds to the sequence ID. 
-        Default is ``'sequence_id'``, which is compatible with standardized AIRR-C data formatting.  
+        Name of the column or field in `[bcr|tcr]_file` that corresponds to the sequence ID.   
 
     [bcr|tcr]_sequence_key : str, default='sequence'  
-        Name of the column or field in `[bcr|tcr]_file` that corresponds to the VDJ sequence. 
-        Default is ``'sequence'``, which is compatible with standardized AIRR-C data formatting.  
+        Name of the column or field in `[bcr|tcr]_file` that corresponds to the VDJ sequence.  
 
     [bcr|tcr]_id_delimiter : str, default='_'  
         The delimiter used to separate the droplet and contig components of the sequence ID.
         For example, default CellRanger names are formatted as: ``'AAACCTGAGAACTGTA-1_contig_1'``, where 
-        ``'AAACCTGAGAACTGTA-1'`` is the droplet identifier and ``'contig_1'`` is the contig identifier. 
-        Default is ``'_'``, which matches the format used by CellRanger.  
+        ``'AAACCTGAGAACTGTA-1'`` is the droplet identifier and ``'contig_1'`` is the contig identifier.  
 
     [bcr|tcr]_id_delimiter_num : str, default=1  
-        The occurance (1-based numbering) of the `[bcr|tcr]_id_delimiter`. Default is ``1``,
-        which matches the format used by CellRanger.  
+        The occurance (1-based numbering) of the `[bcr|tcr]_id_delimiter`.  
 
     abstar_output_format : str, default='airr'  
         Format for abstar annotations. Only used if `[bcr|tcr]_format` is ``'fasta'``. 
-        Options are ``'airr'``, ``'json'`` and ``'tabular'``. Default is ``'airr'``.  
+        Options are ``'airr'``, ``'json'`` and ``'tabular'``.  
+
+    abstar_germ_db : str, default='human'  
+        Germline database to be used for annotation of BCR/TCR data. Built-in abstar options 
+        include: ``'human'``, ``'macaque'``, ``'mouse'`` and ``'humouse'``. Only used if 
+        one or both of `[bcr|tcr]_format` is ``'fasta'``.
 
     gex_only : bool, default=False  
         If ``True``, return only gene expression data and ignore features and hashes. Note that
         VDJ data will still be included in the returned ``AnnData`` object if `[bcr|tcr]_file` 
-        is provided. Default is ``False``.  
+        is provided.  
 
     cellhash_regex : str, default='cell ?hash'  
         A regular expression (regex) string used to identify cell hashes. The regex 
-        must be found in all hash names. The default is ``'cell ?hash'``, which combined with the
+        must be found in all hash names. The default, combined with the
         default setting for `ignore_hash_regex_case`, will match ``'cellhash'`` or ``'cell hash'``
         in any combination of upper and lower case letters.  
 
     ignore_cellhash_regex_case : bool, default=True  
-        If ``True``, searching for `hash_regex` will ignore case. Default is ``True``.  
+        If ``True``, searching for `hash_regex` will ignore case.  
 
     agbc_regex : str, default='agbc'  
         A regular expression (regex) string used to identify AgBCs. The regex 
-        must be found in all AgBC names. The default is ``'agbc'``, which combined with the
+        must be found in all AgBC names. The default, combined with the
         default setting for `ignore_hash_regex_case`, will match ``'agbc'``
         in any combination of upper and lower case letters.  
 
     ignore_agbc_regex_case : bool, default=True  
-        If ``True``, searching for `agbc_regex` will ignore case. Default is ``True``.  
+        If ``True``, searching for `agbc_regex` will ignore case.  
 
     log_transform_cellhashes : bool, default=True  
-        If ``True``, cell hash UMI counts will be log2-plus-1 transformed. Default is ``True``.  
+        If ``True``, cell hash UMI counts will be log2-plus-1 transformed.  
 
     log_transform_agbcs : bool, default=True  
-        If ``True``, AgBC UMI counts will be log2-plus-1 transformed. Default is ``True``.  
+        If ``True``, AgBC UMI counts will be log2-plus-1 transformed.  
         
     log_transform_features : bool, default=True  
-        If ``True``, feature UMI counts will be log2-plus-1 transformed. Default is ``True``.  
+        If ``True``, feature UMI counts will be log2-plus-1 transformed.  
 
     ignore_zero_quantile_cellhashes : bool, default=True  
         If ``True``, any hashes for which the `cellhash_quantile`
@@ -229,7 +204,7 @@ def read_10x_mtx(
 
     feature_suffix : str, default='_FBC'  
         Suffix to add to the end of each feature name. Useful because feature 
-        names may overlap with gene names. Default is ``'_FBC'`` which would result in the feature 
+        names may overlap with gene names. The default value will result in the feature 
         ``'CD19'`` being renamed to ``'CD19_FBC'``. The suffix is added after feature renaming. 
         To skip the addition of a feature suffix, simply supply an empty string (``''``) as the argument.  
 
@@ -249,7 +224,7 @@ def read_10x_mtx(
         95th percentile.  
 
     verbose : bool, default=True  
-        Print progress updates. Default is ``True``.
+        Print progress updates.  
     
 
     Returns
@@ -450,21 +425,21 @@ def read_10x_mtx(
 def read(h5ad_file):
     """
     Reads a serialized ``AnnData`` object. Similar to ``scanpy.read()``, except that ``scanpy`` 
-    does not support serializing BCR/TCR data. If BCR/TCR data is included in the serialized ``AnnData``
+    does not support serialized BCR/TCR data. If BCR/TCR data is included in the serialized ``AnnData``
     file, it will be separately deserialized into the original ``abutils.Pair`` objects.
 
     Parameters
     ----------
-
-    adata : anndata.AnnData  
-        An ``AnnData`` object containing gene expression, feature barcode and 
-        VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
-        from raw CellRanger outputs. Required.
-
     h5ad_file : str  
         Path to the output file. The output will be written in ``h5ad`` format and must
         include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
-        be added. Required.    
+        be added. Required.   
+
+
+    Returns
+    -------
+    anndata.AnnData
+
     """
     adata = sc.read(h5ad_file)
     if "bcr" in adata.obs:

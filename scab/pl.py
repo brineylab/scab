@@ -221,83 +221,112 @@ def feature_kde(
     """
     Produces a 2-dimensional KDE plot of two features.
 
-    Args:
+    Parameters
+    ----------
+    data : anndata.AnnData or pandas.DataFramne  
+        An ``AnnData`` object or a ``DataFrame`` containing the input data. Required.
 
-        data (anndata.AnnData or pd.DataFramne): An ``AnnData`` object or a ``Pandas`` dataframe
-                                                 containing the input data. Required.
+    x : str
+        Name of the column in `data` containing the feature to be plotted on the x-axis. Required.
 
-        x (str): Name of the column in ``data`` containing the feature to be plotted on the x-axis. Required.
+    y : str  
+        Name of the column in `data` containing the feature to be plotted on the y-axis. Required.
 
-        y (str): Name of the column in ``data`` containing the feature to be plotted on the y-axis. Required.
+    hue : str, optional  
+        Name of the column in `data` containing categories for hue values. ``hue```` categories 
+        will each be plotted as differently colored densities on the same plot. 
 
-        hue (str): Name of the column in ``data`` containing categories for hue values. For scatter plots, 
-                   the categories in ``hue`` will be plotted as different colored points. For KDE plots,
-                   ``hue```` categories will each be plotted as differently colored KDE plots
-                   on the same plot. 
+    hue_order : iterable object, optional  
+        Iterable of hue categories, in the order they should be plotted and listed
+        in the legend. If `hue_order` contains only a subset of the categories
+        present in ``data[hue]`` or ``data.obs[hue]``, only the categories supplied in `hue_order`
+        will be plotted.
 
-        hue_order (iterable): Iterable of hue categories, in the order they should be plotted and listed
-                              in the legend. If ```hue_order``` contains only a subset of the categories
-                              present in ```data[hue]```, only the categories supplied in ```hue_order```
-                              will be plotted.
+    colors : iterable object, optional  
+        List of colors to be used for `hue` categories. If `colors` is shorter than the 
+        list of hue categories, colors will be reused. If not provided, the 
+        `default Seaborn color palette`_ will be used. 
 
-        colors (iterable): List of colors to be used for ```'hue'``` categories. If ```'colors'``` is
-                           shorter than the list of hue categories, colors will be reused.
-
-        thresh (float): Threshold for the KDE. Default is ```0.1```.
+    thresh : float, default=0.1  
+        Threshold for the KDE, as a fraction of the overall dataset.
         
-        show_scatter (bool): Show the scatterplot beneath the transparent KDE plot. Default is ```True```.
+    show_scatter : bool, default=True  
+        Show a scatterplot beneath the transparent KDE plot.
 
-        scatter_size (int, float): Size of the scatter points. Default is ```5```.
+    scatter_size : int or float, default=5  
+        Size of the scatter points.
 
-        scatter_alpha (float): Alpha of the scatter points. Default is ```0.2```.
+    scatter_alpha : float, default=0.2  
+        Alpha of the scatter points.
 
-        fill (bool): Fill the KDE plot. Default is ```True```.
+    fill : bool, default=True  
+        Whether or not to fill the KDE KDE plot. If ``False``, only the KDE boundary lines
+        will be plotted.
 
-        kde_fill_alpha (float): Alpha for the filled KDE plot. If ```fill``` is ```False```,
-                                this option is ignored. Default is ```0.7```.
+    kde_fill_alpha : float, default=0.7  
+        Alpha for the filled KDE plot. Ignored if `fill` is ``False``.  
         
-        kde_line_alpha (float): Alpha for the KDE plot lines. Default is ```1.0```.
+    kde_line_alpha : float, default=1.0  
+        Alpha for the KDE boundary lines.
 
-        highlight_index (iterable): An iterabile of index names (present in ```data```) of points
-                                    to be highlighted on the KDE plot. If provided, ```highlight_x```
-                                    and ```highlight_y``` are ignored.
+    highlight_index : iterable object, optional  
+        An iterable of index names (present in `data`) of points to be highlighted on 
+        the KDE plot. If provided, `highlight_x` and `highlight_y` are ignored.
 
-        highlight_x (iterable): An iterable of x-values for highlighted points. Also requires
-                                ```highlight_y```.
+    highlight_x : iterable object, optional  
+        An iterable of x-values for highlighted points. Also requires `highlight_y`.
         
-        highlight_y (iterable): An iterable of y-values for highlighted points. Also requires
-                                ```highlight_x```.
+    highlight_y : iterable object, optional  
+        An iterable of y-values for highlighted points. Also requires `highlight_x`.
         
-        highlight_marker (str): The marker style to be used for highlight points. Accepts 
-                                standard matplotlib marker styles. Default is ```'x'```. 
+    highlight_marker : str, default='x'  
+        Marker style to be used for highlight points. Accepts any `matplotlib marker`_. 
 
-        highlight_size (int): Size of the highlight marker. Default is ```90```.
+    highlight_size : int, default=90  
+        Size of the highlight marker.
 
-        highlight_color (string or RGB list): Color of the highlight points. Default is black.
+    highlight_color : string or list of color values, default='k'
+        Color of the highlight points.
 
-        highlight_name (str): Name of the highlights, to be used in the legend. If not supplied,
-                              highlight points will not be included in the legend.
+    highlight_name : str, optional  
+        Name of the highlights, to be used in the plot legend. If not supplied,
+        highlight points will not be included in the legend.
         
-        highlight_alpha (float): Alpha for the highlight points. Default is ```0.8```.
+    highlight_alpha : float, default=0.8  
+        Alpha of the highlight points.
 
-        xlabel (str): Label for the x-axis. By default, the value for ```x``` is used.
+    xlabel : str, optional  
+        Label for the x-axis. By default, the value for `x` is used.
 
-        ylabel (str): Label for the y-axis. By default, the value for ```y``` is used.
+    ylabel : str, optional  
+        Label for the y-axis. By default, the value for `y` is used.
 
-        equal_axes (bool): If ```True```, the the limits of the x- and y-axis will be equal.
-                           Default is ```True```.
+    equal_axes : bool, default=True
+        If ```True```, the the limits of the x- and y-axis will be equal.
         
-        legend_kwargs (dict): Dictionary of keyword arguments for the legend.
+    legend_kwargs : dict, optional  
+        Dictionary of legend keyword arguments, which will be passed to ``ax.legend()``.
 
-        return_ax (bool): If ```True```, return the plot's ```ax``` object. Will not show or save
-                          the plot. Default is ```False```.
+    return_ax : bool, default=False  
+        If ``True``, return the plot's ``ax`` object. Will not show or save the plot.
 
-        figsize (list): A list containg the dimensions of the plot. Default is ```[6, 6]```.
+    figsize : list, default=[6, 6]  
+        A list containg the dimensions of the plot, in inches.
 
-        figfile (str): Path to which the figure will be saved. If not provided, the figure will be
-                       shown but not saved to file.
+    figfile : str, optional  
+        Path to which the figure will be saved. If not provided, the figure will be 
+        shown but not saved to file.
 
-        kwargs: All other keyword arguments are passed to ``seaborn.kdeplot()``.
+    kwargs  
+        All other keyword arguments are passed to ``seaborn.kdeplot()``.
+
+    
+    .. _default Seaborn color palette  
+        https://seaborn.pydata.org/generated/seaborn.color_palette.html  
+
+    .. _matplotlib marker
+        https://matplotlib.org/stable/api/markers_api.html
+
     """
 
     # input data
@@ -523,84 +552,120 @@ def feature_scatter(
     """
     Produces a scatter plot of two features, optionally colored by a third feature.
 
-    Args:
-    -----
+    Parameters
+    ----------
+    data : anndata.AnnData or pandas.DataFramne  
+        An ``AnnData`` object or a ``DataFrame`` containing the input data. Required.
 
-        data (anndata.AnnData or pd.DataFramne): An ``AnnData`` object or a ``Pandas`` dataframe
-                                                 containing the input data. Required.
+    x : str
+        Name of the column in `data` containing the feature to be plotted on the x-axis. Required.
 
-        x (str): Name of the column in ``data`` containing the feature to be plotted on the x-axis. Required.
+    y : str  
+        Name of the column in `data` containing the feature to be plotted on the y-axis. Required.
 
-        y (str): Name of the column in ``data`` containing the feature to be plotted on the y-axis. Required.
+    hue : str, optional  
+        Name of the column in `data` containing categories for hue values. If `hue` is categorical,
+        each category will be plotted in a different color (using the `color` for the colors). If 
+        `hue` is continuous, points will be colored using a colormap (using `cmap` if supplied). 
 
-        hue (str): Name of the column in ``data`` containing categories for hue values. If ``hue`` is categorical,
-                   each category will be plotted in a different color (using the ``color`` for the colors). If 
-                   ``hue`` is continuous, points will be colored using a colormap (using ``cmap`` if supplied). 
+    hue_order : iterable object, optional  
+        Iterable of hue categories, in the order they should be plotted and listed
+        in the legend. If `hue_order` contains only a subset of the categories
+        present in ``data[hue]`` or ``data.obs[hue]``, only the categories supplied in `hue_order`
+        will be plotted.
 
-        hue_order (iterable): Iterable of hue categories, in the order they should be plotted and listed
-                              in the legend. If ```hue_order``` contains only a subset of the categories
-                              present in ```data[hue]```, only the categories supplied in ```hue_order```
-                              will be plotted.
+    force_categorical_hue : bool, default=False  
+        If ``True``, `hue` data will be treated as categorical, even if the data appear to 
+        be continuous. This results in `color` being used to color the points rather than `cmap`.  
 
-        force_categorical_hue (bool): If ``True``, ``hue`` data will be treated as categorical, even if
-                                      the data appear to be continuous. This results in ``color`` being used
-                                      to color the points rather than ``cmap``. Default is ``False``.
-
-        color (iterable): List of colors to be used for ``hue`` categories. If ``colors`` is
-                          shorter than the list of hue categories, colors will be reused. Only used
-                          if ``hue`` contains categorical data (``cmap`` is used for continuous data). 
-                          Default is to use ``sns.color_palette()``.
+    color : iterable object, optinoal
+        List of colors to be used for `hue` categories. If `colors` is shorter than the list 
+        of hue categories, colors will be reused. Only used if `hue` contains categorical data 
+        (`cmap` is used for continuous data). If not provided, the `default Seaborn color palette`_ 
+        will be used. 
         
-        camp (str or matplotlib.color.Colormap): Colormap to be used for continuous ``hue`` data. Default 
-                                                 is to use ``'flare'``.
+    cmap : str or matplotlib.color.Colormap, default='flare'   
+        Colormap to be used for continuous `hue` data.  
+
+    cbar_width : int, default=35  
+        Width of the colorbar. Only used for categorical `hue` types.  
+
+    cbar_height : int, default=5  
+        Height of the colorbar. Only used for categorical `hue` types.  
+
+    cbar_loc : str or iterable object, default='lower right'  
+        Location of the colorbar. Accepts `any valid ``inset_axes()`` location`_.
         
-        marker (str): Marker for the scatter plot. Accepts standard matplotlib marker styles.
-                      Default is ``'o'``.
+    marker : str, default='o'  
+        Marker style for the scatter plot. Accepts any `matplotlib marker`_.  
 
-        size (int, float): Size of the scatter points. Default is ``20``.
+    size : int or float, default=20  
+        Size of the scatter points.  
 
-        alpha (float): Alpha of the scatter points. Default is ``0.6``.
+    alpha : float, default=0.6  
+        Alpha of the scatter points.  
 
-        highlight_index (iterable): An iterabile of index names (present in ```data```) of points
-                                    to be highlighted on the scatter plot. If provided, ```highlight_x```
-                                    and ```highlight_y``` are ignored.
+    highlight_index : iterable object, optional  
+        An iterable of index names (present in `data`) of points to be highlighted on 
+        the KDE plot. If provided, `highlight_x` and `highlight_y` are ignored.
 
-        highlight_x (iterable): An iterable of x-values for highlighted points. Also requires
-                                ```highlight_y```.
+    highlight_x : iterable object, optional  
+        An iterable of x-values for highlighted points. Also requires `highlight_y`.
         
-        highlight_y (iterable): An iterable of y-values for highlighted points. Also requires
-                                ```highlight_x```.
+    highlight_y : iterable object, optional  
+        An iterable of y-values for highlighted points. Also requires `highlight_x`.
         
-        highlight_marker (str): The marker style to be used for highlight points. Accepts 
-                                standard matplotlib marker styles. Default is ``'x'``. 
+    highlight_marker : str, default='x'  
+        Marker style to be used for highlight points. Accepts any `matplotlib marker`_. 
 
-        highlight_size (int): Size of the highlight marker. Default is ``90``.
+    highlight_size : int, default=90  
+        Size of the highlight marker.
 
-        highlight_color (string or RGB list): Color of the highlight points. Default is ``'k'`` (black).
+    highlight_color : string or list of color values, default='k'
+        Color of the highlight points.
 
-        highlight_name (str): Name of the highlights, to be used in the legend. If not supplied,
-                              highlight points will not be included in the legend.
+    highlight_name : str, optional  
+        Name of the highlights, to be used in the plot legend. If not supplied,
+        highlight points will not be included in the legend.
         
-        highlight_alpha (float): Alpha for the highlight points. Default is ``0.9``.
+    highlight_alpha : float, default=0.9  
+        Alpha of the highlight points.
 
-        xlabel (str): Label for the x-axis. By default, the value for ``x`` is used.
+    xlabel : str, optional  
+        Label for the x-axis. By default, the value for `x` is used.
 
-        ylabel (str): Label for the y-axis. By default, the value for ``y`` is used.
+    ylabel : str, optional  
+        Label for the y-axis. By default, the value for `y` is used.
 
-        equal_axes (bool): If ``True``, the the limits of the x- and y-axis will be equal.
-                           Default is ``True``.
+    equal_axes : bool, default=True
+        If ```True```, the the limits of the x- and y-axis will be equal.
         
-        legend_kwargs (dict): Dictionary of keyword arguments for the legend.
+    legend_kwargs : dict, optional  
+        Dictionary of legend keyword arguments, which will be passed to ``ax.legend()``.
 
-        return_ax (bool): If ``True``, return the plot's ``ax`` object. Will not show or save
-                          the plot. Default is ``False``.
+    return_ax : bool, default=False  
+        If ``True``, return the plot's ``ax`` object. Will not show or save the plot.
 
-        figsize (list): A list containg the dimensions of the plot. Default is ``[6, 6]``.
+    figsize : list, default=[6, 6]  
+        A list containg the dimensions of the plot, in inches.
 
-        figfile (str): Path to which the figure will be saved. If not provided, the figure will be
-                       shown but not saved to file.
+    figfile : str, optional  
+        Path to which the figure will be saved. If not provided, the figure will be 
+        shown but not saved to file.  
 
-        kwargs: All other keyword arguments are passed to ``matplotlib.pyplot.scatter()``
+    kwargs
+        All other keyword arguments are passed to ``matplotlib.pyplot.scatter()``.  
+
+
+    .. _default Seaborn color palette  
+        https://seaborn.pydata.org/generated/seaborn.color_palette.html  
+
+    .. _matplotlib marker
+        https://matplotlib.org/stable/api/markers_api.html  
+
+    .. _any valid ``inset_axes()`` location
+        https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
+
     """
     # input data
     if isinstance(data, AnnData):
