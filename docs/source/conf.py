@@ -45,7 +45,7 @@ if os.environ.get('READTHEDOCS', None) == 'True':
                     'abstar.utils', 
                       'abstar.utils.abstar',
                     'abutils.utils', 
-                      'abutils.utils.alignment', 'abutils.utils.region', 'abutils.utils.color',
+                      'abutils.utils.alignment', 'abutils.utils.regions', 'abutils.utils.color',
                       'abutils.utils.cluster', 'abutils.utils.utilities', 'abutils.utils.alignment',
                       'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
                     'abutils.core', 
