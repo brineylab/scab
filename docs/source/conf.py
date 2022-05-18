@@ -39,12 +39,17 @@ if os.environ.get('READTHEDOCS', None) == 'True':
                     'scipy', 'scipy.signal', 'scipy.cluster', 'scipy.cluster.hierarchy',
                     'statsmodels', 'statsmodels.api',
                     'scrublet', 'scvelo', 'seaborn', 'umap-learn', 'Bio',
-                    'abstar.core', 'abstar.core.abstar', 'abstar.core.germline', 
-                    'abstar.preprocess', 'abstar.utils.abstar',
-                    'abutils.utils', 'abutils.core', 'abutils.core.sequence', 'abutils.core.pair',
-                    'abutils.utils.alignment', 'abutils.utils.region', 'abutils.utils.color',
-                    'abutils.utils.cluster', 'abutils.utils.utilities', 'abutils.utils.alignment',
-                    'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
+                    'abstar.core', 
+                      'abstar.core.abstar', 'abstar.core.germline', 
+                    'abstar.preprocess', 
+                    'abstar.utils', 
+                      'abstar.utils.abstar',
+                    'abutils.utils', 
+                      'abutils.utils.alignment', 'abutils.utils.region', 'abutils.utils.color',
+                      'abutils.utils.cluster', 'abutils.utils.utilities', 'abutils.utils.alignment',
+                      'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
+                    'abutils.core', 
+                      'abutils.core.sequence', 'abutils.core.pair',
                     ]
     sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
