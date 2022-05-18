@@ -95,8 +95,9 @@ author = u'Bryan Briney'
 # built documents.
 #
 # The short X.Y version.
-# version = __version__
-version = '0.0.4'
+from scab.version import __version__
+version = __version__
+# version = '0.0.4'
 # The full version, including alpha/beta/rc tags.
 release = version
 
