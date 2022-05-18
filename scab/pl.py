@@ -223,7 +223,7 @@ def feature_kde(
 
     Parameters
     ----------
-    data : anndata.AnnData or pandas.DataFramne  
+    data : anndata.AnnData or pandas.DataFrame  
         An ``AnnData`` object or a ``DataFrame`` containing the input data. Required.
 
     x : str
@@ -553,7 +553,7 @@ def feature_scatter(
 
     Parameters
     ----------
-    data : anndata.AnnData or pandas.DataFramne  
+    data : anndata.AnnData or pandas.DataFrame  
         An ``AnnData`` object or a ``DataFrame`` containing the input data. Required.
 
     x : str
@@ -1607,6 +1607,12 @@ def lineage_donut(
 ):
     """
     Creates a donut plot of a population of lineages, with arc widths proportional to lineage size.
+
+    .. note::
+       For **continuous** hues (for example, AgBC UMI counts), the mean value for each lineage is used. 
+       For **boolean** hues (for example, specificity classifications), the lineage is considered ``True`` if
+       any lineage member is ``True``. For **categorical** hues (for example, CDR3 length), the most common
+       value for each lineage is used. 
     
     Parameters
     ----------
@@ -1719,12 +1725,9 @@ def lineage_donut(
     
     Notes
     -----
-    For continuous hues (for example, AgBC UMI counts), the mean value for each lineage is used. 
-    For boolean values (for example, specificity classifications), the lineage is considered ``True`` if
-    any lineage member is ``True``. For categorical values (for example, CDR3 length), the most common
-    value for each lineage is used. 
-
     
+
+
     """
     adata = adata.copy()
     if pairs_only:
