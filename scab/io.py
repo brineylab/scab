@@ -93,8 +93,12 @@ def read_10x_mtx(
 
     [bcr|tcr]_file : str, optional  
         Path to a file containing BCR/TCR data. The file can be in one of several formats:  
-        a FASTA-formatted file, as output by CellRanger; a delimited text file, containing 
-        annotated BCR/TCR sequences; or a JSON file, containing annotated BCR/TCR sequences.
+
+                - FASTA-formatted file, as output by CellRanger  
+
+                - delimited text file, containing annotated BCR/TCR sequences  
+
+                - JSON-formatted file, containing annotated BCR/TCR sequences  
 
     [bcr|tcr]_annot : str, optional  
         Path to the CSV-formatted BCR/TCR annotations file produced by CellRanger. Matching the 

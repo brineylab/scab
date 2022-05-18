@@ -1106,7 +1106,7 @@ def germline_use_barplot(
     adata,
     gene_names=None,
     chain="heavy",
-    vdj_key="bcr",
+    receptor="bcr",
     germline_key="v_gene",
     batch_key=None,
     batch_names=None,
@@ -1143,7 +1143,10 @@ def germline_use_barplot(
 
     chain : str, default='heavy'  
         Chain for which germline gene usage will be plotted. Options are ``'heavy'``, ``'light'``, 
-        ``'kappa'``, ``'lambda'``, ``'alpha'``, ``'beta'``, ``'delta'`` or ``'gamma'``.
+        ``'kappa'``, ``'lambda'``, ``'alpha'``, ``'beta'``, ``'delta'`` or ``'gamma'``.  
+
+    receptor : str, default='bcr'  
+        Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.  
 
     germline_key : str, default='v_call'  
         Annotation key containing the germline gene to be plotted.  
@@ -1242,7 +1245,7 @@ def germline_use_barplot(
     batch_data = []
     all_gene_names = []
     for batch in batches:
-        vdjs = batch.obs[vdj_key]
+        vdjs = batch.obs[receptor]
         if pairs_only:
             vdjs = [v for v in vdjs if v.is_pair]
         # parse sequences
@@ -1341,7 +1344,7 @@ def cdr3_length_barplot(
     adata,
     lengths=None,
     chain="heavy",
-    vdj_key="bcr",
+    receptor="bcr",
     cdr3_length_key="cdr3_length",
     batch_key=None,
     batch_names=None,
@@ -1367,78 +1370,105 @@ def cdr3_length_barplot(
     Produces a bar plot of CDR3 length frequency. For datasets containing multiple batches, a stacked
     bar plot can optionally be generated.
 
-    Args:
-    -----
+    Parameters
+    ----------
 
-        adata (anndata.AnnData): An ``AnnData`` object containing the input data. ``adata`` must have
-            ``adata.obs[vdj_key]`` populated with annotated VDJ information. Required.
+    adata : anndata.AnnData  
+        An ``AnnData`` object containing the input data. ``adata`` must have
+        ``adata.obs[receptor]`` populated with annotated VDJ information. Required.
 
-        gene_names (iterable): A list of CDR3 lengths to be plotted. If not provided, all 
-            germline genes found in the dataset will be shown.
+    lengths : iterable object, optional  
+        A list of CDR3 lengths to be plotted. If not provided, all lengths found in the 
+        dataset will be shown.
 
-        chain (str): Chain for which germline gene usage will be plotted. Options are ``'heavy'``, 
-            ``'light'``, ``'kappa'`` and ``'lambda'``. Default is ``'heavy'``.
+    chain : str, default='heavy'  
+        Chain for which germline gene usage will be plotted. Options are ``'heavy'``, ``'light'``, 
+        ``'kappa'``, ``'lambda'``, ``'alpha'``, ``'beta'``, ``'delta'`` or ``'gamma'``.  
 
-        cdr3_length_key (str): Field (found in ``vdj.heavy`` or ``vdj.light``) containing the CDR3 lengths
-            to be plotted. Default is ``'cdr3_length'``, which plots CDR3 length frequencies using the standard
-            AIRR anotation naming scheme.
+    receptor : str, default='bcr'  
+        Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``. 
 
-        batch_key (str): Field (found in ``adata.obs``) containing batch names. If provided, batches 
-            will be plotted as stacked bars, one per batch. If not provided, all of the input data is 
-            assumed to be from a single batch and a standard bar plot is generated. 
+    cdr3_length_key : str, default='cdr3_length'  
+        Field containing the CDR3 length data to be plotted.  
 
-        batch_names (iterable): List of batch names to be plotted. Useful when only a subset of the
+    batch_key : str, optional  
+        Field (found in ``adata.obs``) containing batch names. If provided, batches 
+        will be plotted as stacked bars. If not provided, all of the input data is 
+        assumed to be from a single batch and a standard bar plot is generated. 
+
+    batch_names : iterable object, optional  
+        List of batch names to be plotted. Useful when only a subset of the
             batches found in ``adata.obs.batch_key`` are to be plotted or when the desired order of batches
             is something other than the order produced by ``natsort.natsorted()``. Default is ``None``, 
             which results in all batches being plotted in ``natsort.natsorted()`` order.
 
-        palette (iterable): List of batch colors. If none of ``palette``, ``color`` or ``germline_colors``
-            are provided, bars are colored by the germline gene.
+    batch_names : iterable object, optional  
+        List of batch names to be plotted. If `bnatch_names` contains a subset of all categories 
+        found in `batch_key`, only the supplied `batch_names` will be plotted.  If not provided, 
+        all batches will be plotted in ``natsort.natsorted()`` order.
 
-        color (str): Single color to be used for all bars in the plot. If none of ``palette``, ``color`` 
-            or ``germline_colors`` are provided, bars are colored by the germline gene. If provided in 
-            combination with ``germline_colors``, ``color`` will be used as the default color for genes 
-            not found in ``germline_colors``.
+    palette : iterable, optional  
+        List of batch colors. If none of `palette`, `color` or `length_colors`
+        are provided, bars are colored by the germline gene family.  
 
-        length_colors (dict): Dictionary mapping CDR3 lengths to colors. Particularly useful when
-            highlighting one or more CDR3 lengths is desired. Any CDR3 lengths not found as keys in 
-            ``length_colors`` will be colored using ``color``.
+    color :str, optional  
+        Single color to be used for all bars in the plot. If none of `palette`, `color` 
+        or `length_colors` are provided, bars are colored by the germline gene. If provided in 
+        combination with `length_colors`, `color` will be used as the default color for genes 
+        not found in `length_colors`. If `length_colors` is supplied and `color` is not, 
+        `color` will default to ``'#D3D3D3'``.
 
-        pairs_only (bool): If ``True``, only sequences for which a heavy/light pair is present will be
-            plotted. Default is ``False``, which plots all seqeunces of the desired ``chain``.
+    length_colors : dict, optional  
+        Dictionary mapping CDR3 lengths to colors. Particularly useful when
+        highlighting one or more CDR3 lengths is desired. Any CDR3 lengths not found as keys in 
+        `length_colors` will be colored using `color`.
 
-        normalize (bool): If ``True``, normalized frequencies are plotted. Note that normalization is
-            performed separately for each batch, so the total frequency may exceed ``1.0``. Default is
-            ``False``, which plots sequence counts.
+    pairs_only : bool, default=False  
+        If ``True``, only sequences for which a heavy/light pair is present will be
+        plotted.  
 
-        plot_kwargs (dict): Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
+    normalize : bool, default=False  
+        If ``True``, normalized frequencies are plotted instead of sequence counts. Note that 
+        normalization is performed separately for each batch, so the total frequency may exceed ``1.0``.
 
-        legend_kwargs (dict): Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
+    plot_kwargs : dict, optional  
+        Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
 
-        hide_legend (bool): By default, a plot legend will be shown if multiple batches are plotted. If 
-            ``True``, the legend will not be shown. Default is ``False``.
+    legend_kwargs : dict, optional  
+        Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
 
-        xlabel (str): Text for the X-axis label.
+    hide_legend : bool, default=False  
+        By default, a plot legend will be shown if multiple batches are plotted. If ``True``, 
+        the legend will not be shown.  
 
-        ylabel (str): Text for the Y-axis label.
+    xlabel : str, optional  
+        Text for the X-axis label.  
 
-        xlabel_fontsize (float): Fontsize for the X-axis label text. Default is ``16``.
+    ylabel : str, optional  
+        Text for the Y-axis label.  
 
-        ylabel_fontsize (float): Fontsize for the Y-axis label text. Default is ``16``.
+    ylabel_fontsize : int or float, default=16  
+        Fontsize for the Y-axis label text.
 
-        xtick_labelsize (float): Fontsize for the X-axis tick labels. Default is ``14``.
+    xtick_labelsize : int or float, default=14  
+        Fontsize for the X-axis tick labels.  
 
-        ytick_labelsize (float): Fontsize for the Y-axis tick labels. Default is ``14``.
+    ytick_labelsize : int or float, default=14  
+        Fontsize for the Y-axis tick labels.  
 
-        show (bool): If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
-            is ``False``, which does not call ``pyplot.show()`` and results the ``Axes`` object.
+    show :bool, default=False  
+        If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
+        is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
 
-        figsize (list): List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
-            If not provided, the figure size will be determined based on the number of germline genes
-            found in the data.
+    figsize : iterable object, optional  
+        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
+        If not provided, the figure size will be determined based on the number of germline genes
+        found in the data.
 
-        figfile (str): Path at which to save the figure file. If not provided, the figure is not saved
-            and is either shown (if ``show`` is ``True``) or the ``Axes`` object is returned.
+    figfile : str, optional  
+        Path at which to save the figure file. If not provided, the figure is not saved
+        and is either shown (if `show` is ``True``) or the ``Axes`` object is returned. 
+
     """
     # split input into batches
     if batch_key is not None:
@@ -1460,7 +1490,7 @@ def cdr3_length_barplot(
     batch_data = []
     all_lengths = []
     for batch in batches:
-        vdjs = batch.obs[vdj_key]
+        vdjs = batch.obs[receptor]
         if pairs_only:
             vdjs = [v for v in vdjs if v.is_pair]
         # parse sequences
@@ -1595,7 +1625,7 @@ def lineage_donut(
         Can be either the name of a column in ``adata.obs`` or a ``dict`` mapping
         lineage names to hue values. Used to determine the color of each lineage arc. If a ``dict`` 
         is provided, any missing lineage names will still be included in the donut plot but will 
-        be colored using `alt_color`. There are four possible classes of hue values:  
+        be colored using `alt_color`. There are three possible classes of hue values:  
              
                 - **continuous:** hues that map to a continuous numerical space, identified by all `hue` 
                   values being floating point numbers. An example would be log2-transformed
