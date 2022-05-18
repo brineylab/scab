@@ -118,9 +118,9 @@ def read_10x_mtx(
 
     [bcr|tcr]_file : str  
         Path to a file containing VDJ data. The file can be in of the following formats:  
-            1) a FASTA-formatted file, as output by CellRanger
-            2) a delimited text file, containing annotated VDJ sequences
-            3) a JSON file, containing annotated VDJ sequences
+        1) a FASTA-formatted file, as output by CellRanger
+        2) a delimited text file, containing annotated VDJ sequences
+        3) a JSON file, containing annotated VDJ sequences
 
     [bcr|tcr]_annot : str  
         Path to the CSV-formatted VDJ annotations file produced by CellRanger. Matching the 
@@ -456,7 +456,7 @@ def read(h5ad_file):
     Parameters
     ----------
 
-     adata : anndata.AnnData  
+    adata : anndata.AnnData  
         An ``AnnData`` object containing gene expression, feature barcode and 
         VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
         from raw CellRanger outputs. Required.
