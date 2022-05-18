@@ -42,7 +42,7 @@ if os.environ.get('READTHEDOCS', None) == 'True':
                     'abstar.core', 'abstar.core.abstar', 'abstar.core.germline', 
                     'abstar.preprocess', 'abstar.utils.abstar',
                     'abutils.utils', 'abutils.core', 'abutils.core.sequence', 'abutils.core.pair',
-                    'abutils.utils.alignment', 'abutils.utils.region', 
+                    'abutils.utils.alignment', 'abutils.utils.region', 'abutils.utils.color',
                     'abutils.utils.cluster', 'abutils.utils.utilities', 'abutils.utils.alignment',
                     'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
                     ]
