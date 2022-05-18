@@ -56,7 +56,7 @@ if os.environ.get('READTHEDOCS', None) == 'True':
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../../'))
 
 # -- General configuration ------------------------------------------------
 
@@ -296,7 +296,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'scab', u'scab Documentation',
+    (master_doc, 'scab', u'scab documentation',
      [author], 1)
 ]
 
@@ -310,7 +310,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'scab', u'scab Documentation',
+  (master_doc, 'scab', u'scab documentation',
    author, 'scab', 'One line description of project.',
    'Miscellaneous'),
 ]
