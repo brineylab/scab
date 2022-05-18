@@ -197,7 +197,7 @@ def scrublet(adata, verbose=True):
     ``adata.obs.is_doublet`` and doublet scores at ``adata.obs.doublet_score``.
 
 
-    .. _[ref] Samuel L. Wolock, Romain Lopez, Allon M. Klein
+    .. [ref] Samuel L. Wolock, Romain Lopez, Allon M. Klein
         Scrublet: Computational Identification of Cell Doublets in Single-Cell Transcriptomic Data  
         *Cell Systems.* doi: https://doi.org/10.1016/j.cels.2018.11.005
 
@@ -254,7 +254,7 @@ def doubletdetection(
 
     Returns
     -------
-    Returns an updated `adata1` object with doublet predictions found at ``adata.obs.is_doublet`` 
+    Returns an updated `adata` object with doublet predictions found at ``adata.obs.is_doublet`` 
     and doublet scores at ``adata.obs.doublet_score``. Note that ``adata.obs.is_doublet`` values are
     ``0.0`` and ``1.0``, not ``True`` and ``False``. This is the default output of ``doubletdetection``
     and is useful for plotting doublets using ``scanpy.pl.umap()``, which cannot handle boolean
