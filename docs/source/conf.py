@@ -30,7 +30,7 @@ if os.environ.get('READTHEDOCS', None) == 'True':
     #             return Mock()
 
     MOCK_MODULES = ['abstar', 'abutils',
-                    'pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'nwalign', 'pandas', 'abutils', 
+                    'pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'nwalign', 'pandas',
                     'scanpy', 'anndata', 'dnachisel', 'fastcluster', 'harmonypy', 'leidenalg', 
                     'matplotlib', 'matplotlib.pyplot', 'matplotlib.lines', 'matplotlib.patches', 
                     'mpl_toolkits', 'mpl_toolkits.axes_grid1', 'mpl_toolkits.axes_grid1.inset_locator',
