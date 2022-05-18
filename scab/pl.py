@@ -1597,16 +1597,16 @@ def lineage_donut(
         is provided, any missing lineage names will still be included in the donut plot but will 
         be colored using `alt_color`. There are four possible classes of hue values:  
              
-                - *continuous:* hues that map to a continuous numerical space, identified by all ``hue`` 
+                - **continuous:** hues that map to a continuous numerical space, identified by all `hue` 
                   values being floating point numbers. An example would be log2-transformed
                   antigen barcode UMI counts. For continuous hues, the mean of all members
                   in a lineage will be plotted.  
                   
-                - *boolean:* hues that map to either ``True`` or ``False``. An example would be specificity
+                - **boolean:** hues that map to either ``True`` or ``False``. An example would be specificity
                   classification. For boolean hues, if any member of a lineage is ``True``, the
                   entire lineage will be considered ``True``.  
                   
-                - *categorical:* hues that map to one of a set of categories. An example would be isotypes. 
+                - **categorical:** hues that map to one of a set of categories. An example would be isotypes. 
                   For categorical hues, the most common value observed in a lineage will 
                   be plotted.  
                   
