@@ -321,10 +321,10 @@ def feature_kde(
         All other keyword arguments are passed to ``seaborn.kdeplot()``.
 
     
-    .. _default Seaborn color palette  
+    .. _default Seaborn color palette: 
         https://seaborn.pydata.org/generated/seaborn.color_palette.html  
 
-    .. _matplotlib marker
+    .. _matplotlib marker: 
         https://matplotlib.org/stable/api/markers_api.html
 
     """
@@ -673,13 +673,13 @@ def feature_scatter(
         All other keyword arguments are passed to ``matplotlib.pyplot.scatter()``.  
 
 
-    .. _default Seaborn color palette  
+    .. _default Seaborn color palette: 
         https://seaborn.pydata.org/generated/seaborn.color_palette.html  
 
-    .. _matplotlib marker
+    .. _matplotlib marker: 
         https://matplotlib.org/stable/api/markers_api.html  
 
-    .. _any valid inset_axes() location
+    .. _any valid inset_axes() location: 
         https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
 
     """
@@ -1723,11 +1723,6 @@ def lineage_donut(
         when drawing the text in the center of the plot.
         
     
-    Notes
-    -----
-    
-
-
     """
     adata = adata.copy()
     if pairs_only:

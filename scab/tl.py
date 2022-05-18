@@ -62,22 +62,26 @@ def dimensionality_reduction(
     """
     performs PCA and UMAP embedding
 
-    Args:
-    -----
+    Parameters
+    ----------
 
-        solver (str): Solver to use for the PCA. Default is ``'arpack'``.
+    adata : anndata.AnnData)
+        ``AnnData`` object containing gene counts data.  
 
-        n_neighbors (int): Number of neighbors to calculate for the neighbor graph.
-                           Default is ``10``.
+    solver : str, default='arpack'  
+        Solver to use for the PCA.  
 
-        n_pcs (int): Number of principal components to use when calculating the
-                     neighbor graph. Default is ``40``. Although the default value
-                     is generally appropriate, it is advisable to use 
-                     ``GEX.plot_pca_variance`` to empiracally determine the optimal
-                     value for ``n_pcs``.
+    n_neighbors : int, default=10
+        Number of neighbors to calculate for the neighbor graph.  
 
-        paga (bool): If ``True``, performs partition-based graph abstraction prior to
-                     UMAP embedding. Default is ``True``.
+    n_pcs : int, default=40  
+        Number of principal components to use when computing the neighbor graph.
+        Although the default value is generally appropriate, it is sometimes useful
+        to empirically determine the optimal value for `n_pcs`.
+
+    paga : bool, default=True  
+        If ``True``, performs partition-based graph abstraction (PAGA_) prior to 
+        UMAP embedding.  
 
         use_rna_velocity (bool): If ``True``, uses RNA velocity information to compute PAGA.
                                  If ``paga`` is ``False``, this option is ignored. Default is ``False``.
@@ -90,6 +94,10 @@ def dimensionality_reduction(
         random_state (int): Seed for the random state used by ``sc.tl.umap``. Default is ``None``.
 
         resolution (float): Resolution for Leiden clustering. Default is ``1.0``.
+
+
+    .. _PAGA
+        https://github.com/theislab/paga
     """
     if verbose:
         print("performing PCA...")

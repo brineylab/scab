@@ -201,8 +201,7 @@ def scrublet(adata, verbose=True):
     ``adata.obs.is_doublet`` and doublet scores at ``adata.obs.doublet_score``.
 
 
-    .. _scrublet
-        https://github.com/swolock/scrublet
+    .. _scrublet: https://github.com/swolock/scrublet
     """
     import scrublet
 
@@ -266,8 +265,7 @@ def doubletdetection(
     color values.  
 
 
-    .. _doubletdetection
-        https://github.com/JonathanShor/DoubletDetection
+    .. _doubletdetection: https://github.com/JonathanShor/DoubletDetection
 
     """
     import doubletdetection
