@@ -197,7 +197,7 @@ def scrublet(adata, verbose=True):
 
     Returns
     -------
-    Returns an updated `adata` object with doublet predictions found at 
+    Returns an updated `adata` object with doublet predictions found at \
     ``adata.obs.is_doublet`` and doublet scores at ``adata.obs.doublet_score``.
 
 
@@ -259,10 +259,10 @@ def doubletdetection(
 
     Returns
     -------
-    Returns an updated `adata` object with doublet predictions found at ``adata.obs.is_doublet`` 
-    and doublet scores at ``adata.obs.doublet_score``. Note that ``adata.obs.is_doublet`` values are
-    ``0.0`` and ``1.0``, not ``True`` and ``False``. This is the default output of ``doubletdetection``
-    and is useful for plotting doublets using ``scanpy.pl.umap()``, which cannot handle boolean
+    Returns an updated `adata` object with doublet predictions found at ``adata.obs.is_doublet`` \
+    and doublet scores at ``adata.obs.doublet_score``. Note that ``adata.obs.is_doublet`` values are \
+    ``0.0`` and ``1.0``, not ``True`` and ``False``. This is the default output of ``doubletdetection`` \
+    and is useful for plotting doublets using ``scanpy.pl.umap()``, which cannot handle boolean \
     color values.  
 
 
@@ -305,7 +305,7 @@ def remove_doublets(adata, doublet_identification_method=None, verbose=True):
 
     Returns
     -------
-    An updated ``adata`` object that does not contain observations that were 
+    An updated ``adata`` object that does not contain observations that were \
     identified as doublets.
 
     """

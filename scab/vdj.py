@@ -112,14 +112,12 @@ def clonify(
 
     Returns
     -------
-    By default (``return_assignment_dict == False``), an updated `adata` object is 
-    returned with two additional columns populated: ``adata.obs.bcr_lineage``, 
-    which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, 
-    which contains the lineage size. Field names can be changed using 
-    `lineage_field` and `lineage_size_field`.
-
-    If ``return_assignment_dict == True``, a ``dict`` mapping droplet barcodes 
-    (``adata.obs_names``) to lineage names is returned. 
+    By default (``return_assignment_dict == False``), an updated `adata` object is \
+    returned with two additional columns populated: ``adata.obs.bcr_lineage``, \
+    which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, \
+    which contains the lineage size. If ``return_assignment_dict == True``, \
+    a ``dict`` mapping droplet barcodes (``adata.obs_names``) to lineage \
+    names is returned. 
 
 
     .. _clonify  

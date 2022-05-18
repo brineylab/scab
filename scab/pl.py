@@ -1717,10 +1717,14 @@ def lineage_donut(
         when drawing the text in the center of the plot.
         
     
+    Notes
+    -----
     For continuous hues (for example, AgBC UMI counts), the mean value for each lineage is used. 
     For boolean values (for example, specificity classifications), the lineage is considered ``True`` if
     any lineage member is ``True``. For categorical values (for example, CDR3 length), the most common
-    value for each lineage is used.
+    value for each lineage is used. 
+
+    
     """
     adata = adata.copy()
     if pairs_only:
