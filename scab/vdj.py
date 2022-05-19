@@ -402,37 +402,42 @@ def bcr_summary_csv(
     """
     docstring for bcr_summary_csv.
 
-    Args:
-    -----
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        An ``anndata.AnnData`` object containing annotated BCR sequences.
 
-        adata (anndata.AnnData): An anndata.AnnData object containing annotated BCR sequences.
+    leading_fields : iterable object, optional  
+        A list of fields in ``adata.obs`` that should be at the start
+        of the output data. By defauolt, the existing column order in 
+        ``adata.obs`` is used.  
 
-        leading_fields (list): A list of fields in ``adata.obs`` that should be at the start
-            of the output data. Default is ``None``, which uses the column orders found in 
-            ``adata.obs``.
+    include : iterable object, optional 
+        A list of columns in ``adata.obs`` that should be included in the 
+        summary output. By default, all columns in ``adata.obs`` are used.  
 
-        include (list): A list of columns in ``adata.obs`` that should be included in the 
-            summary output. Default is ``None``, which includes all columns in ``adata.obs``.
+    exclude : iterable object, optional  
+        A list of columns in ``adata.obs`` that should be excluded from the 
+        summary output. By default, no columns in ``adata.obs`` are excluded.  
 
-        exclude (list): A list of columns in ``adata.obs`` that should be excluded from the 
-            summary output. Default is ``None``, which does not exclude any columns.
+    rename : dict, optional  
+        A ``dict`` mapping ``adata.obs`` columns to new column names. Any column
+        names not included in `rename` will not be renamed.
 
-        rename (dict): A dictionary mapping ``adata.obs`` columns to new column names. Any column
-            names not included in ``rename`` will not be renamed.
+    annotation_format : str, default='airr'  
+        Format of the input sequence annotations. Choices are ``['airr', 'json']``.
 
-        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
-            Default is ``'airr'``.
-
-        output_file (str): Path to the output file. If not provided, the summary output will
-            be returned as a Pandas ``DataFrame``.
+    output_file : str, optional  
+        Path to the output file. If not provided, the summary output will
+        be returned as a Pandas ``DataFrame``.
 
     
-    Returns:
-    --------
-
-        If ``output_file`` is provided, the summary output will be written to the file in CSV
-        format and noting is returned. If ``output_file`` is not provided, the summary data will
-        be returned as a Pandas ``DataFrame``.
+    Returns
+    -------
+    If ``output_file`` is provided, the summary output will be written to the file in CSV
+    format and noting is returned. If ``output_file`` is not provided, the summary data will
+    be returned as a Pandas ``DataFrame``.
+    
     
     """
     # data fields
