@@ -7,13 +7,13 @@ The easiest way to install scab is to use pip::
 
 If you don't have pip, the Anaconda_ Python distribution contains pip along 
 with a ton of useful scientific Python packages and is a great way to get 
-started with Python.
+started with Python.  
 
 Stable_ and development_ versions of scab can also be downloaded from Github. 
 You can manually install the latest development version of scab with::
 
     $ git clone https://github.com/briney/scab
-    $ cd abstar/
+    $ cd scab/
     $ git checkout development
     $ python setup.py install
 
