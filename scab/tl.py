@@ -323,14 +323,14 @@ def classify_specificity(
     Classifies BCR specificity using antigen barcodes (**AgBCs**). Thresholds are computed by 
     analyzing background AgBC UMI counts in empty droplets.
 
-    .. important:: 
+    .. note:: 
        In order to set accurate thresholds, we must remove all cell-containing droplets 
        from the ``raw`` counts matrix. Because ``adata`` comprises only cell-containing 
        droplets, we simply remove all of the droplet barcodes in ``adata`` from ``raw``. 
        Thus, it is **very important** that ``adata`` and ``raw`` are well matched.  
        
-       For example, if a single Chromium reaction contained several multiplexed samples, 
-       ``adata`` must contain all of the multiplexed samples, since the raw matrix produced 
+       For example, if processing a single Chromium reaction containing several multiplexed samples, 
+       ``adata`` should contain all of the multiplexed samples, since the raw matrix produced 
        by CellRanger will also include all droplets in the reaction. If ``adata`` was missing 
        one or more samples, cell-containing droplets cannot accurately be removed from ``raw`` 
        and classification accuracy will be adversely affected.
@@ -352,7 +352,7 @@ def classify_specificity(
             If reading the raw counts matrix with ``scab.read_10x_mtx()``, it can be 
             helpful to include ``ignore_zero_quantile_agbcs=False``. In some cases with
             very little AgBC background, AgBCs can be incorrectly removed from the raw
-            counts matrix. 
+            counts matrix.  
             
     agbcs : iterable object, optional
         A list of AgBCs to be classified. Either `agbcs`` or `groups`` is required. 
@@ -597,7 +597,7 @@ def demultiplex(
     cellhash_regex="cell ?hash",
     ignore_cellhash_case=True,
     rename=None,
-    assignment_key="batch",
+    assignment_key="sample",
     threshold_minimum=4.0,
     threshold_maximum=10.0,
     kde_maximum=15.0,
@@ -607,47 +607,70 @@ def demultiplex(
     """
     Demultiplexes cells using cell hashes.
 
-    Args:
-    -----
+    Parameters
+    ----------
 
-        adata (anndata.Anndata): AnnData object containing cellhash UMI counts in ``adata.obs``.
+    adata : anndata.Anndata  
+        ``AnnData`` object containing cellhash UMI counts in ``adata.obs``.
         
-        hash_names (iterable): List of hashnames, which correspond to column names in ``adata.obs``. 
-            Overrides cellhash name matching using ``cellhash_regex``. If not provided, all columns 
-            in ``adata.obs`` that are matched using ``cellhash_regex`` will be assumed to be hashnames. 
+    hash_names : iterable object, optional  
+        List of hashnames, which correspond to column names in ``adata.obs``. 
+        Overrides cellhash name matching using `cellhash_regex`. If not provided, 
+        all columns in ``adata.obs`` that match `cellhash_regex` will be assumed 
+        to be hashnames and processed. 
         
-        cellhash_regex (str): A regular expression (regex) string used to identify cell hashes. The regex 
-            must be found in all cellhash names. The default is ``'cell ?hash'``, which combined with the
-            default setting for ``ignore_cellhash_regex_case``, will match ``'cellhash'`` or ``'cell hash'``
-            in any combination of upper and lower case letters.
+    cellhash_regex : str, default='cell ?hash'  
+        A regular expression (regex) string used to identify cell hashes. The regex 
+        must be found in all cellhash names. The default is ``'cell ?hash'``, which 
+        combined with the default setting for `ignore_cellhash_regex_case`, will 
+        match ``'cellhash'`` or ``'cell hash'`` anywhere in the cell hash name and 
+        in any combination of upper or lower case letters.  
 
-        ignore_cellhash_regex_case (bool): If ``True``, searching for ``cellhash_regex`` will ignore case.
-            Default is ``True``.
+    ignore_cellhash_regex_case : bool, default=True  
+        If ``True``, matching to `cellhash_regex` will ignore case.  
         
-        rename (dict): Dictionary relating hasnhames (column names in ``adata.obs``) to the preferred
-            batch name. For example, if the hashname ``'Cellhash1'`` corresponded to the sample 
-            ``'Sample1'``, an example ``rename`` argument would be::
+    rename : dict, optional  
+        A ``dict`` linking cell hash names (column names in ``adata.obs``) to the 
+        preferred batch name. For example, if the cell hash name ``'Cellhash1'`` 
+        corresponded to the sample ``'Sample1'``, an example `rename` argument 
+        would be::
 
                 {'Cellhash1': 'Sample1'}
 
-        assignment_key (str): Column name (in ``adata.obs``) into which cellhash classifications will be 
-            stored. Default is ``'cellhash_assignment'``.
+        This would result in all cells classified as positive for ``'Cellhash1'`` being
+        labeled as ``'Sample1'`` in the resulting assignment column (``adata.obs.sample`` 
+        by default, adjustable using `assignment_key`).
 
-        threshold_minimum (float): Minimum acceptable kig2-normalized UMI threshold. Potential 
-            thresholds below this value will be ignored. Default is ``4.0``.
+    assignment_key : str, default='sample'  
+        Column name (in ``adata.obs``) into which cellhash assignments will be stored.  
 
-        threshold_maximum (float): Maximum acceptable kig2-normalized UMI threshold. Potential 
-            thresholds above this value will be ignored. Default is ``10.0``.
+    threshold_minimum : float, default=4.0  
+        Minimum acceptable log2-normalized UMI count threshold. Potential thresholds 
+        below this cutoff value will be ignored.
 
-        kde_maximum (float): Upper limit of the KDE (in log2-normalized UMI counts). This should 
-            be below the maximum number of UMI counts, or else strange results may occur. Default 
-            is ``15.0``.
+    threshold_maximum : float, default=10.0  
+        Maximum acceptable log2-normalized UMI count threshold. Potential thresholds 
+        above this cutoff value will be ignored.  
 
-        assignments_only (bool): If ``True``, return a pandas ``Series`` object containing only the 
-            group assignment. Suitable for appending to an existing dataframe.
+    kde_maximum : float, default=15.0  
+        Upper limit of the KDE plot (in log2-normalized UMI counts). This should 
+        be less than `threshold_maximum`, or you may obtain strange results.  
 
-        debug (bool): produces plots and prints intermediate information for debugging. Default is 
-            ``False``.
+    assignments_only : bool, default=False  
+        If ``True``, return a pandas ``Series`` object containing only the group 
+        assignment. Suitable for appending to an existing dataframe. If ``False``,
+        an updated `adata` object is returned, containing cell hash group assignemnts
+        at ``adata.obs.assignment_key``
+
+    debug : bool, default=False  
+        If ``True``, saves cell hash KDE plots and prints intermediate information 
+        for debugging.  
+
+
+    Returns
+    -------
+    ``anndata.AnnData`` or ``pandas.Series``  
+    
     """
     # parse hash names
     if hash_names is None:

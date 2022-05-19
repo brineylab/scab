@@ -250,81 +250,95 @@ def build_synthesis_constructs(
 ):
     """
     Builds codon-optimized synthesis constructs, including Gibson overhangs suitable 
-    for cloning IGH, IGK and IGL constructs into expression vectors (Tiller et al., 2008).
-
-    Args:
-    -----
-
-        adata (anndata.AnnData): An anndata.AnnData object containing annotated BCR sequences.
-
-        overhang_5 (dict): Dictionary mapping locus to 5' Gibson overhangs. By default, Gibson
-            overhangs corresponding to the expression vectors in Tiller, et al 2008:
-
-              * heavy/IGH: catcctttttctagtagcaactgcaaccggtgtacac
-              * kappa/IGK: atcctttttctagtagcaactgcaaccggtgtacac
-              * lambda/IGL: atcctttttctagtagcaactgcaaccggtgtacac
-
-            To produce constructs without overhangs, provide an empty dictionary.
-
-        overhang_3 (dict): Dictionary mapping locus to 3' Gibson overhangs. By default, Gibson
-            overhangs corresponding to the expression vectors in Tiller, et al 2008: 
-
-              * heavy/IGH: gcgtcgaccaagggcccatcggtcttcc
-              * kappa/IGK: cgtacggtggctgcaccatctgtcttcatc
-              * lambda/IGL: ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc
-
-            To produce constructs without overhangs, provide an empty dictionary.
-
-        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
-            Default is ``'airr'``.
-
-        sequence_key (str): Field containing the sequence to be codon optimized. Default is ``'sequence_aa'`` if
-            ``annotation_format == 'airr'`` or ``'vdj_aa'`` if ``annotation_format == 'json'``. Either nucleotide 
-            or amino acid sequences are acceptable.
-
-        locus_key (str): Field containing the sequence locus. Default is ``'locus'`` if ``annotation_key == 'airr'``,
-            or ``'chain'`` if ``annotation_key == 'json'``. Note that values in ``locus_key`` should match
-            the keys in ``overhang_5`` and ``overhang_3``.
-
-        name_key (str): Field (in ``adata.obs``) containing the name of the BCR pair. If not provided, the
-            droplet barcode will be used.
-
-        bcr_key (str): Field (in ``adata.obs``) containing the annotated BCR pair. Default is ``'bcr'``.
-
-        sort (bool): If ``True``, output will be sorted by sequence name. Default is ``True``.
+    for cloning IGH, IGK and IGL variable region constructs into antibody expression 
+    vectors [1]_.
 
 
-    Returns:
-    --------
+    Parameters
+    ----------
+    adata : anndata.AnnData  
+        An ``anndata.AnnData`` object containing annotated BCR sequences.
 
-        sequences (list): A list of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
-            descriptive properties:
+    overhang_5 : dict, optional  
+        A ``dict`` mapping the locus name to 5' Gibson overhangs. By default, Gibson
+        overhangs corresponding to the expression vectors in [1]_:  
 
-              * id: The sequence ID, which includes the pair name and the locus.
-              * sequence: The codon-optimized sequence, including Gibson overhangs.
+              - **heavy/IGH:** ``catcctttttctagtagcaactgcaaccggtgtacac``
+              - **kappa/IGK:** ``atcctttttctagtagcaactgcaaccggtgtacac``
+              - **lambda/IGL:** ``atcctttttctagtagcaactgcaaccggtgtacac``
 
-            The following information is available using dictionary-style lookup:
+        To produce constructs without 5' Gibson overhangs, provide an empty dictionary.
 
-             * ``sequence[sequence_key]``: The input sequence, derived from the ``sequence_key`` field of the 
-                annotated input sequence.
-             * ``sequence[locus_key]``: The input sequence locus, derived from the ``locus_key`` field of the 
-                annotated input sequence.
-             * ``sequence['obs_name']: The droplet barcode.
+    overhang_3 : dict, optional  
+        A ``dict`` mapping the locus name to 3' Gibson overhangs. By default, Gibson
+        overhangs corresponding to the expression vectors in [1]_: 
 
-            If ``sort == True``, the output ``Sequence`` list will be sorted by name (using ``natsort.natsorted``).
+              - **heavy/IGH:** ``gcgtcgaccaagggcccatcggtcttcc``
+              - **kappa/IGK:** ``cgtacggtggctgcaccatctgtcttcatc``
+              - **lambda/IGL:** ``ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc``
+
+        To produce constructs without 3' Gibson overhangs, provide an empty dictionary.
+
+    sequence_key : str, default='sequence_aa'  
+        Field containing the sequence to be codon optimized. Default is ``'sequence_aa'`` if
+        ``annotation_format == 'airr'`` or ``'vdj_aa'`` if ``annotation_format == 'json'``. 
+        Either nucleotide or amino acid sequences are acceptable.
+
+    locus_key : str, default='locus'  
+        Field containing the sequence locus. Default is ``'locus'`` if ``annotation_key == 'airr'``,
+        or ``'chain'`` if ``annotation_key == 'json'``. Note that values in ``locus_key`` should match
+        the keys in ``overhang_5`` and ``overhang_3``.
+
+    name_key : str, optional  
+        Field (in ``adata.obs``) containing the name of the BCR pair. If not provided, the
+        droplet barcode will be used.
+
+    bcr_key : str, default='bcr'  
+        Field (in ``adata.obs``) containing the annotated BCR pair.  
+
+    sort : bool, default=True  
+        If ``True``, output will be sorted by sequence name.  
+
+
+    Returns
+    -------
+    sequences : list  
+        A list of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
+        descriptive properties:
+
+            - **id:** The sequence ID, which includes the pair name and the locus.
+            - **sequence:** The codon-optimized sequence, including Gibson overhangs.
+
+        The following information is available using dictionary-style lookup:
+
+            - ``sequence[sequence_key]``: The input sequence, derived from the 
+                ``sequence_key`` field of the annotated input sequence.
+            - ``sequence[locus_key]``: The input sequence locus, derived from the 
+                ``locus_key`` field of the annotated input sequence.
+            - ``sequence['obs_name']: The droplet barcode.
+
+        If ``sort == True``, the output ``Sequence`` list will be sorted by 
+        `name_key` using ``natsort.natsorted()``.
+
+    
+    .. [1]
+        | Thomas Tiller, Eric Meffre, Sergey Yurasov, Makoto Tsuiji, Michel C Nussenzweig, Hedda Wardemann 
+        | Efficient generation of monoclonal antibodies from single human B cells by single cell RT-PCR and expression vector cloning
+        | *Journal of Immunological Methods* 2008, doi: 10.1016/j.jim.2007.09.017  
+
     """
-    if any([locus_key is None, sequence_key is None]):
-        if annotation_format.lower() == "airr":
-            sequence_key = sequence_key if sequence_key is not None else "sequence_aa"
-            locus_key = locus_key if locus_key is not None else "locus"
-        elif annotation_format.lower() == "json":
-            sequence_key = sequence_key if sequence_key is not None else "vdj_aa"
-            locus_key = locus_key if locus_key is not None else "chain"
-        else:
-            err = '\nERROR: annotation format must be either "json" or "airr". '
-            err += f"You provided {annotation_format}\n"
-            print(err)
-            sys.exit()
+    # if any([locus_key is None, sequence_key is None]):
+    #     if annotation_format.lower() == "airr":
+    #         sequence_key = sequence_key if sequence_key is not None else "sequence_aa"
+    #         locus_key = locus_key if locus_key is not None else "locus"
+    #     elif annotation_format.lower() == "json":
+    #         sequence_key = sequence_key if sequence_key is not None else "vdj_aa"
+    #         locus_key = locus_key if locus_key is not None else "chain"
+    #     else:
+    #         err = '\nERROR: annotation format must be either "json" or "airr". '
+    #         err += f"You provided {annotation_format}\n"
+    #         print(err)
+    #         sys.exit()
     # get overhangs
     overhang_3 = overhang_3 if overhang_3 is not None else GIBSON3
     overhang_5 = overhang_5 if overhang_5 is not None else GIBSON5
