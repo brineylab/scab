@@ -311,11 +311,11 @@ def build_synthesis_constructs(
 
         The following information is available using dictionary-style lookup:  
 
-            - ``sequence[sequence_key]``: The input sequence, derived from the 
-                ``sequence_key`` field of the annotated input sequence.
-            - ``sequence[locus_key]``: The input sequence locus, derived from the 
-                ``locus_key`` field of the annotated input sequence.
-            - ``sequence['obs_name']``: The droplet barcode.
+            - ``sequence[sequence_key]:`` The input sequence, derived from the \
+            ``sequence_key`` field of the annotated input sequence.
+            - ``sequence[locus_key]:`` The input sequence locus, derived from the \
+            ``locus_key`` field of the annotated input sequence.
+            - ``sequence['obs_name']:`` The droplet barcode.
 
         If ``sort == True``, the output ``Sequence`` list will be sorted by 
         `name_key` using ``natsort.natsorted()``.
