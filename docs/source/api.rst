@@ -2,9 +2,6 @@ API Reference
 =============
 
 
-io
--------------
-
 .. toctree::
 
     modules/io
