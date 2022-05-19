@@ -9,7 +9,7 @@ straightforward API (which will be quite familiar to users of scanpy_) that
 allows sophisticated analyses with just a few lines of code:
 
 
-.. image:: path/scab-console-workflow_inverted.png
+.. image:: images/scab-console-workflow_inverted.png
   :width: 400
   :alt: example workflow in scab
 
