@@ -375,21 +375,23 @@ def classify_specificity(
         is ``0.997``, which corresponds to three standard deviations.
             
     percentile_dict : dict, optional  
-        A ``dict`` mapping AgBC or group names to the desired ``percentile``. If only a subset 
-            of AgBCs or groups are provided in ``percentile_dict``, all others will use ``percentile``.
+        A ``dict`` mapping AgBC or group names to the desired `percentile`. If only a subset 
+        of AgBCs or groups are provided in `percentile_dict`, all others will use `percentile`.
             
-        update (bool): If ``True``, update the ``adata`` with grouped UMI counts and classifications. If ``False``, 
-            a pandas ``DataFrame`` containg classifications will be returned and ``adata`` will not be modified. 
-            Default is ``True``.
+    update : bool, default=True  
+        If ``True``, update `adata` with grouped UMI counts and classifications. If ``False``, 
+        a Pandas ``DataFrame`` containg classifications will be returned and `adata` will 
+        not be modified. 
 
-        verbose (bool): If ``True``, calculated threshold values are printed. Default is ``True``.
+    verbose : bool, default=True  
+        If ``True``, calculated threshold values are printed.  
             
     
-    Returns:
-    --------
-    
-        If ``update == True``, an updated ``adata`` object containing specificity classifications is returned. Otherwise,
-        a pandas ``DataFrame`` containing specificity classifications is returned.
+    Returns
+    -------
+    If ``update == True``, an updated `adata` object containing specificity classifications 
+    is returned. Otherwise, a Pandas ``DataFrame`` containing specificity classifications 
+    is returned.
     
     """
     adata_groups = {}
