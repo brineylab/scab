@@ -1,11 +1,16 @@
 
-scab: single cell analysis of B cells
+scab: **s**ingle **c**ell **a**nalysis of **B** cells
 ===================================================================
 
 
 scab is a core component of the ab[x] toolkit for antibody sequence analysis. 
 scab provides a computational framework for integrating, analyzing and 
-visualizing single B cell multi-omics data.
+visualizing single B cell multi-omics data. We have developed a simple, 
+straightforward API (which will be quite familiar to users of scanpy_) that 
+allows sophisticated analyses with just a few lines of code:
+
+
+
 
 
 
