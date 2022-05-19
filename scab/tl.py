@@ -54,13 +54,14 @@ def dimensionality_reduction(
     n_pcs=40,
     paga=True,
     use_rna_velocity=False,
-    rep=None,
+    use_rep=None,
     random_state=None,
     resolution=1.0,
     verbose=True,
 ):
     """
-    performs PCA and UMAP embedding
+    Performs PCA, neighborhood graph construction and UMAP embedding. 
+    PAGA is optional.  
 
     Parameters
     ----------
@@ -83,28 +84,40 @@ def dimensionality_reduction(
         If ``True``, performs partition-based graph abstraction (PAGA_) prior to 
         UMAP embedding.  
 
-        use_rna_velocity (bool): If ``True``, uses RNA velocity information to compute PAGA.
-                                 If ``paga`` is ``False``, this option is ignored. Default is ``False``.
+    use_rna_velocity : bool, default=False  
+        If ``True``, uses RNA velocity information to compute PAGA. If ``False``, 
+        this option is ignored.  
 
-        rep (str): Representation to use when computing neighbors with ``sc.pp.neignbors``. For 
-                   example, if data have been batch normalized with ``scanorama``, the representation
-                   should be ``'Scanorama'``. Default is ``None``, which uses ``scanpy``'s default 
-                   representation.
+    use_rep : str, optional  
+        Representation to use when `computing neighbors`_. For example, if data have 
+        been batch normalized with ``scanorama``, the representation
+        should be ``'Scanorama'``. If not provided, ``scanpy``'s default 
+        representation is used.
 
-        random_state (int): Seed for the random state used by ``sc.tl.umap``. Default is ``None``.
+    random_state : int, optional  
+        Seed for the random state used by ``sc.tl.umap``.  
 
-        resolution (float): Resolution for Leiden clustering. Default is ``1.0``.
+    resolution : float, default=1.0  
+        Resolution for Leiden clustering.  
+
+    
+    Returns
+    -------
+    anndata.AnnData
 
 
-    .. _PAGA
-        https://github.com/theislab/paga
+    .. _PAGA: 
+        https://github.com/theislab/paga  
+    .. _computing neighbors: 
+        https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.neighbors.html
+
     """
     if verbose:
         print("performing PCA...")
     sc.tl.pca(adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
     if verbose:
         print("calculating neighbors...")
-    sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, use_rep=rep)
+    sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, use_rep=use_rep)
     if verbose:
         print("leiden clustering...")
     sc.tl.leiden(adata, resolution=resolution)
@@ -130,29 +143,41 @@ def dimensionality_reduction(
     return adata
 
 
-def combat(adata, batch_key="sample", covariates=None, dim_red=True):
+def combat(adata, batch_key="batch", covariates=None, dim_red=True):
     """
-    Data integration and batch correction using mutual nearest neighbors. Uses the 
-    ``scanpy.external.pp.mnn_correct()`` function.
+    Batch effect correction using ComBat_.  
 
-    Args:
-    -----
+    | W. Evan Johnson, Cheng Li, Ariel Rabinovic
+    | Adjusting batch effects in microarray expression data using empirical Bayes methods
+    | *Biostatistics* 2007, doi: 10.1093/biostatistics/kxj037
 
-        adata (anndata.AnnData): AnnData object containing gene expression and/or feature barcode count data.
 
-        batch_key (str): Name of the column in adata.obs that corresponds to the batch. Default is ``'sample'``.
+    Parameters
+    ----------
 
-        covariates (iterable): List of additional covariates besides the batch variable such as adjustment variables 
-                               or biological condition. Not including covariates may lead to the removal of real
-                               biological signal. Default is ``None``, which corresponds to no covariates.
+    adata : anndata.AnnData)
+        ``AnnData`` object containing gene counts data.
 
-        dim_red (bool): If ``True``, dimentionality reduction will be performed on the post-integration data using 
-                        ``scab.tl.data_reduction``. Default is ``True``.
+    batch_key : str, default='batch'  
+        Name of the column in adata.obs that corresponds to the batch.  
 
-    Returns:
-    --------
+    covariates : iterable object, optional  
+        List of additional covariates besides the batch variable such as adjustment variables 
+        or biological condition. Not including covariates may lead to the removal of real
+        biological signal.  
 
-        anndata.AnnData
+    dim_red : bool, default=True  
+        If ``True``, dimentionality reduction will be performed on the post-integration data using 
+        ``scab.tl.dimensionality_reduction()``.  
+
+    Returns
+    -------
+    anndata.AnnData
+
+
+    .. _ComBat: 
+        https://github.com/brentp/combat.py
+
     """
     adata_combat = sc.AnnData(X=adata.raw.X, var=adata.raw.var, obs=adata.obs)
     adata_combat.layers = adata.layers
@@ -165,29 +190,41 @@ def combat(adata, batch_key="sample", covariates=None, dim_red=True):
     return adata_combat
 
 
-def mnn(adata, batch_key="sample", min_hvg_batches=1, dim_red=True):
+def mnn(adata, batch_key="batch", min_hvg_batches=1, dim_red=True):
     """
-    Data integration and batch correction using mutual nearest neighbors. Uses the 
+    Data integration and batch correction using `mutual nearest neighbors`_. Uses the 
     ``scanpy.external.pp.mnn_correct()`` function.
 
-    Args:
-    -----
+    | Laleh Haghverdi, Aaron T L Lun, Michael D Morgan & John C Marioni
+    | Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors
+    | *Nature Biotechnology* 2019, doi: 10.1038/nbt.4091
 
-        adata (anndata.AnnData): AnnData object containing gene expression and/or feature barcode count data.
+    Parameters
+    ----------
+    adata : anndata.AnnData  
+        ``AnnData`` object containing gene counts data.
 
-        batch_key (str): Name of the column in adata.obs that corresponds to the batch. Default is ``'sample'``.
+    batch_key : str, default='batch'  
+        Name of the column in adata.obs that corresponds to the batch.  
 
-        min_hvg_batches (int): Minimum number of batches in which highly variable genes are found in order to be included
-                               in the list of genes used for batch correction. Default is ``1``, which results in the use 
-                               of all HVGs found in any batch.
+    min_hvg_batches : int, default=1  
+        Minimum number of batches in which highly variable genes are found in order to be included
+        in the list of genes used for batch correction. Default is ``1``, which results in the use 
+        of all HVGs found in any batch.
         
-        dim_red (bool): If ``True``, dimentionality reduction will be performed on the post-integration data using 
-                        ``scab.tl.data_reduction``. Default is ``True``.
+    dim_red : bool, default=True  
+        If ``True``, dimentionality reduction will be performed on the post-integration data using 
+        ``scab.tl.dimensionality_reduction()``.  
 
-    Returns:
-    --------
 
-        anndata.AnnData
+    Returns
+    -------
+    anndata.AnnData
+
+
+    .. _mutual nearest neighbors:
+        https://github.com/chriscainx/mnnpy
+
     """
     adata_mnn = adata.raw.to_adata()
     adata_mnn.layers = adata.layers
@@ -218,24 +255,36 @@ def mnn(adata, batch_key="sample", min_hvg_batches=1, dim_red=True):
     return corr_data
 
 
-def scanorama(adata, batch_key="sample", dim_red=True):
+def scanorama(adata, batch_key="batch", dim_red=True):
     """
-    Data integration and batch correction using Scanorama. Uses the ``scanorama.integrate_scanpy()`` function.
+    Batch correction using Scanorama_. 
 
-    Args:
-    -----
+    | Brian Hie, Bryan Bryson, and Bonnie Berger 
+    | Efficient integration of heterogeneous single-cell transcriptomes using Scanorama 
+    | *Nature Biotechnology* 2019, doi: 10.1038/s41587-019-0113-3
 
-        adata (anndata.AnnData): AnnData object containing gene expression and/or feature barcode count data.
+    Parameters
+    ----------
 
-        batch_key (str): Name of the column in adata.obs that corresponds to the batch. Default is ``'sample'``.
+    adata : anndata.AnnData  
+        ``AnnData`` object containing gene counts data.
 
-        dim_red (bool): If ``True``, dimentionality reduction will be performed on the post-integration data using 
-                        ``scab.tl.data_reduction``. Default is ``True``.
+    batch_key : str, default='batch'  
+        Name of the column in ``adata.obs`` that corresponds to the batch.  
 
-    Returns:
-    --------
+    dim_red : bool, default=True  
+        If ``True``, dimentionality reduction will be performed on the post-integration data using 
+        ``scab.tl.dimensionality_reduction``.  
 
-        anndata.AnnData
+
+    Returns
+    -------
+    anndata.AnnData
+
+
+    .. _Scanorama: 
+        https://github.com/brianhie/scanorama
+    
     """
     import scanorama
 
@@ -271,44 +320,62 @@ def classify_specificity(
     verbose=True,
 ):
     """
-    Classifies BCR specificity using antigen barcodes (AgBCs). Thresholds are computed by analyzing background 
-    AgBC UMIs in empty droplets.
+    Classifies BCR specificity using antigen barcodes (**AgBCs**). Thresholds are computed by 
+    analyzing background AgBC UMI counts in empty droplets.
 
-    NOTE: In order to set accurate thresholds, we must remove all cell-containing droplets from ``raw``. Because 
-    ``adata`` comprises only cell-containing droplets, we simply remove all of the droplet barcodes in ``adata``
-    from ``raw``. Thus, it is important that ``adata`` and ``raw`` are well matched. Ror example, if the entire 
-    Chromium reaction contained several multiplexed samples, ``adata`` must contain all of the multiplexed samples, 
-    since the raw matrix output by CellRanger includes all droplets in the reaction. If ``adata`` was missing one 
-    or more samples, cell-containing droplets cannot accurately be removed from ``raw`` and classification accuracy 
-    will be adversely affected.
+    .. important:: 
+       In order to set accurate thresholds, we must remove all cell-containing droplets 
+       from the ``raw`` counts matrix. Because ``adata`` comprises only cell-containing 
+       droplets, we simply remove all of the droplet barcodes in ``adata`` from ``raw``. 
+       Thus, it is **very important** that ``adata`` and ``raw`` are well matched.  
+       
+       For example, if a single Chromium reaction contained several multiplexed samples, 
+       ``adata`` must contain all of the multiplexed samples, since the raw matrix produced 
+       by CellRanger will also include all droplets in the reaction. If ``adata`` was missing 
+       one or more samples, cell-containing droplets cannot accurately be removed from ``raw`` 
+       and classification accuracy will be adversely affected.
     
-    Args:
-    -----
-    
-        adata (anndata.AnnData): Input AnnData object. Log2-normalized AgBC UMI counts should be found in 
-            ``adata.obs``. If data was read using ``scab.read_10x_mtx()``, the resulting AnnData object 
-            will already be correctly formatted. Required.
+    Parameters
+    ----------
+    adata : anndata.AnnData  
+        Input ``AnnData`` object. Log2-normalized AgBC UMI counts should be found in 
+        ``adata.obs``. If data was read using ``scab.read_10x_mtx()``, the resulting 
+        ``AnnData`` object will already be correctly formatted.  
             
-        raw (anndata.AnnData or str): Raw matrix data. Either a path to a directory containing the fraw ``.mtx`` file,
-            or an ``anndata.AnnData`` object containing the raw matrix data. As with ``adata``, log2-normalized AgBC 
-            UMIs should be found at ``raw.obs``. Required.
+    raw : anndata.AnnData or str  
+        Raw matrix data. Either a path to a directory containing the raw ``.mtx`` file
+        produced by CellRanger, or an ``anndata.AnnData`` object containing the raw 
+        matrix data. As with `adata`, log2-normalized AgBC UMIs should be found at 
+        ``raw.obs``.  
+
+        .. tip::
+            If reading the raw counts matrix with ``scab.read_10x_mtx()``, it can be 
+            helpful to include ``ignore_zero_quantile_agbcs=False``. In some cases with
+            very little AgBC background, AgBCs can be incorrectly removed from the raw
+            counts matrix. 
             
-        agbcs (list): A list of AgBCs to be classified. Either ``agbcs`` or ``groups`` is required. If both are 
-            provided, ``groups`` will be used.
+    agbcs : iterable object, optional
+        A list of AgBCs to be classified. Either `agbcs`` or `groups`` is required. 
+        If both are provided, both will be used.
         
-        groups (dict): A dictionary mapping specificity names to a list of one or more AgBCs. This is useful when
-            multiple AgBCs correspond to the same antigen (either because dual-labeled AgBCs were used, or 
-            because several AgBCs are closely-related variants that would be expected to compete for BCR binding). 
-            Either ``agbcs`` or ``groups`` is required. If both are provided, ``groups`` will be used.
+    groups : dict, optional  
+        A ``dict`` mapping specificity names to a list of one or more AgBCs. This 
+        is particularly useful when multiple AgBCs correspond to the same antigen 
+        (either because dual-labeled AgBCs were used, or because several AgBCs are 
+        closely-related molecules that would be expected to compete for BCR binding). 
+        Either `agbcs` or `groups` is required. If both are provided, both will be used.
             
-        rename (dict): A dictionary mapping AgBC or group names to a new name. Keys should be present in either 
-            ``agbcs`` or ``groups.keys()``. If only a subset of AgBCs or groups are provided in ``rename``, then 
-            only those AgBCs or groups will be renamed.
+    rename : dict, optional  
+        A ``dict`` mapping AgBC or group names to a new name. Keys should be present in 
+        either ``agbcs`` or ``groups.keys()``. If only a subset of AgBCs or groups are 
+        provided in ``rename``, then only those AgBCs or groups will be renamed.
             
-        percentile (float): Percentile used to compute the AgBC classification threshold using ``raw`` data. Default 
-            is ``0.997``, which corresponds to three standard deviations.
+    percentile : float, default=0.997  
+        Percentile used to compute the AgBC classification threshold using `raw` data. Default 
+        is ``0.997``, which corresponds to three standard deviations.
             
-        percentile_dict (dict): Dictionary mapping AgBC or group names to the desired ``percentile``. If only a subset 
+    percentile_dict : dict, optional  
+        A ``dict`` mapping AgBC or group names to the desired ``percentile``. If only a subset 
             of AgBCs or groups are provided in ``percentile_dict``, all others will use ``percentile``.
             
         update (bool): If ``True``, update the ``adata`` with grouped UMI counts and classifications. If ``False``, 

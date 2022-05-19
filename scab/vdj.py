@@ -120,8 +120,7 @@ def clonify(
     names is returned. 
 
 
-    .. _clonify  
-        https://github.com/briney/clonify    
+    .. _clonify: https://github.com/briney/clonify    
     """
     # select the appropriate data fields
     if annotation_format.lower() == "airr":
