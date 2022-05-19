@@ -302,20 +302,20 @@ def build_synthesis_constructs(
 
     Returns
     -------
-    sequences : list  
-        A list of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
-        descriptive properties:
+    sequences : list of Sequence  
+        A ``list`` of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
+        descriptive properties:  
 
-            - **id:** The sequence ID, which includes the pair name and the locus.
-            - **sequence:** The codon-optimized sequence, including Gibson overhangs.
+            - **id:** The sequence ID, which includes the pair name and the locus.  
+            - **sequence:** The codon-optimized sequence, including Gibson overhangs.  
 
-        The following information is available using dictionary-style lookup:
+        The following information is available using dictionary-style lookup:  
 
             - ``sequence[sequence_key]``: The input sequence, derived from the 
                 ``sequence_key`` field of the annotated input sequence.
             - ``sequence[locus_key]``: The input sequence locus, derived from the 
                 ``locus_key`` field of the annotated input sequence.
-            - ``sequence['obs_name']: The droplet barcode.
+            - ``sequence['obs_name']``: The droplet barcode.
 
         If ``sort == True``, the output ``Sequence`` list will be sorted by 
         `name_key` using ``natsort.natsorted()``.
@@ -434,10 +434,10 @@ def bcr_summary_csv(
     
     Returns
     -------
-    If ``output_file`` is provided, the summary output will be written to the file in CSV
-    format and noting is returned. If ``output_file`` is not provided, the summary data will
+    If ``output_file`` is provided, the summary output will be written to the file in CSV \
+    format and noting is returned. If ``output_file`` is not provided, the summary data will \
     be returned as a Pandas ``DataFrame``.
-    
+
     
     """
     # data fields
