@@ -1,12 +1,16 @@
-.. _APIexamples:
+.. _examples:
 
-API Examples
+examples
 ============
 
-abstar and abutils_ both expose a public API containing many of the core functions.
-This makes it reasonably straightforward to build custom pipelines that include
-several abstar/abutils components or integrate these tools with third-party tools. 
-A few simple examples are shown below.
+We have designed scab to be used primarily in interactive notebook-like \
+programming environments like Jupyter. Although it may have a steeper learning  \
+curve than a GUI-based tool, we believe that the gains in flexibility and \
+customizability are more than worth the tradeoff. 
+
+The scab API is quite similar to that of scanpy_[ref1]_. This is by design, as \
+scab builds on the 
+
 
 Case #1
 -------

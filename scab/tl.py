@@ -103,7 +103,7 @@ def dimensionality_reduction(
     
     Returns
     -------
-    anndata.AnnData
+    adata : ``anndata.AnnData``
 
 
     .. _PAGA: 
@@ -147,15 +147,16 @@ def combat(adata, batch_key="batch", covariates=None, dim_red=True):
     """
     Batch effect correction using ComBat_.  
 
-    | W. Evan Johnson, Cheng Li, Ariel Rabinovic
-    | Adjusting batch effects in microarray expression data using empirical Bayes methods
-    | *Biostatistics* 2007, doi: 10.1093/biostatistics/kxj037
+    .. seealso::
+        | W. Evan Johnson, Cheng Li, Ariel Rabinovic
+        | Adjusting batch effects in microarray expression data using empirical Bayes methods
+        | *Biostatistics* 2007, doi: 10.1093/biostatistics/kxj037
 
 
     Parameters
     ----------
 
-    adata : anndata.AnnData)
+    adata : anndata.AnnData
         ``AnnData`` object containing gene counts data.
 
     batch_key : str, default='batch'  
@@ -172,7 +173,7 @@ def combat(adata, batch_key="batch", covariates=None, dim_red=True):
 
     Returns
     -------
-    anndata.AnnData
+    adata : ``anndata.AnnData``
 
 
     .. _ComBat: 
@@ -195,9 +196,10 @@ def mnn(adata, batch_key="batch", min_hvg_batches=1, dim_red=True):
     Data integration and batch correction using `mutual nearest neighbors`_. Uses the 
     ``scanpy.external.pp.mnn_correct()`` function.
 
-    | Laleh Haghverdi, Aaron T L Lun, Michael D Morgan & John C Marioni
-    | Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors
-    | *Nature Biotechnology* 2019, doi: 10.1038/nbt.4091
+    .. seealso::
+        | Laleh Haghverdi, Aaron T L Lun, Michael D Morgan & John C Marioni
+        | Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors
+        | *Nature Biotechnology* 2019, doi: 10.1038/nbt.4091
 
     Parameters
     ----------
@@ -219,7 +221,7 @@ def mnn(adata, batch_key="batch", min_hvg_batches=1, dim_red=True):
 
     Returns
     -------
-    anndata.AnnData
+    adata : ``anndata.AnnData``
 
 
     .. _mutual nearest neighbors:
@@ -259,9 +261,10 @@ def scanorama(adata, batch_key="batch", dim_red=True):
     """
     Batch correction using Scanorama_. 
 
-    | Brian Hie, Bryan Bryson, and Bonnie Berger 
-    | Efficient integration of heterogeneous single-cell transcriptomes using Scanorama 
-    | *Nature Biotechnology* 2019, doi: 10.1038/s41587-019-0113-3
+    .. seealso::
+        | Brian Hie, Bryan Bryson, and Bonnie Berger 
+        | Efficient integration of heterogeneous single-cell transcriptomes using Scanorama 
+        | *Nature Biotechnology* 2019, doi: 10.1038/s41587-019-0113-3
 
     Parameters
     ----------
@@ -279,7 +282,7 @@ def scanorama(adata, batch_key="batch", dim_red=True):
 
     Returns
     -------
-    anndata.AnnData
+    adata : ``anndata.AnnData``
 
 
     .. _Scanorama: 
@@ -389,9 +392,10 @@ def classify_specificity(
     
     Returns
     -------
-    If ``update == True``, an updated `adata` object containing specificity classifications 
-    is returned. Otherwise, a Pandas ``DataFrame`` containing specificity classifications 
-    is returned.
+    output : ``anndata.AnnData`` or ``pandas.DataFrame``
+        If `update` is ``True``, an updated `adata` object containing specificity classifications \
+        is returned. Otherwise, a Pandas ``DataFrame`` containing specificity classifications \
+        is returned.  
     
     """
     adata_groups = {}
@@ -669,8 +673,11 @@ def demultiplex(
 
     Returns
     -------
-    ``anndata.AnnData`` or ``pandas.Series``  
-    
+    output : ``anndata.AnnData`` or ``pandas.Series``  
+        By default, an updated `adata` is returned with cell hash assignment groups \
+        stored in the `assignment_key` column of ``adata.obs``. If `assignments_only` \
+        is ``True``, a ``pandas.Series`` of lineage assignments is returned.
+
     """
     # parse hash names
     if hash_names is None:

@@ -182,9 +182,11 @@ def scrublet(adata, verbose=True):
     """
     Predicts doublets using scrublet_.
 
-    | Samuel L. Wolock, Romain Lopez, Allon M. Klein  
-    | Scrublet: Computational Identification of Cell Doublets in Single-Cell Transcriptomic Data  
-    | *Cell Systems* 2019, doi: https://doi.org/10.1016/j.cels.2018.11.005  
+    .. seealso::
+       | Samuel L. Wolock, Romain Lopez, Allon M. Klein  
+       | Scrublet: Computational Identification of Cell Doublets in Single-Cell Transcriptomic Data  
+       | *Cell Systems* 2019. https://doi.org/10.1016/j.cels.2018.11.005  
+
 
     Parameters
     ----------
@@ -227,9 +229,10 @@ def doubletdetection(
     """
     Predicts doublets using doubletdetection_.  
 
-    | Adam Gayoso, Jonathan Shor, Ambrose J Carr, Roshan Sharma, Dana Pe'er  
-    | DoubletDetection (Version v3.0)  
-    | *Zenodo* 2020, doi: http://doi.org/10.5281/zenodo.2678041  
+    .. seealso::
+       | Adam Gayoso, Jonathan Shor, Ambrose J Carr, Roshan Sharma, Dana Pe'er  
+       | DoubletDetection (Version v3.0)  
+       | *Zenodo* 2020. http://doi.org/10.5281/zenodo.2678041  
 
 
     Parameters

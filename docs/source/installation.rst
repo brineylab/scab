@@ -1,5 +1,5 @@
-Install
-=======
+installation
+============
 
 The easiest way to install scab is to use pip::
 

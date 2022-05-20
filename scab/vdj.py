@@ -64,9 +64,10 @@ def clonify(
     """
     Assigns BCR sequences to clonal lineages using the clonify_ algorithm.
 
-    | Bryan Briney, Khoa Le, Jiang Zhu, and Dennis R Burton  
-    | Clonify: unseeded antibody lineage assignment from next-generation sequencing data.
-    | *Scientific Reports* 2016, doi: https://doi.org/10.1038/srep23901
+    .. seealso::
+       | Bryan Briney, Khoa Le, Jiang Zhu, and Dennis R Burton  
+       | Clonify: unseeded antibody lineage assignment from next-generation sequencing data.
+       | *Scientific Reports* 2016. https://doi.org/10.1038/srep23901
 
     Parameters  
     ----------
@@ -112,12 +113,13 @@ def clonify(
 
     Returns
     -------
-    By default (``return_assignment_dict == False``), an updated `adata` object is \
-    returned with two additional columns populated -  ``adata.obs.bcr_lineage``, \
-    which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, \
-    which contains the lineage size. If ``return_assignment_dict == True``, \
-    a ``dict`` mapping droplet barcodes (``adata.obs_names``) to lineage \
-    names is returned. 
+    output : ``anndata.AnnData`` or ``dict``
+        By default (``return_assignment_dict == False``), an updated `adata` object is \
+        returned with two additional columns populated - ``adata.obs.bcr_lineage``, \
+        which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, \
+        which contains the lineage size. If ``return_assignment_dict == True``, \
+        a ``dict`` mapping droplet barcodes (``adata.obs_names``) to lineage \
+        names is returned. 
 
 
     .. _clonify: https://github.com/briney/clonify    
@@ -251,7 +253,13 @@ def build_synthesis_constructs(
     """
     Builds codon-optimized synthesis constructs, including Gibson overhangs suitable 
     for cloning IGH, IGK and IGL variable region constructs into antibody expression 
-    vectors [1]_.
+    vectors.
+
+
+    .. seealso:: 
+        | Thomas Tiller, Eric Meffre, Sergey Yurasov, Makoto Tsuiji, Michel C Nussenzweig, Hedda Wardemann 
+        | Efficient generation of monoclonal antibodies from single human B cells by single cell RT-PCR and expression vector cloning
+        | *Journal of Immunological Methods* 2008, doi: 10.1016/j.jim.2007.09.017  
 
 
     Parameters
@@ -261,21 +269,21 @@ def build_synthesis_constructs(
 
     overhang_5 : dict, optional  
         A ``dict`` mapping the locus name to 5' Gibson overhangs. By default, Gibson
-        overhangs corresponding to the expression vectors in [1]_:  
+        overhangs corresponding to the expression vectors in Tiller et al, 2008:  
 
-              - **heavy/IGH:** ``catcctttttctagtagcaactgcaaccggtgtacac``
-              - **kappa/IGK:** ``atcctttttctagtagcaactgcaaccggtgtacac``
-              - **lambda/IGL:** ``atcctttttctagtagcaactgcaaccggtgtacac``
+            | **IGH:** ``catcctttttctagtagcaactgcaaccggtgtacac``
+            | **IGK:** ``atcctttttctagtagcaactgcaaccggtgtacac``
+            | **IGL:** ``atcctttttctagtagcaactgcaaccggtgtacac``
 
         To produce constructs without 5' Gibson overhangs, provide an empty dictionary.
 
     overhang_3 : dict, optional  
         A ``dict`` mapping the locus name to 3' Gibson overhangs. By default, Gibson
-        overhangs corresponding to the expression vectors in [1]_: 
+        overhangs corresponding to the expression vectors in Tiller et al, 2008: 
 
-              - **heavy/IGH:** ``gcgtcgaccaagggcccatcggtcttcc``
-              - **kappa/IGK:** ``cgtacggtggctgcaccatctgtcttcatc``
-              - **lambda/IGL:** ``ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc``
+            | **IGH:** ``gcgtcgaccaagggcccatcggtcttcc``
+            | **IGK:** ``cgtacggtggctgcaccatctgtcttcatc``
+            | **IGL:** ``ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc``
 
         To produce constructs without 3' Gibson overhangs, provide an empty dictionary.
 
@@ -302,29 +310,15 @@ def build_synthesis_constructs(
 
     Returns
     -------
-    sequences : list of Sequence  
+    sequences : ``list`` of ``Sequence`` objects 
         A ``list`` of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
         descriptive properties:  
 
-            - **id:** The sequence ID, which includes the pair name and the locus.  
-            - **sequence:** The codon-optimized sequence, including Gibson overhangs.  
+            | *id*: The sequence ID, which includes the pair name and the locus.  
+            | *sequence*: The codon-optimized sequence, including Gibson overhangs.  
 
-        The following information is available using dictionary-style lookup:  
-
-            - ``sequence[sequence_key]``: The input sequence, derived from the \
-            ``sequence_key`` field of the annotated input sequence.
-            - ``sequence[locus_key]``: The input sequence locus, derived from the \
-            ``locus_key`` field of the annotated input sequence.
-            - ``sequence['obs_name']``: The droplet barcode.
-
-        If ``sort == True``, the output ``Sequence`` list will be sorted by 
+        If ``sort == True``, the output ``list``  will be sorted by 
         `name_key` using ``natsort.natsorted()``.
-
-    
-    .. [1]
-        | Thomas Tiller, Eric Meffre, Sergey Yurasov, Makoto Tsuiji, Michel C Nussenzweig, Hedda Wardemann 
-        | Efficient generation of monoclonal antibodies from single human B cells by single cell RT-PCR and expression vector cloning
-        | *Journal of Immunological Methods* 2008, doi: 10.1016/j.jim.2007.09.017  
 
     """
     # if any([locus_key is None, sequence_key is None]):

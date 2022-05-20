@@ -234,7 +234,7 @@ def read_10x_mtx(
 
     Returns
     -------
-    anndata.AnnData
+    adata : ``anndata.AnnData``
         An ``AnnData`` object containing gene expression data, with VDJ information located
         at ``adata.obs.bcr`` and/or ``adata.obs.tcr``, and cellhash and feature barcode data 
         found in ``adata.obs``. If ``gex_only`` is ``True``, cellhash and feature barcode data 
@@ -443,7 +443,7 @@ def read(h5ad_file):
 
     Returns
     -------
-    anndata.AnnData
+    adata : ``anndata.AnnData``
 
     """
     adata = sc.read(h5ad_file)
