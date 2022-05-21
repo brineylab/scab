@@ -19,10 +19,10 @@ tools
 ---------
 
 scab provides a range of utilities for all stages of single cell 
-adaptive immune analysis, including `data I/O`_, immune receptor 
-annotation, sample `demultiplexing`_, antigen `specificity classification`_, 
-and `clonal lineage assignment`_. scab also includes 
-a variety of `visualization tools`_ designed to facilitate exploratory 
+adaptive immune analysis, including data I/O, immune receptor 
+annotation, sample demultiplexing, antigen specificity classification, 
+and clonal lineage assignment. scab also includes 
+a variety of visualization tools designed to facilitate exploratory 
 analyses and generate publication-quality figures.  
 
 
@@ -41,8 +41,5 @@ format, ensuring interoperability with a wide range of existing
 and future software.
 
 
-.. _scanpy: 
-.. _data I/O: io_
-
-.. _visualization tools: pl_
+.. _scanpy: https://github.com/scverse/scanpy
 

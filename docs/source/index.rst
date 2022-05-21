@@ -7,11 +7,20 @@ visualizing single B cell multi-omics data. We have developed a simple,
 straightforward API (which will feel quite familiar to users of scanpy_) that 
 allows sophisticated analyses with just a few lines of code:  
 
+
+.. image:: images/scab_console-workflow.jpg
+  :width: 750
+  :alt: example workflow in scab
+  :align: center
+  :class: only-light
   
+
 .. image:: images/scab_console-workflow_inverted.jpg
   :width: 750
   :alt: example workflow in scab
   :align: center
+  :class: only-dark
+  
   
 |   
   
@@ -20,6 +29,7 @@ by scanpy_. We integrate several tools specifically designed to facilitate
 analysis of adaptive immune cells and repertoires.     
 
 
+|  
 
 .. toctree::
    :maxdepth: 1
@@ -29,6 +39,7 @@ analysis of adaptive immune cells and repertoires.
    installation
 
 
+|
 
 .. toctree::
    :maxdepth: 1
@@ -38,6 +49,7 @@ analysis of adaptive immune cells and repertoires.
    api
    
 
+|
 
 .. toctree::
    :maxdepth: 1
@@ -47,6 +59,7 @@ analysis of adaptive immune cells and repertoires.
    news
 
 
+|
 
 .. toctree::
    :maxdepth: 1
@@ -57,12 +70,6 @@ analysis of adaptive immune cells and repertoires.
    abcloud <https://github.com/briney/abcloud>
    clonify <https://github.com/briney/clonify-python>
 
-
-Index
------
-
-* :ref:`modindex`
-* :ref:`search`
 
 
 

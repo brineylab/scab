@@ -1,4 +1,4 @@
-API reference
+api reference
 =============
 
 
@@ -7,8 +7,6 @@ API reference
     modules/io
 
 
-pp
--------------
 
 .. toctree::
 
@@ -16,17 +14,11 @@ pp
 
 
 
-vdj
------------------
-
 .. toctree::
 
     modules/vdj
 
 
-
-tl
------------------
 
 .. toctree::
 
@@ -34,8 +26,6 @@ tl
 
 
 
-pl
------------------
 
 .. toctree::
 
