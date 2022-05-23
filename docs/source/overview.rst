@@ -4,10 +4,9 @@ overview
 As single cell omics tools become increasingly important for 
 characterizing adaptive immunity, we noted the need for open, 
 easy-to-use software designed specifically for analysis of 
-adaptive immune cells.  
-
-We built **scab** to fill this need. It was engineered to use an 
-API that should be familiar to users of scanpy_, which is the 
+adaptive immune cells. We built **scab** to fill this need. 
+It was engineered to use an API that should be familiar to 
+users of scanpy_ [Wolf18]_, which is the 
 most widely used Python package for general single cell omics 
 analysis. Beyond the API similarities, scab builds directly 
 on the models and functions introduced by scanpy to create 
@@ -24,6 +23,10 @@ annotation, sample demultiplexing, antigen specificity classification,
 and clonal lineage assignment. scab also includes 
 a variety of visualization tools designed to facilitate exploratory 
 analyses and generate publication-quality figures.  
+
+Additionally, because scab builds on the ``AnnData`` objects that 
+are a central component of scanpy, users of scab retain compatibility 
+with the rest of the `scanpy ecosystem`_.
 
 
 file and data standards
@@ -42,4 +45,5 @@ and future software.
 
 
 .. _scanpy: https://github.com/scverse/scanpy
+.. _scanpy ecosystem: https://scanpy.readthedocs.io/en/latest/ecosystem.html
 

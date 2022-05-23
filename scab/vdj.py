@@ -62,7 +62,7 @@ def clonify(
     return_assignment_dict=False,
 ):
     """
-    Assigns BCR sequences to clonal lineages using the clonify_ algorithm.
+    Assigns BCR sequences to clonal lineages using the clonify_ [Briney16]_ algorithm.
 
     .. seealso::
        | Bryan Briney, Khoa Le, Jiang Zhu, and Dennis R Burton  

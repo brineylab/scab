@@ -4,8 +4,8 @@ scab: single cell analysis of B cells
  
 scab provides a computational framework for integrating, analyzing and 
 visualizing single B cell multi-omics data. We have developed a simple, 
-straightforward API which should feel quite familiar to users of scanpy_) 
-and  allows sophisticated analyses with just a few lines of code:  
+straightforward API which should feel quite familiar to users of scanpy_ 
+and allows sophisticated analyses with just a few lines of code:  
 
 
 .. image:: images/scab_console-workflow.jpg
@@ -55,6 +55,7 @@ analysis of adaptive immune cells and receptor repertoires.
    :maxdepth: 1
    :caption: about
 
+   references
    license
    news
 

@@ -68,7 +68,8 @@ sys.path.insert(0, os.path.abspath('../../'))
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -134,7 +135,8 @@ exclude_patterns = []
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+# pygments_style = 'sphinx'
+pygments_style = 'monokai'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []

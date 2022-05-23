@@ -180,7 +180,7 @@ def filter_and_normalize(
 
 def scrublet(adata, verbose=True):
     """
-    Predicts doublets using scrublet_.
+    Predicts doublets using scrublet_ [Wolock19]_.
 
     .. seealso::
        | Samuel L. Wolock, Romain Lopez, Allon M. Klein  
@@ -227,7 +227,7 @@ def doubletdetection(
     verbose=False,
 ):
     """
-    Predicts doublets using doubletdetection_.  
+    Predicts doublets using doubletdetection_ [Gayoso20]_.  
 
     .. seealso::
        | Adam Gayoso, Jonathan Shor, Ambrose J Carr, Roshan Sharma, Dana Pe'er  

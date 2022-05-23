@@ -145,7 +145,7 @@ def dimensionality_reduction(
 
 def combat(adata, batch_key="batch", covariates=None, dim_red=True):
     """
-    Batch effect correction using ComBat_.  
+    Batch effect correction using ComBat_ [Johnson07]_.  
 
     .. seealso::
         | W. Evan Johnson, Cheng Li, Ariel Rabinovic
@@ -193,7 +193,7 @@ def combat(adata, batch_key="batch", covariates=None, dim_red=True):
 
 def mnn(adata, batch_key="batch", min_hvg_batches=1, dim_red=True):
     """
-    Data integration and batch correction using `mutual nearest neighbors`_. Uses the 
+    Data integration and batch correction using `mutual nearest neighbors`_ [Haghverdi19]_. Uses the 
     ``scanpy.external.pp.mnn_correct()`` function.
 
     .. seealso::
@@ -259,7 +259,7 @@ def mnn(adata, batch_key="batch", min_hvg_batches=1, dim_red=True):
 
 def scanorama(adata, batch_key="batch", dim_red=True):
     """
-    Batch correction using Scanorama_. 
+    Batch correction using Scanorama_ [Hie19]_. 
 
     .. seealso::
         | Brian Hie, Bryan Bryson, and Bonnie Berger 

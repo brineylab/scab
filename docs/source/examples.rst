@@ -3,168 +3,126 @@
 examples
 ============
 
-We have designed scab to be used primarily in interactive notebook-like \
-programming environments like Jupyter. Although it may have a steeper learning  \
-curve than a GUI-based tool, we believe that the gains in flexibility and \
-customizability are more than worth the tradeoff. 
+We have designed scab to be used primarily in interactive notebook-like 
+programming environments like Jupyter. Although it may have a steeper learning 
+curve than a GUI-based tool, we believe that the gains in flexibility and 
+customizability are more than worth the tradeoff.  
 
-The scab API is quite similar to that of scanpy_[ref1]_. This is by design, as \
-scab builds on the 
+The scab API is quite similar to that of scanpy_ [Wolf18]_. This is by design, as 
+we are big fans of the scanpy API and are also striving minimize the learning curve 
+for users already familiar with scanpy. Additoinally, scab builds on the ``AnnData`` 
+object at the core of scanpy to integrate BCR/TCR and antigen specificity data.  
+
+Below are a few hypothetical use cases, with functional code examples. The 
+`scab Github repository`_` includes interactive examples with sample datasets so that 
+users can take scab for a more comprehensive test drive. 
 
 
-Case #1
--------
-Sequencing data consists of an Illumina MiSeq run on human samples, with the raw data
-stored in BaseSpace (project ID: 123456789). Samples are indexed, so each sample will 
-be downloaded from BaseSpace as a separate pair of read files. We'd like to do several things:
+example #1
+------------
+Our first example is relatively simple. We're starting with two single cell libraries 
+(cell hashes and B cell VDJ) generated from a set of multiplexed samples of 
+enriched B cells on a single 10x Genomics Chromium Controller reaction. We have two 
+primary outputs from CellRanger: 1) a counts matrix, which includes only 
+cell hashes; and 2) assembled BCR contigs with associated summary 
+annotations. With this dataset, we'd like to do the following:  
 
-  - get a FASTQC report on the raw data
-  - remove adapters
-  - quality trim
-  - get another FASTQC report on the cleaned data
-  - merge paired reads
-  - annotate with abstar
-
-::
-
-    import os
-
-    import abstar
-    from abstar.utils import basespace, pandaseq
-
-    PROJECT_DIR = '/path/to/project'
-    PROJECT_ID = '123456789'
-
-    # download data from BaseSpace
-    bs_dir = os.path.join(PROJECT_DIR, 'raw_data')
-    basespace.download(bs_dir, project_id=PROJECT_ID)
-
-    # FASTQC on the raw data
-    fastqc1_dir = os.path.join(PROJECT_DIR, 'fastqc-pre')
-    abstar.fastqc(bs_dir, output=fastqc1_dir)
-
-    # adapter trimming
-    adapter_dir = os.path.join(PROJECT_DIR, 'adapter_trimed')
-    adapters = '/path/to/adapters.fasta'
-    abstar.adapter_trim(bs_dir, output=adapter_dir, adapter_both=adapters)
-
-    # quality trimming
-    quality_dir = os.path.join(PROJECT_DIR, 'quality_trimed')
-    abstar.quality_trim(adapter_dir, output=quality_dir)
-
-    # FASTQC on the cleaned data
-    fastqc2_dir = os.path.join(PROJECT_DIR, 'fastqc-post')
-    abstar.fastqc(quality_dir, output=fastqc2_dir)
-
-    # read merging
-    merged_dir = os.path.join(PROJECT_DIR, 'merged')
-    pandaseq.run(quality_dir, merged_dir)
-
-    # run abstar
-    temp_dir = os.path.join(PROJECT_DIR, 'temp')
-    json_dir = os.path.join(PROJECT_DIR, 'json')
-    abstar.run(input=merged_dir,
-               temp=temp_dir,
-               output=json_dir)
+  - read, annotate and integrate the input data (cell hashes and BCR sequences)  
+  - demultiplex the samples using cell hashes and rename the samples  
+  - filter out any cells without paired heavy/light chains  
+  - assign BCR clonal lineages  
+  - make a lineage donut plot for each sample, colored by VH gene use  
 
 
 
-Case #2
--------
-Sequencing data is a directory of single-read FASTQ files that have already been quality/adapter trimmed. 
-We'd like to do the following:
+.. code-block:: python
 
-  - get a FASTQC report
-  - annotate with abstar
-  - import the JSONs into a MongoDB database named ``MyDatabase``
+   import scab
 
-Our FASTQ file names are formatted as: ``SampleNumber-SampleName.fastq``, which means the abstar output
-file name would be ``SampleNumber-SampleName.json``. We'd like the corresponding MongoDB collection 
-to just be named ``SampleName``.
+   # read, integrate and annotate the input data
+   adata = scab.read_10x_mtx(mtx_path  = '/path/to/filtered_bc_matrix',
+                             bcr_file  = '/path/to/filtered_contigs.fasta',
+                             bcr_annot = '/path/to/filtered_summary.csv')
 
-::
+   # demultiplex the samples using cell hashes and rename the samples
+   sample_names = {'control1': 'CellHash1',
+                   'control2': 'CellHash2',
+                   'test1': 'CellHash3',
+                   'test2': 'CellHash4'}
+   adata = adata.tl.demultiplex(adata, rename=sample_names)
 
-    import os
+   # filter out any cells without paired heavy/light chains
+   is_paired = [b.is_pair for b in adata.obs.bcr]
+   adata = adata[is_paired]
 
-    import abstar
-    from abstar.utils import mongoimport
+   # assign BCR clonal lineages
+   adata = scab.vdj.clonifuy(adata)
 
-    PROJECT_DIR = '/path/to/project'
-    FASTQ_DIR = '/path/to/fastqs'
+   # make a lineage donut plot for each sample, colored by VH gene use
+   for sample in adata.obs.sample.unique():
+     a = adata[adata.obs.sample == sample]
+     scab.pl.lineage_donut(a, hue='v_gene', chain='heavy')
 
-    MONGO_IP = '123.45.67.89'
-    MONGO_PORT = 27017
-    MONGO_USER = 'MyUsername'
-    MONGO_PASS = 'Secr3t'
+|
+|
 
-    # FASTQC on the input data
-    fastqc_dir = os.path.join(PROJECT_DIR, 'fastqc')
-    abstar.fastqc(FASTQ_DIR, output=fastqc_dir)
+example #2
+------------
+Next, we have a more complex set of libraries, generated from multiplexed 
+peripheral blood mononuclear cell (PBMC) samples. The PBMCs were labeled with 
+a panel of CITE-seq antibodies and we recovered BCR and TCR sequences, to produce 
+the following CellRanger outputs: 1) a counts matrix, including GEX, cell hash and 
+CITE-seq (feature barcode) counts; 2) assembled BCR contigs with associated summary 
+annotations; and 3) assembled TCR contigs with associated summary annotations. With 
+this dataset, we'd like to:
 
-    # run abstar
-    temp_dir = os.path.join(PROJECT_DIR, 'temp')
-    json_dir = os.path.join(PROJECT_DIR, 'json')
-    abstar.run(input=FASTQ_DIR,
-               temp=temp_dir,
-               output=json_dir)
-
-    # import into MongoDB
-    mongoimport.run(ip=MONGO_IP,
-                    port=MONGO_PORT
-                    user=MONGO_USER,
-                    password=MONGO_PASS,
-                    input=json_dir,
-                    db='MyDatabase'
-                    delim1='-',
-                    delim2='.')
-
-
-Case #3
--------
-Now we'd like to use abstar as part of an analysis script in which sequence annotation 
-isn't the primary output. In the previous
-examples, we started with raw(ish) sequence data and ended with either a directory of 
-JSON files or a MongoDB database populated with abstar output. In this case, we're 
-going to start with a MongoDB database, query that database for some sequences, and 
-generate the unmutated common ancestor (UCA). We'd like to annotate the UCA sequence 
-inline (as part of the script) so that we can do world-changing things with the 
-annotated UCA later in our script. For simplicity's sake, we're querying a local MongoDB 
-database that doesn't have authentication enabled, although ``abutils.utils.mongodb`` can 
-work with remote MongoDB servers that require authentication.
-
-::
-
-    import abstar
-
-    from abutils.utils import mongodb
-    from abutils.utils.sequence import Sequence
-
-    DB_NAME = 'MyDatabase'
-    COLLECTION_NAME = 'MyCollection'
-
-    def get_sequences(db_name, collection_name):
-        db = mongodb.get_db(db_name)
-        c = db[collection]
-        seqs = c.find({'chain': 'heavy'})
-        return [Sequence(s) for s in seqs]
-
-    def calculate_uca(sequences):
-        #
-        # code to calculate the UCA sequence, as a string
-        #
-        return uca
-
-    # get sequences, calculate the UCA
-    sequences = get_sequences(DB_NAME, COLLECTION_NAME)
-    uca_seq = calculate_uca(sequences)
-
-    # run abstar on the UCA, returns an abutils Sequence object
-    uca = abstar.run(['UCA', uca_seq])
-
-    # do amazing, world-changing things with the UCA
-    # ...
-    # ...
-    # ... 
+  - read, annotate and integrate all of the input data 
+  - demultiplex the samples using cell hashes and rename the samples 
+  - preprocess the GEX data, including leiden clustering and UMAP embedding 
+  - for each CITE-seq antibody, make a pair of plots comparing transcription and cell surface quantity 
+  - group TCR sequences into clonotypes 
+  - select cells expressing a clonally expanded TCR 
 
 
+.. code-block:: python
+
+   import scab
+
+   # read, integrate and annotate the input data
+   adata = scab.read_10x_mtx(mtx_path  = '/path/to/filtered_bc_matrix',
+                             bcr_file  = '/path/to/BCR/filtered_contigs.fasta',
+                             bcr_annot = '/path/to/BCR/filtered_summary.csv',
+                             tcr_file  = '/path/to/TCR/filtered_contigs.fasta',
+                             tcr_annot = '/path/to/TCR/filtered_summary.csv')
+
+   # demultiplex the samples using cell hashes and rename the samples
+   sample_names = {'donor123': 'CellHash1',
+                   'donor456': 'CellHash2',
+                   'donor789': 'CellHash3'}
+   adata = adata.tl.demultiplex(adata, rename=sample_names)
+
+   # preprocess the GEX data, including leiden clustering and UMAP embedding
+   adata = scab.pp.filter_and_normalize(adata)
+   adata = scab.tl.dimensionality_reduction(adata, 
+                                            n_neighbors=10,
+                                            n_pcs=50)
+
+   # for each CITE-seq antibody, make a pair of plots comparing transcription and expression
+   citeseq_names = {'gene_name1': 'citeseq_name1',
+                    ...
+                    'gene_nameN': 'citeseq_nameN'}
+   for gene, citeseq in citeseq_names.items():
+      scab.pl.umap(adata, colors=[gene, citeseq])
+
+   # group TCR sequences into clonotypes 
+   adata = scab.vdj.group_clonotypes(adata)
+
+   # select cells expressing a clonally expanded TCR
+   expanded = adata[adata.obs.clonotype_size > 1]
+
+
+
+.. _scanpy: https://github.com/scverse/scanpy
 .. _abutils: https://github.com/briney/abutils
+.. _scab Github repository: htts://github.com/briney/scab
+

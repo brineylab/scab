@@ -1,16 +1,22 @@
 installation
 ============
 
-The easiest way to install scab is to use pip::
+The easiest way to install scab is to use pip:
+
+.. code-block:: console
 
     $ pip install scab
+
+| 
 
 If you don't have pip, the Anaconda_ Python distribution contains pip along 
 with a ton of useful scientific Python packages and is a great way to get 
 started with Python.  
 
 Stable_ and development_ versions of scab can also be downloaded from Github. 
-You can manually install the latest development version of scab with::
+You can manually install the latest development version of scab with:
+
+.. code-block:: console
 
     $ git clone https://github.com/briney/scab
     $ cd scab/
@@ -20,12 +26,15 @@ You can manually install the latest development version of scab with::
 .. tip::  
     If installing manually via setup.py and you don't already have scikit-bio installed, 
     you may get an error when setuptools attempts to install scikit-bio. This can be fixed 
-    by first installing scikit-bio with pip::
+    by first installing scikit-bio with pip:
+
+    .. code-block:: console
 
         $ pip install scikit-bio
 
     and then retrying the manual install of scab.  
 
+|
 
 Requirements
 ------------
