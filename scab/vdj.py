@@ -25,15 +25,10 @@
 
 from collections import Counter
 import itertools
-
-# import random
-# import string
 import sys
 
 import pandas as pd
 import numpy as np
-
-# from sqlalchemy import over
 
 from Levenshtein import distance
 
@@ -46,7 +41,6 @@ import dnachisel as dc
 
 from natsort import natsorted
 
-from abutils.core.pair import Pair
 from abutils.core.sequence import Sequence
 from abutils.utils.cluster import cluster
 from abutils.utils.utilities import nested_dict_lookup
@@ -54,156 +48,81 @@ from abutils.utils.utilities import nested_dict_lookup
 from .models.lineage import Lineage
 
 
-def merge_vdj(
-    adata,
-    vdj_file,
-    tenx_annotation_csv=None,
-    high_confidence=True,
-    vdj_delimiter="\t",
-    vdj_id_key="seq_id",
-    vdj_sequence_key="vdj_nt",
-):
-    """
-    Merges VDJ information into an AnnData object containing gene expression and/or feature barcode data.
-
-    Args:
-    -----
-
-        adata (anndata.AnnData): AnnData object containing gene expression and/or feature barcode count data.
-
-        vdj_file (str): Path to a file containing annotated VDJ data. Abstar's ``tabular`` 
-                        output format is assumed, but any delimited format can be accomodated. Required.
-
-        tenx_annotation_csv (str): Path to CellRanger's contig annotation file (in CSV format). Note that CellRanger
-                                   also outputs a JSON-formatted annotation file, which is not supported. Default is ``None``,
-                                   which results in CellRanger annotations not being included. Supplying the annotation CSV
-                                   is encouraged, as the UMI counts are used to identify potential background contigs.
-
-        high_confidence (bool): If ``True``, only sequences that have been identified as "high confidence" by CellRanger are
-                                merged. Default is ``True``. This option is ignored if ``tenx_annotation_csv`` is ``None``.
-
-        vdj_delimiter (str): Delimiter used in ``vdj_file``. Default is ``'\t'``.
-
-        vdj_id_key (str): Name of the field in ``vdj_file`` that corresponds to the sequence ID. Default is ``'seq_id'``.
-
-        vdj_sequence_key (str): Name of the field in ``vdj_file`` that corresponds to the sequence. Default is ``'vdj_nt'``.
-
-    
-    Returns:
-    --------
-
-        Returns an ``anndata.AnnData`` object with merged VDJ data.
-
-    """
-    # read sequences
-    vdj_df = pd.read_csv(vdj_file, sep=vdj_delimiter)
-    seqs = [
-        Sequence(
-            row.where(pd.notnull(row), None).to_dict(),
-            id_key=vdj_id_key,
-            seq_key=vdj_sequence_key,
-        )
-        for index, row in vdj_df.iterrows()
-    ]
-    # read 10xG annotation file
-    if tenx_annotation_csv is not None:
-        annot_df = pd.read_csv(tenx_annotation_csv)
-        key = "contig_id" if "contig_id" in annot_df.columns.values else "consensus_id"
-        annots = {row[key]: row.to_dict() for index, row in annot_df.iterrows()}
-        for s in seqs:
-            s.tenx = annots.get(s[vdj_id_key], {})
-        if high_confidence:
-            seqs = [s for s in seqs if s.tenx.get("high_confidence", False)]
-    # identify pairs
-    pdict = {}
-    for s in seqs:
-        pname = s[vdj_id_key].split("_")[0]
-        if pname not in pdict:
-            pdict[pname] = [
-                s,
-            ]
-        else:
-            pdict[pname].append(s)
-    pair_dict = {
-        n: Pair(
-            pdict[n],
-            name=n,
-            h_selection_func=umi_selector,
-            l_selection_func=umi_selector,
-        )
-        for n in pdict.keys()
-    }
-    # update adata
-    vdjs = [pair_dict.get(o, Pair([], name=o)) for o in adata.obs_names]
-    adata.obs["vdj"] = vdjs
-    return adata
-
-
-def umi_selector(seqs):
-    sorted_seqs = sorted(seqs, key=lambda x: int(x.tenx.get("unis"), 0), reverse=True)
-    return sorted_seqs[0]
-
-
 def clonify(
     adata,
     distance_cutoff=0.32,
     shared_mutation_bonus=0.65,
     length_penalty_multiplier=2,
+    preclustering=False,
     preclustering_threshold=0.65,
     preclustering_field="cdr3_nt",
-    preclustering=False,
     lineage_field="lineage",
     lineage_size_field="lineage_size",
     annotation_format="airr",
     return_assignment_dict=False,
 ):
     """
-    Assigns BCR lineages using the clonify algorithm.
+    Assigns BCR sequences to clonal lineages using the clonify_ [Briney16]_ algorithm.
 
-    Args:
-    -----
+    .. seealso::
+       | Bryan Briney, Khoa Le, Jiang Zhu, and Dennis R Burton  
+       | Clonify: unseeded antibody lineage assignment from next-generation sequencing data.
+       | *Scientific Reports* 2016. https://doi.org/10.1038/srep23901
 
-        adata (anndata.AnnData): ``AnnData`` object containing annotated sequence data at ``adata.obs.bcr``. If
-            data was read using ``scab.read_10x_mtx()``, BCR data should already be in the correct location.
+    Parameters  
+    ----------
+    adata : anndata.AnnData  
+        ``AnnData`` object containing annotated sequence data at ``adata.obs.bcr``. If
+        data was read using ``scab.read_10x_mtx()``, BCR data should already be in the 
+        correct location.
 
-        distance_cutoff (float): Distance threshold for lineage clustering. Default is ``0.32``.
+    distance_cutoff : float, default=0.32  
+        Distance threshold for lineage clustering.  
 
-        shared_mutation_bonus (float): Bonus applied for each shared V-gene mutation. Default is ``0.65``.
+    shared_mutation_bonus : float, default=0.65  
+        Bonus applied for each shared V-gene mutation.  
 
-        length_penalty_multiplier (int): Multiplier for the CDR3 length penalty. Default is ``2``, resulting in
-            CDR3s that differ by ``n`` amino acids being penalized ``n * 2``.
+    length_penalty_multiplier : int, default=2  
+        Multiplier for the CDR3 length penalty. Default is ``2``, resulting in CDR3s that 
+        differ by ``n`` amino acids being penalized ``n * 2``.
 
-        preclustering_threshold (float): Identity threshold for pre-clustering the V/J groups prior to lineage 
-            assignment. Default is ``0.65``.
+    preclustering : bool, default=False  
+        If ``True``, V/J groups are pre-clustered on the `preclustering_field` sequence, 
+        which can potentially speed up lineage assignment and reduce memory usage. 
+        If ``False``, each V/J group is processed in its entirety without pre-clustering. 
 
-        preclustering_field (str): Annotation field on which to pre-cluster sequences. Default is ``'cdr3_nt'``.
+    preclustering_threshold : float, default=0.65  
+        Identity threshold for pre-clustering the V/J groups prior to lineage assignment. 
 
-        preclustering (bool): If ``True``, V/J groups are pre-clustered, which can potentially speed up lineage assignment
-            and reduce memory usage. If ``False``, each V/J group is processed in its entirety without pre-clustering. 
-            Default is ``False``.
+    preclustering_field : str, default='cdr3_nt'  
+        Annotation field on which to pre-cluster sequences.  
 
-        lineage_field (str): Name of the lineage assignment field. Default is ``lineage``.
+    lineage_field : str, default='lineage'  
+        Name of the lineage assignment field.  
 
-        lineage_size_field (str): Name of the lineage size field. Default is ``lineage_size``.
+    lineage_size_field : str, default='lineage_size'  
+        Name of the lineage size field.  
 
-        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
-            Default is ``'airr'``.
+    annotation_format : str, default='airr'  
+        Format of the input sequence annotations. Choices are ``'airr'`` or ``'json'``.  
         
-        return_assignment_dict (bool): If ``True``, a dictionary linking sequence IDs to lineage names will be returned.
-            If ``False``, the input ``anndata.AnnData`` object will be returned, with lineage annotations included.
-            Default is ``False``.
+    return_assignment_dict : bool, default=False  
+        If ``True``, a dictionary linking sequence IDs to lineage names will be returned. 
+        If ``False``, the input ``anndata.AnnData`` object will be returned, with lineage 
+        annotations included.  
 
-    Returns:
-    --------
-
-        By default (``return_assignment_dict == False``), returns the input ``anndata.AnnData`` object with two additional
-        columns: ``adata.obs.bcr_lineage``, which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, 
-        which contains the lineage size. Field names can be changed using ``lineage_field`` and ``lineage_size_field``.
-
-        If ``return_assignment_dict == True``, a ``dict`` mapping droplet barcodes (``adata.obs_names``) to lineage 
+    Returns
+    -------
+    output : ``anndata.AnnData`` or ``dict``
+        By default (``return_assignment_dict == False``), an updated `adata` object is \
+        returned with two additional columns populated - ``adata.obs.bcr_lineage``, \
+        which contains the lineage assignment, and ``adata.obs.bcr_lineage_size``, \
+        which contains the lineage size. If ``return_assignment_dict == True``, \
+        a ``dict`` mapping droplet barcodes (``adata.obs_names``) to lineage \
         names is returned. 
 
-    
+
+    .. _clonify: https://github.com/briney/clonify    
     """
     # select the appropriate data fields
     if annotation_format.lower() == "airr":
@@ -333,81 +252,87 @@ def build_synthesis_constructs(
 ):
     """
     Builds codon-optimized synthesis constructs, including Gibson overhangs suitable 
-    for cloning IGH, IGK and IGL constructs into expression vectors (Tiller et al., 2008).
-
-    Args:
-    -----
-
-        adata (anndata.AnnData): An anndata.AnnData object containing annotated BCR sequences.
-
-        overhang_5 (dict): Dictionary mapping locus to 5' Gibson overhangs. By default, Gibson
-            overhangs corresponding to the expression vectors in Tiller, et al 2008:
-
-              * heavy/IGH: catcctttttctagtagcaactgcaaccggtgtacac
-              * kappa/IGK: atcctttttctagtagcaactgcaaccggtgtacac
-              * lambda/IGL: atcctttttctagtagcaactgcaaccggtgtacac
-
-            To produce constructs without overhangs, provide an empty dictionary.
-
-        overhang_3 (dict): Dictionary mapping locus to 3' Gibson overhangs. By default, Gibson
-            overhangs corresponding to the expression vectors in Tiller, et al 2008: 
-
-              * heavy/IGH: gcgtcgaccaagggcccatcggtcttcc
-              * kappa/IGK: cgtacggtggctgcaccatctgtcttcatc
-              * lambda/IGL: ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc
-
-            To produce constructs without overhangs, provide an empty dictionary.
-
-        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
-            Default is ``'airr'``.
-
-        sequence_key (str): Field containing the sequence to be codon optimized. Default is ``'sequence_aa'`` if
-            ``annotation_format == 'airr'`` or ``'vdj_aa'`` if ``annotation_format == 'json'``. Either nucleotide 
-            or amino acid sequences are acceptable.
-
-        locus_key (str): Field containing the sequence locus. Default is ``'locus'`` if ``annotation_key == 'airr'``,
-            or ``'chain'`` if ``annotation_key == 'json'``. Note that values in ``locus_key`` should match
-            the keys in ``overhang_5`` and ``overhang_3``.
-
-        name_key (str): Field (in ``adata.obs``) containing the name of the BCR pair. If not provided, the
-            droplet barcode will be used.
-
-        bcr_key (str): Field (in ``adata.obs``) containing the annotated BCR pair. Default is ``'bcr'``.
-
-        sort (bool): If ``True``, output will be sorted by sequence name. Default is ``True``.
+    for cloning IGH, IGK and IGL variable region constructs into antibody expression 
+    vectors.
 
 
-    Returns:
-    --------
+    .. seealso:: 
+        | Thomas Tiller, Eric Meffre, Sergey Yurasov, Makoto Tsuiji, Michel C Nussenzweig, Hedda Wardemann 
+        | Efficient generation of monoclonal antibodies from single human B cells by single cell RT-PCR and expression vector cloning
+        | *Journal of Immunological Methods* 2008, doi: 10.1016/j.jim.2007.09.017  
 
-        sequences (list): A list of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
-            descriptive properties:
 
-              * id: The sequence ID, which includes the pair name and the locus.
-              * sequence: The codon-optimized sequence, including Gibson overhangs.
+    Parameters
+    ----------
+    adata : anndata.AnnData  
+        An ``anndata.AnnData`` object containing annotated BCR sequences.
 
-            The following information is available using dictionary-style lookup:
+    overhang_5 : dict, optional  
+        A ``dict`` mapping the locus name to 5' Gibson overhangs. By default, Gibson
+        overhangs corresponding to the expression vectors in Tiller et al, 2008:  
 
-             * ``sequence[sequence_key]``: The input sequence, derived from the ``sequence_key`` field of the 
-                annotated input sequence.
-             * ``sequence[locus_key]``: The input sequence locus, derived from the ``locus_key`` field of the 
-                annotated input sequence.
-             * ``sequence['obs_name']: The droplet barcode.
+            | **IGH:** ``catcctttttctagtagcaactgcaaccggtgtacac``
+            | **IGK:** ``atcctttttctagtagcaactgcaaccggtgtacac``
+            | **IGL:** ``atcctttttctagtagcaactgcaaccggtgtacac``
 
-            If ``sort == True``, the output ``Sequence`` list will be sorted by name (using ``natsort.natsorted``).
+        To produce constructs without 5' Gibson overhangs, provide an empty dictionary.
+
+    overhang_3 : dict, optional  
+        A ``dict`` mapping the locus name to 3' Gibson overhangs. By default, Gibson
+        overhangs corresponding to the expression vectors in Tiller et al, 2008: 
+
+            | **IGH:** ``gcgtcgaccaagggcccatcggtcttcc``
+            | **IGK:** ``cgtacggtggctgcaccatctgtcttcatc``
+            | **IGL:** ``ggtcagcccaaggctgccccctcggtcactctgttcccgccctcgagtgaggagcttcaagccaacaaggcc``
+
+        To produce constructs without 3' Gibson overhangs, provide an empty dictionary.
+
+    sequence_key : str, default='sequence_aa'  
+        Field containing the sequence to be codon optimized. Default is ``'sequence_aa'`` if
+        ``annotation_format == 'airr'`` or ``'vdj_aa'`` if ``annotation_format == 'json'``. 
+        Either nucleotide or amino acid sequences are acceptable.
+
+    locus_key : str, default='locus'  
+        Field containing the sequence locus. Default is ``'locus'`` if ``annotation_key == 'airr'``,
+        or ``'chain'`` if ``annotation_key == 'json'``. Note that values in ``locus_key`` should match
+        the keys in ``overhang_5`` and ``overhang_3``.
+
+    name_key : str, optional  
+        Field (in ``adata.obs``) containing the name of the BCR pair. If not provided, the
+        droplet barcode will be used.
+
+    bcr_key : str, default='bcr'  
+        Field (in ``adata.obs``) containing the annotated BCR pair.  
+
+    sort : bool, default=True  
+        If ``True``, output will be sorted by sequence name.  
+
+
+    Returns
+    -------
+    sequences : ``list`` of ``Sequence`` objects 
+        A ``list`` of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
+        descriptive properties:  
+
+            | *id*: The sequence ID, which includes the pair name and the locus.  
+            | *sequence*: The codon-optimized sequence, including Gibson overhangs.  
+
+        If ``sort == True``, the output ``list``  will be sorted by 
+        `name_key` using ``natsort.natsorted()``.
+
     """
-    if any([locus_key is None, sequence_key is None]):
-        if annotation_format.lower() == "airr":
-            sequence_key = sequence_key if sequence_key is not None else "sequence_aa"
-            locus_key = locus_key if locus_key is not None else "locus"
-        elif annotation_format.lower() == "json":
-            sequence_key = sequence_key if sequence_key is not None else "vdj_aa"
-            locus_key = locus_key if locus_key is not None else "chain"
-        else:
-            err = '\nERROR: annotation format must be either "json" or "airr". '
-            err += f"You provided {annotation_format}\n"
-            print(err)
-            sys.exit()
+    # if any([locus_key is None, sequence_key is None]):
+    #     if annotation_format.lower() == "airr":
+    #         sequence_key = sequence_key if sequence_key is not None else "sequence_aa"
+    #         locus_key = locus_key if locus_key is not None else "locus"
+    #     elif annotation_format.lower() == "json":
+    #         sequence_key = sequence_key if sequence_key is not None else "vdj_aa"
+    #         locus_key = locus_key if locus_key is not None else "chain"
+    #     else:
+    #         err = '\nERROR: annotation format must be either "json" or "airr". '
+    #         err += f"You provided {annotation_format}\n"
+    #         print(err)
+    #         sys.exit()
     # get overhangs
     overhang_3 = overhang_3 if overhang_3 is not None else GIBSON3
     overhang_5 = overhang_5 if overhang_5 is not None else GIBSON5
@@ -471,37 +396,42 @@ def bcr_summary_csv(
     """
     docstring for bcr_summary_csv.
 
-    Args:
-    -----
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        An ``anndata.AnnData`` object containing annotated BCR sequences.
 
-        adata (anndata.AnnData): An anndata.AnnData object containing annotated BCR sequences.
+    leading_fields : iterable object, optional  
+        A list of fields in ``adata.obs`` that should be at the start
+        of the output data. By defauolt, the existing column order in 
+        ``adata.obs`` is used.  
 
-        leading_fields (list): A list of fields in ``adata.obs`` that should be at the start
-            of the output data. Default is ``None``, which uses the column orders found in 
-            ``adata.obs``.
+    include : iterable object, optional 
+        A list of columns in ``adata.obs`` that should be included in the 
+        summary output. By default, all columns in ``adata.obs`` are used.  
 
-        include (list): A list of columns in ``adata.obs`` that should be included in the 
-            summary output. Default is ``None``, which includes all columns in ``adata.obs``.
+    exclude : iterable object, optional  
+        A list of columns in ``adata.obs`` that should be excluded from the 
+        summary output. By default, no columns in ``adata.obs`` are excluded.  
 
-        exclude (list): A list of columns in ``adata.obs`` that should be excluded from the 
-            summary output. Default is ``None``, which does not exclude any columns.
+    rename : dict, optional  
+        A ``dict`` mapping ``adata.obs`` columns to new column names. Any column
+        names not included in `rename` will not be renamed.
 
-        rename (dict): A dictionary mapping ``adata.obs`` columns to new column names. Any column
-            names not included in ``rename`` will not be renamed.
+    annotation_format : str, default='airr'  
+        Format of the input sequence annotations. Choices are ``['airr', 'json']``.
 
-        annotation_format (str): Format of the input sequence annotations. Choices are ``['airr', 'json']``.
-            Default is ``'airr'``.
-
-        output_file (str): Path to the output file. If not provided, the summary output will
-            be returned as a Pandas ``DataFrame``.
+    output_file : str, optional  
+        Path to the output file. If not provided, the summary output will
+        be returned as a Pandas ``DataFrame``.
 
     
-    Returns:
-    --------
+    Returns
+    -------
+    If ``output_file`` is provided, the summary output will be written to the file in CSV \
+    format and noting is returned. If ``output_file`` is not provided, the summary data will \
+    be returned as a Pandas ``DataFrame``.
 
-        If ``output_file`` is provided, the summary output will be written to the file in CSV
-        format and noting is returned. If ``output_file`` is not provided, the summary data will
-        be returned as a Pandas ``DataFrame``.
     
     """
     # data fields

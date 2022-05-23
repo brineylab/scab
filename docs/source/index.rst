@@ -1,16 +1,35 @@
 
 scab: single cell analysis of B cells
 ===================================================================
-
-
-scab is a core component of the ab[x] toolkit for antibody sequence analysis. 
+ 
 scab provides a computational framework for integrating, analyzing and 
-visualizing single B cell multi-omics data.
+visualizing single B cell multi-omics data. We have developed a simple, 
+straightforward API which should feel quite familiar to users of scanpy_ 
+and allows sophisticated analyses with just a few lines of code:  
 
 
+.. image:: images/scab_console-workflow.jpg
+  :width: 750
+  :alt: example workflow in scab
+  :align: center
+  :class: only-light
+  
 
-getting started
----------------
+.. image:: images/scab_console-workflow_inverted.jpg
+  :width: 750
+  :alt: example workflow in scab
+  :align: center
+  :class: only-dark
+
+  
+|   
+  
+scab is a standards-based toolkit built on the ``AnnData`` objects used 
+by scanpy_. We integrate several tools specifically designed to facilitate 
+analysis of adaptive immune cells and receptor repertoires.     
+
+
+|  
 
 .. toctree::
    :maxdepth: 1
@@ -20,31 +39,28 @@ getting started
    installation
 
 
-usage
------
+|
 
 .. toctree::
    :maxdepth: 1
    :caption: usage
 
-   api_examples
+   examples
    api
-   models
    
 
-about
------
+|
 
 .. toctree::
    :maxdepth: 1
    :caption: about
 
+   references
    license
    news
 
 
-related projects
-----------------
+|
 
 .. toctree::
    :maxdepth: 1
@@ -56,10 +72,7 @@ related projects
    clonify <https://github.com/briney/clonify-python>
 
 
-Index
------
-
-* :ref:`modindex`
-* :ref:`search`
 
 
+
+.. _scanpy: https://github.com/scverse/scanpy

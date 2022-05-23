@@ -1,17 +1,12 @@
-API Reference
+api reference
 =============
 
-
-io
--------------
 
 .. toctree::
 
     modules/io
 
 
-pp
--------------
 
 .. toctree::
 
@@ -19,17 +14,11 @@ pp
 
 
 
-vdj
------------------
-
 .. toctree::
 
     modules/vdj
 
 
-
-tl
------------------
 
 .. toctree::
 
@@ -37,19 +26,8 @@ tl
 
 
 
-pl
------------------
 
 .. toctree::
 
     modules/pl
 
-
-
-
-helper utilities
-------------------
-
-.. toctree::
-
-    modules/utils

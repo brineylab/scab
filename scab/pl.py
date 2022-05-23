@@ -221,83 +221,112 @@ def feature_kde(
     """
     Produces a 2-dimensional KDE plot of two features.
 
-    Args:
+    Parameters
+    ----------
+    data : anndata.AnnData or pandas.DataFrame  
+        An ``AnnData`` object or a ``DataFrame`` containing the input data. Required.
 
-        data (anndata.AnnData or pd.DataFramne): An ``AnnData`` object or a ``Pandas`` dataframe
-                                                 containing the input data. Required.
+    x : str
+        Name of the column in `data` containing the feature to be plotted on the x-axis. Required.
 
-        x (str): Name of the column in ``data`` containing the feature to be plotted on the x-axis. Required.
+    y : str  
+        Name of the column in `data` containing the feature to be plotted on the y-axis. Required.
 
-        y (str): Name of the column in ``data`` containing the feature to be plotted on the y-axis. Required.
+    hue : str, optional  
+        Name of the column in `data` containing categories for hue values. ``hue```` categories 
+        will each be plotted as differently colored densities on the same plot. 
 
-        hue (str): Name of the column in ``data`` containing categories for hue values. For scatter plots, 
-                   the categories in ``hue`` will be plotted as different colored points. For KDE plots,
-                   ``hue```` categories will each be plotted as differently colored KDE plots
-                   on the same plot. 
+    hue_order : iterable object, optional  
+        Iterable of hue categories, in the order they should be plotted and listed
+        in the legend. If `hue_order` contains only a subset of the categories
+        present in ``data[hue]`` or ``data.obs[hue]``, only the categories supplied in `hue_order`
+        will be plotted.
 
-        hue_order (iterable): Iterable of hue categories, in the order they should be plotted and listed
-                              in the legend. If ```hue_order``` contains only a subset of the categories
-                              present in ```data[hue]```, only the categories supplied in ```hue_order```
-                              will be plotted.
+    colors : iterable object, optional  
+        List of colors to be used for `hue` categories. If `colors` is shorter than the 
+        list of hue categories, colors will be reused. If not provided, the 
+        `default Seaborn color palette`_ will be used. 
 
-        colors (iterable): List of colors to be used for ```'hue'``` categories. If ```'colors'``` is
-                           shorter than the list of hue categories, colors will be reused.
-
-        thresh (float): Threshold for the KDE. Default is ```0.1```.
+    thresh : float, default=0.1  
+        Threshold for the KDE, as a fraction of the overall dataset.
         
-        show_scatter (bool): Show the scatterplot beneath the transparent KDE plot. Default is ```True```.
+    show_scatter : bool, default=True  
+        Show a scatterplot beneath the transparent KDE plot.
 
-        scatter_size (int, float): Size of the scatter points. Default is ```5```.
+    scatter_size : int or float, default=5  
+        Size of the scatter points.
 
-        scatter_alpha (float): Alpha of the scatter points. Default is ```0.2```.
+    scatter_alpha : float, default=0.2  
+        Alpha of the scatter points.
 
-        fill (bool): Fill the KDE plot. Default is ```True```.
+    fill : bool, default=True  
+        Whether or not to fill the KDE KDE plot. If ``False``, only the KDE boundary lines
+        will be plotted.
 
-        kde_fill_alpha (float): Alpha for the filled KDE plot. If ```fill``` is ```False```,
-                                this option is ignored. Default is ```0.7```.
+    kde_fill_alpha : float, default=0.7  
+        Alpha for the filled KDE plot. Ignored if `fill` is ``False``.  
         
-        kde_line_alpha (float): Alpha for the KDE plot lines. Default is ```1.0```.
+    kde_line_alpha : float, default=1.0  
+        Alpha for the KDE boundary lines.
 
-        highlight_index (iterable): An iterabile of index names (present in ```data```) of points
-                                    to be highlighted on the KDE plot. If provided, ```highlight_x```
-                                    and ```highlight_y``` are ignored.
+    highlight_index : iterable object, optional  
+        An iterable of index names (present in `data`) of points to be highlighted on 
+        the KDE plot. If provided, `highlight_x` and `highlight_y` are ignored.
 
-        highlight_x (iterable): An iterable of x-values for highlighted points. Also requires
-                                ```highlight_y```.
+    highlight_x : iterable object, optional  
+        An iterable of x-values for highlighted points. Also requires `highlight_y`.
         
-        highlight_y (iterable): An iterable of y-values for highlighted points. Also requires
-                                ```highlight_x```.
+    highlight_y : iterable object, optional  
+        An iterable of y-values for highlighted points. Also requires `highlight_x`.
         
-        highlight_marker (str): The marker style to be used for highlight points. Accepts 
-                                standard matplotlib marker styles. Default is ```'x'```. 
+    highlight_marker : str, default='x'  
+        Marker style to be used for highlight points. Accepts any `matplotlib marker`_. 
 
-        highlight_size (int): Size of the highlight marker. Default is ```90```.
+    highlight_size : int, default=90  
+        Size of the highlight marker.
 
-        highlight_color (string or RGB list): Color of the highlight points. Default is black.
+    highlight_color : string or list of color values, default='k'
+        Color of the highlight points.
 
-        highlight_name (str): Name of the highlights, to be used in the legend. If not supplied,
-                              highlight points will not be included in the legend.
+    highlight_name : str, optional  
+        Name of the highlights, to be used in the plot legend. If not supplied,
+        highlight points will not be included in the legend.
         
-        highlight_alpha (float): Alpha for the highlight points. Default is ```0.8```.
+    highlight_alpha : float, default=0.8  
+        Alpha of the highlight points.
 
-        xlabel (str): Label for the x-axis. By default, the value for ```x``` is used.
+    xlabel : str, optional  
+        Label for the x-axis. By default, the value for `x` is used.
 
-        ylabel (str): Label for the y-axis. By default, the value for ```y``` is used.
+    ylabel : str, optional  
+        Label for the y-axis. By default, the value for `y` is used.
 
-        equal_axes (bool): If ```True```, the the limits of the x- and y-axis will be equal.
-                           Default is ```True```.
+    equal_axes : bool, default=True
+        If ```True```, the the limits of the x- and y-axis will be equal.
         
-        legend_kwargs (dict): Dictionary of keyword arguments for the legend.
+    legend_kwargs : dict, optional  
+        Dictionary of legend keyword arguments, which will be passed to ``ax.legend()``.
 
-        return_ax (bool): If ```True```, return the plot's ```ax``` object. Will not show or save
-                          the plot. Default is ```False```.
+    return_ax : bool, default=False  
+        If ``True``, return the plot's ``ax`` object. Will not show or save the plot.
 
-        figsize (list): A list containg the dimensions of the plot. Default is ```[6, 6]```.
+    figsize : list, default=[6, 6]  
+        A list containg the dimensions of the plot, in inches.
 
-        figfile (str): Path to which the figure will be saved. If not provided, the figure will be
-                       shown but not saved to file.
+    figfile : str, optional  
+        Path to which the figure will be saved. If not provided, the figure will be 
+        shown but not saved to file.
 
-        kwargs: All other keyword arguments are passed to ``seaborn.kdeplot()``.
+    kwargs  
+        All other keyword arguments are passed to ``seaborn.kdeplot()``.
+
+    
+    .. _default Seaborn color palette: 
+        https://seaborn.pydata.org/generated/seaborn.color_palette.html  
+
+    .. _matplotlib marker: 
+        https://matplotlib.org/stable/api/markers_api.html
+
     """
 
     # input data
@@ -513,7 +542,6 @@ def feature_scatter(
     cbar_bbox_to_anchor=None,
     cbar_flip_ticks=False,
     cbar_title=None,
-    cbar_title_loc=None,
     cbar_title_fontsize=12,
     return_ax=False,
     figsize=[6, 6],
@@ -523,84 +551,137 @@ def feature_scatter(
     """
     Produces a scatter plot of two features, optionally colored by a third feature.
 
-    Args:
-    -----
+    Parameters
+    ----------
+    data : anndata.AnnData or pandas.DataFrame  
+        An ``AnnData`` object or a ``DataFrame`` containing the input data. Required.
 
-        data (anndata.AnnData or pd.DataFramne): An ``AnnData`` object or a ``Pandas`` dataframe
-                                                 containing the input data. Required.
+    x : str
+        Name of the column in `data` containing the feature to be plotted on the x-axis. Required.
 
-        x (str): Name of the column in ``data`` containing the feature to be plotted on the x-axis. Required.
+    y : str  
+        Name of the column in `data` containing the feature to be plotted on the y-axis. Required.
 
-        y (str): Name of the column in ``data`` containing the feature to be plotted on the y-axis. Required.
+    hue : str, optional  
+        Name of the column in `data` containing categories for hue values. If `hue` is categorical,
+        each category will be plotted in a different color (using the `color` for the colors). If 
+        `hue` is continuous, points will be colored using a colormap (using `cmap` if supplied). 
 
-        hue (str): Name of the column in ``data`` containing categories for hue values. If ``hue`` is categorical,
-                   each category will be plotted in a different color (using the ``color`` for the colors). If 
-                   ``hue`` is continuous, points will be colored using a colormap (using ``cmap`` if supplied). 
+    hue_order : iterable object, optional  
+        Iterable of hue categories, in the order they should be plotted and listed
+        in the legend. If `hue_order` contains only a subset of the categories
+        present in ``data[hue]`` or ``data.obs[hue]``, only the categories supplied in `hue_order`
+        will be plotted.
 
-        hue_order (iterable): Iterable of hue categories, in the order they should be plotted and listed
-                              in the legend. If ```hue_order``` contains only a subset of the categories
-                              present in ```data[hue]```, only the categories supplied in ```hue_order```
-                              will be plotted.
+    force_categorical_hue : bool, default=False  
+        If ``True``, `hue` data will be treated as categorical, even if the data appear to 
+        be continuous. This results in `color` being used to color the points rather than `cmap`.  
 
-        force_categorical_hue (bool): If ``True``, ``hue`` data will be treated as categorical, even if
-                                      the data appear to be continuous. This results in ``color`` being used
-                                      to color the points rather than ``cmap``. Default is ``False``.
-
-        color (iterable): List of colors to be used for ``hue`` categories. If ``colors`` is
-                          shorter than the list of hue categories, colors will be reused. Only used
-                          if ``hue`` contains categorical data (``cmap`` is used for continuous data). 
-                          Default is to use ``sns.color_palette()``.
+    color : iterable object, optinoal
+        List of colors to be used for `hue` categories. If `colors` is shorter than the list 
+        of hue categories, colors will be reused. Only used if `hue` contains categorical data 
+        (`cmap` is used for continuous data). If not provided, the `default Seaborn color palette`_ 
+        will be used. 
         
-        camp (str or matplotlib.color.Colormap): Colormap to be used for continuous ``hue`` data. Default 
-                                                 is to use ``'flare'``.
+    cmap : str or matplotlib.color.Colormap, default='flare'   
+        Colormap to be used for continuous `hue` data.  
+
+    cbar_width : int, default=35  
+        Width of the colorbar. Only used for categorical `hue` types.  
+
+    cbar_height : int, default=5  
+        Height of the colorbar. Only used for categorical `hue` types.  
+
+    cbar_loc : str or iterable object, default='lower right'  
+        Location of the colorbar. Accepts `any valid inset_axes() location`_.
+
+    cbar_orientation : str, default='horizontal'  
+        Orientation of the colorbar. Options are ``'horizontal'`` and ``'vertical'``.
+
+    cbar_bbox_to_anchor : list or tuple, optional
+        bbox_to_anchor for the colorbar. Used in combination with `cbar_loc` to provide 
+        fine-grained positioning of the colorbar.
+
+    cbar_flip_ticks : bool, default=False  
+        Flips the position of colorbar ticks. Ticks default to the bottom if `cbar_orientation` 
+        is  ``'horizontal'`` and the left if  `cbar_orientation` is ``'vertical'``.  
+
+    cbar_title : str, optional  
+        Colorbar title. If not provided, `hue` is used.  
+
+    cbar_title_fontsize : int or float, default=12  
+        Fontsize for the colorbar title.  
         
-        marker (str): Marker for the scatter plot. Accepts standard matplotlib marker styles.
-                      Default is ``'o'``.
+    marker : str, default='o'  
+        Marker style for the scatter plot. Accepts any `matplotlib marker`_.  
 
-        size (int, float): Size of the scatter points. Default is ``20``.
+    size : int or float, default=20  
+        Size of the scatter points.  
 
-        alpha (float): Alpha of the scatter points. Default is ``0.6``.
+    alpha : float, default=0.6  
+        Alpha of the scatter points.  
 
-        highlight_index (iterable): An iterabile of index names (present in ```data```) of points
-                                    to be highlighted on the scatter plot. If provided, ```highlight_x```
-                                    and ```highlight_y``` are ignored.
+    highlight_index : iterable object, optional  
+        An iterable of index names (present in `data`) of points to be highlighted on 
+        the KDE plot. If provided, `highlight_x` and `highlight_y` are ignored.
 
-        highlight_x (iterable): An iterable of x-values for highlighted points. Also requires
-                                ```highlight_y```.
+    highlight_x : iterable object, optional  
+        An iterable of x-values for highlighted points. Also requires `highlight_y`.
         
-        highlight_y (iterable): An iterable of y-values for highlighted points. Also requires
-                                ```highlight_x```.
+    highlight_y : iterable object, optional  
+        An iterable of y-values for highlighted points. Also requires `highlight_x`.
         
-        highlight_marker (str): The marker style to be used for highlight points. Accepts 
-                                standard matplotlib marker styles. Default is ``'x'``. 
+    highlight_marker : str, default='x'  
+        Marker style to be used for highlight points. Accepts any `matplotlib marker`_. 
 
-        highlight_size (int): Size of the highlight marker. Default is ``90``.
+    highlight_size : int, default=90  
+        Size of the highlight marker.
 
-        highlight_color (string or RGB list): Color of the highlight points. Default is ``'k'`` (black).
+    highlight_color : string or list of color values, default='k'
+        Color of the highlight points.
 
-        highlight_name (str): Name of the highlights, to be used in the legend. If not supplied,
-                              highlight points will not be included in the legend.
+    highlight_name : str, optional  
+        Name of the highlights, to be used in the plot legend. If not supplied,
+        highlight points will not be included in the legend.
         
-        highlight_alpha (float): Alpha for the highlight points. Default is ``0.9``.
+    highlight_alpha : float, default=0.9  
+        Alpha of the highlight points.
 
-        xlabel (str): Label for the x-axis. By default, the value for ``x`` is used.
+    xlabel : str, optional  
+        Label for the x-axis. By default, the value for `x` is used.
 
-        ylabel (str): Label for the y-axis. By default, the value for ``y`` is used.
+    ylabel : str, optional  
+        Label for the y-axis. By default, the value for `y` is used.
 
-        equal_axes (bool): If ``True``, the the limits of the x- and y-axis will be equal.
-                           Default is ``True``.
+    equal_axes : bool, default=True
+        If ```True```, the the limits of the x- and y-axis will be equal.
         
-        legend_kwargs (dict): Dictionary of keyword arguments for the legend.
+    legend_kwargs : dict, optional  
+        Dictionary of legend keyword arguments, which will be passed to ``ax.legend()``.
 
-        return_ax (bool): If ``True``, return the plot's ``ax`` object. Will not show or save
-                          the plot. Default is ``False``.
+    return_ax : bool, default=False  
+        If ``True``, return the plot's ``ax`` object. Will not show or save the plot.
 
-        figsize (list): A list containg the dimensions of the plot. Default is ``[6, 6]``.
+    figsize : list, default=[6, 6]  
+        A list containg the dimensions of the plot, in inches.
 
-        figfile (str): Path to which the figure will be saved. If not provided, the figure will be
-                       shown but not saved to file.
+    figfile : str, optional  
+        Path to which the figure will be saved. If not provided, the figure will be 
+        shown but not saved to file.  
 
-        kwargs: All other keyword arguments are passed to ``matplotlib.pyplot.scatter()``
+    kwargs
+        All other keyword arguments are passed to ``matplotlib.pyplot.scatter()``.  
+
+
+    .. _default Seaborn color palette: 
+        https://seaborn.pydata.org/generated/seaborn.color_palette.html  
+
+    .. _matplotlib marker: 
+        https://matplotlib.org/stable/api/markers_api.html  
+
+    .. _any valid inset_axes() location: 
+        https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
+
     """
     # input data
     if isinstance(data, AnnData):
@@ -1025,7 +1106,7 @@ def germline_use_barplot(
     adata,
     gene_names=None,
     chain="heavy",
-    vdj_key="bcr",
+    receptor="bcr",
     germline_key="v_gene",
     batch_key=None,
     batch_names=None,
@@ -1050,76 +1131,99 @@ def germline_use_barplot(
     Produces a bar plot of germline gene usage. For datasets containing multiple batches, a stacked
     bar plot can optionally be generated.
 
-    Args:
-    -----
+    Parameters
+    ----------
+    adata : anndata.AnnData  
+        An ``AnnData`` object containing the input data. `adata` must have ``adata.obs.bcr`` 
+        or ``adata.obs.tcr`` populated with annotated BCR/TCR information.  
 
-        adata (anndata.AnnData): An ``AnnData`` object containing the input data. ``adata`` must have
-            the ``adata.obs.vdj`` populated with annotated VDJ information. Required.
+    gene_names : iterable object, optional  
+        A list of germline gene names to be plotted. If not provided, all germline genes 
+        found in the dataset will be shown.  
 
-        gene_names (iterable): A list of germline gene names to be plotted. If not provided, all 
-            germline genes found in the dataset will be shown.
+    chain : str, default='heavy'  
+        Chain for which germline gene usage will be plotted. Options are ``'heavy'``, ``'light'``, 
+        ``'kappa'``, ``'lambda'``, ``'alpha'``, ``'beta'``, ``'delta'`` or ``'gamma'``.  
 
-        chain (str): Chain for which germline gene usage will be plotted. Options are ``'heavy'``, 
-            ``'light'``, ``'kappa'`` and ``'lambda'``. Default is ``'heavy'``.
+    receptor : str, default='bcr'  
+        Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.  
 
-        germline_key (str): Field (found in ``vdj.heavy`` or ``vdj'light``) containing the germline
-            gene to be plotted. Default is ``'v_call'``, which plots Variable gene use using the standard
-            AIRR anotation naming scheme.
+    germline_key : str, default='v_call'  
+        Annotation key containing the germline gene to be plotted.  
 
-        batch_key (str): Field (found in ``adata.obs``) containing batch names. If provided, batches 
-            will be plotted as stacked bars, one per batch. If not provided, all of the input data is 
-            assumed to be from a single batch and a standard bar plot is generated. 
+    batch_key : str, optional  
+        Field (found in ``adata.obs``) containing batch names. If provided, batches 
+        will be plotted as stacked bars. If not provided, all of the input data is 
+        assumed to be from a single batch and a standard bar plot is generated. 
 
-        batch_names (iterable): List of batch names to be plotted. Useful when only a subset of the
-            batches found in ``adata.obs.batch_key`` are to be plotted or when the desired order of batches
-            is something other than the order produced by ``natsort.natsorted()``. Default is ``None``, 
-            which results in all batches being plotted in ``natsort.natsorted()`` order.
+    batch_names : iterable object, optional  
+        List of batch names to be plotted. If `bnatch_names` contains a subset of all categories 
+        found in `batch_key`, only the supplied `batch_names` will be plotted.  If not provided, 
+        all batches will be plotted in ``natsort.natsorted()`` order.
 
-        palette (iterable): List of batch colors. If none of ``palette``, ``color`` or ``germline_colors``
-            are provided, bars are colored by the germline gene.
+    palette : iterable, optional  
+        List of batch colors. If none of `palette`, `color` or `germline_colors`
+        are provided, bars are colored by the germline gene family.  
 
-        color (str): Single color to be used for all bars in the plot. If none of ``palette``, ``color`` 
-            or ``germline_colors`` are provided, bars are colored by the germline gene. If provided in 
-            combination with ``germline_colors``, ``color`` will be used as the default color for genes 
-            not found in ``germline_colors``.
+    color :str, optional  
+        Single color to be used for all bars in the plot. If none of `palette`, `color` 
+        or `germline_colors` are provided, bars are colored by the germline gene. If provided in 
+        combination with `germline_colors`, `color` will be used as the default color for genes 
+        not found in `germline_colors`. If `germline_colors` is supplied and `color` is not, 
+        `color` will default to ``'#D3D3D3'``.
 
-        germline_colors (dict): Dictionary mapping germline genes to colors. Particularly useful when
-            highlighting one or more germline genes is desired. Germline genes not found as keys in 
-            ``germline_colors`` will be colored using ``color``.
+    germline_colors : dict, optional  
+        Dictionary mapping germline genes to colors. Particularly useful when
+        highlighting one or more germline genes is desired. Germline genes not found as keys in 
+        `germline_colors` will be colored using `color` (or ``'#D3D3D3'`` if 'color` is not
+        provided).  
 
-        pairs_only (bool): If ``True``, only sequences for which a heavy/light pair is present will be
-            plotted. Default is ``False``, which plots all seqeunces of the desired ``chain``.
+    pairs_only : bool, default=False  
+        If ``True``, only sequences for which a heavy/light pair is present will be
+        plotted.  
 
-        normalize (bool): If ``True``, normalized frequencies are plotted. Note that normalization is
-            performed separately for each batch, so the total frequency may exceed ``1.0``. Default is
-            ``False``, which plots sequence counts.
+    normalize : bool, default=False  
+        If ``True``, normalized frequencies are plotted instead of sequence counts. Note that 
+        normalization is performed separately for each batch, so the total frequency may exceed ``1.0``.
 
-        plot_kwargs (dict): Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
+    plot_kwargs : dict, optional  
+        Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
 
-        legend_kwargs (dict): Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
+    legend_kwargs : dict, optional  
+        Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
 
-        hide_legend (bool): By default, a plot legend will be shown if multiple batches are plotted. If 
-            ``True``, the legend will not be shown. Default is ``False``.
+    hide_legend : bool, default=False  
+        By default, a plot legend will be shown if multiple batches are plotted. If ``True``, 
+        the legend will not be shown.  
 
-        ylabel (str): Text for the Y-axis label.
+    ylabel : str, optional  
+        Text for the Y-axis label.  
 
-        ylabel_fontsize (float): Fontsize for the Y-axis label text. Default is ``16``.
+    ylabel_fontsize : int or float, default=16  
+        Fontsize for the Y-axis label text.
 
-        xtick_labelsize (float): Fontsize for the X-axis tick labels. Default is ``14``.
+    xtick_labelsize : int or float, default=14  
+        Fontsize for the X-axis tick labels.  
 
-        ytick_labelsize (float): Fontsize for the Y-axis tick labels. Default is ``14``.
+    ytick_labelsize : int or float, default=14  
+        Fontsize for the Y-axis tick labels.  
 
-        xtick_labelrotation (float): Rotation of the X-axis tick labels. Default is ``90``.
+    xtick_labelrotation : int or float, default=90  
+        Rotation of the X-axis tick labels.  
 
-        show (bool): If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
-            is ``False``, which does not call ``pyplot.show()`` and results the ``Axes`` object.
+    show :bool, default=False  
+        If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
+        is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
 
-        figsize (list): List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
-            If not provided, the figure size will be determined based on the number of germline genes
-            found in the data.
+    figsize : iterable object, optional  
+        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
+        If not provided, the figure size will be determined based on the number of germline genes
+        found in the data.
 
-        figfile (str): Path at which to save the figure file. If not provided, the figure is not saved
-            and is either shown (if ``show`` is ``True``) or the ``Axes`` object is returned.
+    figfile : str, optional  
+        Path at which to save the figure file. If not provided, the figure is not saved
+        and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.  
+
     """
     # split input into batches
     if batch_key is not None:
@@ -1141,7 +1245,7 @@ def germline_use_barplot(
     batch_data = []
     all_gene_names = []
     for batch in batches:
-        vdjs = batch.obs[vdj_key]
+        vdjs = batch.obs[receptor]
         if pairs_only:
             vdjs = [v for v in vdjs if v.is_pair]
         # parse sequences
@@ -1240,7 +1344,7 @@ def cdr3_length_barplot(
     adata,
     lengths=None,
     chain="heavy",
-    vdj_key="bcr",
+    receptor="bcr",
     cdr3_length_key="cdr3_length",
     batch_key=None,
     batch_names=None,
@@ -1266,78 +1370,99 @@ def cdr3_length_barplot(
     Produces a bar plot of CDR3 length frequency. For datasets containing multiple batches, a stacked
     bar plot can optionally be generated.
 
-    Args:
-    -----
+    Parameters
+    ----------
 
-        adata (anndata.AnnData): An ``AnnData`` object containing the input data. ``adata`` must have
-            ``adata.obs[vdj_key]`` populated with annotated VDJ information. Required.
+    adata : anndata.AnnData  
+        An ``AnnData`` object containing the input data. ``adata`` must have
+        ``adata.obs[receptor]`` populated with annotated VDJ information. Required.
 
-        gene_names (iterable): A list of CDR3 lengths to be plotted. If not provided, all 
-            germline genes found in the dataset will be shown.
+    lengths : iterable object, optional  
+        A list of CDR3 lengths to be plotted. If not provided, all lengths found in the 
+        dataset will be shown.
 
-        chain (str): Chain for which germline gene usage will be plotted. Options are ``'heavy'``, 
-            ``'light'``, ``'kappa'`` and ``'lambda'``. Default is ``'heavy'``.
+    chain : str, default='heavy'  
+        Chain for which germline gene usage will be plotted. Options are ``'heavy'``, ``'light'``, 
+        ``'kappa'``, ``'lambda'``, ``'alpha'``, ``'beta'``, ``'delta'`` or ``'gamma'``.  
 
-        cdr3_length_key (str): Field (found in ``vdj.heavy`` or ``vdj.light``) containing the CDR3 lengths
-            to be plotted. Default is ``'cdr3_length'``, which plots CDR3 length frequencies using the standard
-            AIRR anotation naming scheme.
+    receptor : str, default='bcr'  
+        Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``. 
 
-        batch_key (str): Field (found in ``adata.obs``) containing batch names. If provided, batches 
-            will be plotted as stacked bars, one per batch. If not provided, all of the input data is 
-            assumed to be from a single batch and a standard bar plot is generated. 
+    cdr3_length_key : str, default='cdr3_length'  
+        Field containing the CDR3 length data to be plotted.  
 
-        batch_names (iterable): List of batch names to be plotted. Useful when only a subset of the
-            batches found in ``adata.obs.batch_key`` are to be plotted or when the desired order of batches
-            is something other than the order produced by ``natsort.natsorted()``. Default is ``None``, 
-            which results in all batches being plotted in ``natsort.natsorted()`` order.
+    batch_key : str, optional  
+        Field (found in ``adata.obs``) containing batch names. If provided, batches 
+        will be plotted as stacked bars. If not provided, all of the input data is 
+        assumed to be from a single batch and a standard bar plot is generated. 
 
-        palette (iterable): List of batch colors. If none of ``palette``, ``color`` or ``germline_colors``
-            are provided, bars are colored by the germline gene.
+    batch_names : iterable object, optional  
+        List of batch names to be plotted. If `batch_names` contains a subset of all categories 
+        found in `batch_key`, only the supplied `batch_names` will be plotted.  If not provided, 
+        all batches will be plotted in ``natsort.natsorted()`` order.
 
-        color (str): Single color to be used for all bars in the plot. If none of ``palette``, ``color`` 
-            or ``germline_colors`` are provided, bars are colored by the germline gene. If provided in 
-            combination with ``germline_colors``, ``color`` will be used as the default color for genes 
-            not found in ``germline_colors``.
+    palette : iterable, optional  
+        List of batch colors. If none of `palette`, `color` or `length_colors`
+        are provided, bars are colored by the germline gene family.  
 
-        length_colors (dict): Dictionary mapping CDR3 lengths to colors. Particularly useful when
-            highlighting one or more CDR3 lengths is desired. Any CDR3 lengths not found as keys in 
-            ``length_colors`` will be colored using ``color``.
+    color :str, optional  
+        Single color to be used for all bars in the plot. If none of `palette`, `color` 
+        or `length_colors` are provided, bars are colored by the germline gene. If provided in 
+        combination with `length_colors`, `color` will be used as the default color for genes 
+        not found in `length_colors`. If `length_colors` is supplied and `color` is not, 
+        `color` will default to ``'#D3D3D3'``.
 
-        pairs_only (bool): If ``True``, only sequences for which a heavy/light pair is present will be
-            plotted. Default is ``False``, which plots all seqeunces of the desired ``chain``.
+    length_colors : dict, optional  
+        Dictionary mapping CDR3 lengths to colors. Particularly useful when
+        highlighting one or more CDR3 lengths is desired. Any CDR3 lengths not found as keys in 
+        `length_colors` will be colored using `color`.
 
-        normalize (bool): If ``True``, normalized frequencies are plotted. Note that normalization is
-            performed separately for each batch, so the total frequency may exceed ``1.0``. Default is
-            ``False``, which plots sequence counts.
+    pairs_only : bool, default=False  
+        If ``True``, only sequences for which a heavy/light pair is present will be
+        plotted.  
 
-        plot_kwargs (dict): Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
+    normalize : bool, default=False  
+        If ``True``, normalized frequencies are plotted instead of sequence counts. Note that 
+        normalization is performed separately for each batch, so the total frequency may exceed ``1.0``.
 
-        legend_kwargs (dict): Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
+    plot_kwargs : dict, optional  
+        Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
 
-        hide_legend (bool): By default, a plot legend will be shown if multiple batches are plotted. If 
-            ``True``, the legend will not be shown. Default is ``False``.
+    legend_kwargs : dict, optional  
+        Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
 
-        xlabel (str): Text for the X-axis label.
+    hide_legend : bool, default=False  
+        By default, a plot legend will be shown if multiple batches are plotted. If ``True``, 
+        the legend will not be shown.  
 
-        ylabel (str): Text for the Y-axis label.
+    xlabel : str, optional  
+        Text for the X-axis label.  
 
-        xlabel_fontsize (float): Fontsize for the X-axis label text. Default is ``16``.
+    ylabel : str, optional  
+        Text for the Y-axis label.  
 
-        ylabel_fontsize (float): Fontsize for the Y-axis label text. Default is ``16``.
+    ylabel_fontsize : int or float, default=16  
+        Fontsize for the Y-axis label text.
 
-        xtick_labelsize (float): Fontsize for the X-axis tick labels. Default is ``14``.
+    xtick_labelsize : int or float, default=14  
+        Fontsize for the X-axis tick labels.  
 
-        ytick_labelsize (float): Fontsize for the Y-axis tick labels. Default is ``14``.
+    ytick_labelsize : int or float, default=14  
+        Fontsize for the Y-axis tick labels.  
 
-        show (bool): If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
-            is ``False``, which does not call ``pyplot.show()`` and results the ``Axes`` object.
+    show :bool, default=False  
+        If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
+        is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
 
-        figsize (list): List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
-            If not provided, the figure size will be determined based on the number of germline genes
-            found in the data.
+    figsize : iterable object, optional  
+        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
+        If not provided, the figure size will be determined based on the number of germline genes
+        found in the data.
 
-        figfile (str): Path at which to save the figure file. If not provided, the figure is not saved
-            and is either shown (if ``show`` is ``True``) or the ``Axes`` object is returned.
+    figfile : str, optional  
+        Path at which to save the figure file. If not provided, the figure is not saved
+        and is either shown (if `show` is ``True``) or the ``Axes`` object is returned. 
+
     """
     # split input into batches
     if batch_key is not None:
@@ -1359,7 +1484,7 @@ def cdr3_length_barplot(
     batch_data = []
     all_lengths = []
     for batch in batches:
-        vdjs = batch.obs[vdj_key]
+        vdjs = batch.obs[receptor]
         if pairs_only:
             vdjs = [v for v in vdjs if v.is_pair]
         # parse sequences
@@ -1482,110 +1607,122 @@ def lineage_donut(
 ):
     """
     Creates a donut plot of a population of lineages, with arc widths proportional to lineage size.
+
+    .. note::
+       For **continuous** hues (for example, AgBC UMI counts), the mean value for each lineage is used. 
+       For **boolean** hues (for example, specificity classifications), the lineage is considered ``True`` if
+       any lineage member is ``True``. For **categorical** hues (for example, CDR3 length), the most common
+       value for each lineage is used. 
     
-    Args:
-    -----
+    Parameters
+    ----------
     
-        adata (anndata.AnnData): Input ``AnnData`` object. ``adata.obs`` must contain a column for the 
-            lineage name (``lineage_key``) and, optionally, a ``hue`` column.
+    adata : anndata.AnnData  
+        Input ``AnnData`` object. ``adata.obs`` must contain a column for the 
+        lineage name (`lineage_key`) and, optionally, a `hue` column.
             
-        hue (str, dict): Can be either the name of a column in ``adata.obs`` or a ``dict`` mapping
-            lineage names to hue values. Used to determine the color of each lineage arc. If a ``dict`` 
-            is provided, any missing lineage names will still be included in the donut plot but will 
-            be colored using ``alt_color``. There are four possible classes of hue values:  
+    hue : str or dict, optional  
+        Can be either the name of a column in ``adata.obs`` or a ``dict`` mapping
+        lineage names to hue values. Used to determine the color of each lineage arc. If a ``dict`` 
+        is provided, any missing lineage names will still be included in the donut plot but will 
+        be colored using `alt_color`. There are three possible classes of hue values:  
              
-                - continuous: hues that map to a continuous numerical space, identified by all ``hue`` 
+                - **continuous:** hues that map to a continuous numerical space, identified by all `hue` 
                   values being floating point numbers. An example would be log2-transformed
                   antigen barcode UMI counts. For continuous hues, the mean of all members
                   in a lineage will be plotted.  
                   
-                - boolean: hues that map to either ``True`` or ``False``. An example would be specificity
+                - **boolean:** hues that map to either ``True`` or ``False``. An example would be specificity
                   classification. For boolean hues, if any member of a lineage is ``True``, the
                   entire lineage will be considered ``True``.  
                   
-                - categorical: hues that map to one of a set of categories. An example would be isotypes. 
+                - **categorical:** hues that map to one of a set of categories. An example would be isotypes. 
                   For categorical hues, the most common value observed in a lineage will 
                   be plotted.  
                   
-            Finally, if ``hue`` is not provided, the lineage name will be considered the ``hue``, and
-            each lineage will be colored separately.
+        Finally, if `hue` is not provided, the lineage name will be considered the `hue`, and
+        each lineage will be colored separately.
             
-        palette (dict): A ``dict`` mapping hue categories to colors. For boolean hue types, if ``palette``
-            is not provided, ``color`` will be used for ``True`` and ``alt_color`` will be used for 
-            ``False``. For categorical hue types, if ``color`` is provided, a monochromatic palette 
-            consisting of various shades of ``color`` will be used. If ``color`` is not provided,
-            ``sns.hls_palette()`` will be used to generate a color palette.
+    palette : dict, optional  
+        A ``dict`` mapping hue categories to colors. For boolean hue types, if `palette`
+        is not provided, `color` will be used for ``True`` and `alt_color` will be used for 
+        ``False``. For categorical hue types, if `color` is provided, a monochromatic palette 
+        consisting of various shades of `color` will be used. If `color` is not provided,
+        ``sns.hls_palette()`` will be used to generate a color palette.  
             
-        color (str or list): A color name, hex string or RGB list/tuple for coloring the donut plot. For
-            boolean hue types, ``color`` will be used for ``True``. For categorical and continuous hue
-            types, a monochromatic palette will be created containing various shades of ``color``.
+    color : str or list, optional  
+        A color name, hex string or RGB list/tuple for coloring the donut plot. For
+        boolean hue types, `color` will be used for ``True`` and 'alt_color' will be used for 
+        ``False``. For categorical and continuous hue types, a monochromatic palette will 
+        be created containing various shades of `color`.  
             
-        alt_color (str or list): A color name, hex string or RGB list/tuple for coloring alternate values 
-            (``False`` boolean hues or values not found in ``palette``). Default is ``'#F5F5F5'``, which is
-            a very light grey.
+    alt_color : str or list, default='#F5F5F5'    
+        A color name, hex string or RGB list/tuple for coloring alternate values 
+        (``False`` boolean hues or values not found in `palette`). Default is ``'#F5F5F5'``, which is
+        a very light grey.
         
-        singleton_color (str or list): A color name, hex string or RGB list/tuple for coloring the singleton 
-            arc in the donut plot. Default is ``'lightgrey'``.
+    singleton_color : str or list, default='lightgrey'  
+        A color name, hex string or RGB list/tuple for coloring the singleton arc in the donut plot.  
             
-        shuffle_colors (bool): If true, colors will be shuffled prior to assignment to hue categories. This
-            is primarily useful when the hue category is the lineage name and a monochromatic palette is used,  
-            in order to make it easier to distinguish neighboring arcs on the plot. Default is ``False``.
+    shuffle_colors : bool, default=False  
+        If ``True``, colors will be shuffled prior to assignment to hue categories. This
+        is primarily useful when the `hue` is the lineage name and a monochromatic palette is used,  
+        in order to make it easier to distinguish neighboring arcs on the plot.  
             
-        name (str): Not used.
+    name : str, optional  
+        Not currently used.
         
-        hue_order (list): A list specifying the hue category order. This does not affect the ordering 
-            of lineages in the donut plot, just the assignment of colors to ``hue`` categories. For example,
-            when plotting with a monochromatic palette (by providing ``color``), ``hue_order`` will
-            order the coloring of ``hue`` categories from dark to light.
+    hue_order : list, optional  
+        A list specifying the hue category order. This does not affect the ordering 
+        of lineages in the donut plot, just the assignment of colors to `hue` categories. For example,
+        when plotting with a monochromatic palette (by providing `color`), `hue_order` will
+        order the coloring of `hue` categories from dark to light.
             
-        force_categorical_hue (bool): By default, any ``hue`` categories consisting solely of ``float``s 
-            will be considered continuous and will be colored using a user-supplied colormap (``cmap``) or 
-            with a monochromatic color gradient (using ``color`` as the base color). If ``True``, ``hue``
-            categories will always be considered categorical.
+    force_categorical_hue : bool, default=False  
+        By default, any `hue` categories consisting solely of ``float`` values 
+        will be considered continuous and will be colored using a user-supplied colormap (`cmap`) or 
+        with a monochromatic color gradient (using `color` as the base color). If ``True``, `hue`
+        categories will always be considered categorical.
             
-        lineage_key (str): Column in ``adata.obs`` corresponding to the lineage name. Default is 
-            ``'lineage'``, which is consistent with the default in ``scab.vdj.clonify``.
+    lineage_key : str, default='lineage'  
+        Column in ``adata.obs`` corresponding to the lineage name.  
             
-        figfile (str): Path to an output figure file. If not provided, the figure will be shown and
-            not saved to file.
+    figfile : str, optional  
+        Path to an output figure file. If not provided, the figure will be shown and not saved to file.
             
-        figsize (list/tuple): Figure size, in inches. Default is ``(6, 6)``.
+    figsize : iterable object, default=[6, 6]  
+        Figure size, in inches.  
         
-        pairs_only (bool): If ``True``, only paired BCRs (containing both heavy and light chains) will
-            be included. Default is ``False``, which plots all BCRs in ``adata``.
+    pairs_only : bool, default=False  
+        If ``True``, only paired BCR/TCR sequences (containing both heavy/light, alpha/beta or
+        delta/gamma chains) will be included.  
             
-        edgecolor (str or list): A color name, hex string or RGB list/tuple for coloring the edges that divide
-            donut arcs. Default is ``'white'``.
+    edgecolor : str or list, default='white'  
+        A color name, hex string or RGB list/tuple for coloring the edges that divide donut arcs.  
             
-        random_seed (int, float or str): Used to set ``numpy``'s random seed. Only applicable when 
-            ``shuffle_colors`` is ``True``, and provided mainly to allow users to recreate plots
-            that use shuffled colors (otherwise the shuffle order would be random, thus creating
-            a different plot each time the plottig function is called). Default is ``1234``.
+    random_seed : int, float or str, default=1234  
+        Used to set the random seed using ``numpy.random.seed()``. Only applicable when 
+        `shuffle_colors` is ``True``, and provided mainly to allow users to recreate plots
+        that use shuffled colors (otherwise the shuffle order would be random, thus creating
+        a different color order each time the plotting function is called). Default is ``1234``.
             
-        width (float): Fraction of the donut plot radius that corresponds to the donut 'hole'. 
-            Default is ``0.55``
+    width : float, default=0.55  
+        Fraction of the donut plot radius that corresponds to the donut 'hole'.  
             
-        fontsize (int): Fontsize for the sequence count text displayed in the center of the plot.
-            Default is ``28``.
+    fontsize : int or float, default=28  
+        Fontsize for the sequence count text displayed in the center of the plot.  
             
-        linewidth (float): Width of the lines separating lineage arcs. Default is ``2``.
+    linewidth : int or float, default=2  
+        Width of the lines separating lineage arcs.  
         
-        pie_kws (dict): Dictionary containing keyword arguments that will be passed directly to
-            ``ax.pie()``.
+    pie_kws : dict, optional  
+        Dictionary containing keyword arguments that will be passed directly to ``ax.pie()``.
             
-        text_kws (dict): Dictionary containing keyword arguments that will be passed directly to
-            ``ax.text()`` when drawing the text in the center of the plot.
-            
-    Returns:
-    --------
+    text_kws : dict, optional  
+        Dictionary containing keyword arguments that will be passed directly to ``ax.text()`` 
+        when drawing the text in the center of the plot.
+        
     
-    Nothing is retured. If ``figfile`` is supplied, the figure is saved to file, otherwise the figure is shown.
-        
-    
-    For continuous hues (for example, AgBC UMI counts), the mean value for each lineage is used. 
-    For boolean values (for example, specificity classifications), the lineage is considered ``True`` if
-    any lineage member is ``True``. For categorical values (for example, CDR3 length), the most common
-    value for each lineage is used.
     """
     adata = adata.copy()
     if pairs_only:

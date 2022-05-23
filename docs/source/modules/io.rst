@@ -1,5 +1,8 @@
+.. _io:
+
 io
 ==================
 
 .. automodule:: scab.io
-    :no-undoc-members:
+    :members:
+

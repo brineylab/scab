@@ -24,12 +24,13 @@ from unittest.mock import MagicMock
 
 
 if os.environ.get('READTHEDOCS', None) == 'True':
-    class Mock(MagicMock):
-        @classmethod
-        def __getattr__(cls, name):
-                return Mock()
+    # class Mock(MagicMock):
+    #     @classmethod
+    #     def __getattr__(cls, name):
+    #             return Mock()
 
-    MOCK_MODULES = ['pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'nwalign', 'pandas', 'abutils', 'dask', 'dask.dataframe',
+    MOCK_MODULES = ['abstar', 'abutils',
+                    'pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'nwalign', 'pandas',
                     'scanpy', 'anndata', 'dnachisel', 'fastcluster', 'harmonypy', 'leidenalg', 
                     'matplotlib', 'matplotlib.pyplot', 'matplotlib.lines', 'matplotlib.patches', 
                     'mpl_toolkits', 'mpl_toolkits.axes_grid1', 'mpl_toolkits.axes_grid1.inset_locator',
@@ -37,21 +38,25 @@ if os.environ.get('READTHEDOCS', None) == 'True':
                     'mnemonic', 'natsort', 'prettytable', 'python-Levenshtein', 'Levenshtein', 'scanorama', 
                     'scipy', 'scipy.signal', 'scipy.cluster', 'scipy.cluster.hierarchy',
                     'statsmodels', 'statsmodels.api',
-                    'scrublet', 'scvelo', 'seaborn', 'umap-learn',
-                    'abutils.utils', 'abutils.core', 'abutils.core.sequence', 'abutils.core.pair',
-                    'abutils.utils.log', 'abutils.utils.alignment', 'abutils.utils.color', 
-                    'abutils.utils.cluster', 'abutils.utils.utilities',
-                    'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators', 'abutils.utils.progbar',
-                    'biopython', 'celery', 'pymongo', 'scikit-bio', 'BaseSpacePy', 'BaseSpacePy.api',
-                    'BaseSpacePy.model', 'BaseSpacePy.api.BaseSpaceAPI', 'BaseSpacePy.model.QueryParameters',
-                    'Bio', 'Bio.Align', 'Bio.Alphabet', 'Bio.SeqIO', 'Bio.Seq', 'Bio.SeqRecord',
-                    'Bio.Blast', 'Bio.Blast.Applications']
-    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+                    'scrublet', 'scvelo', 'seaborn', 'umap-learn', 'Bio',
+                    'abstar.core', 
+                      'abstar.core.abstar', 'abstar.core.germline', 
+                    'abstar.preprocess', 
+                    'abstar.utils', 
+                      'abstar.utils.abstar', 'abstar.utils.regions',
+                    'abutils.utils', 
+                      'abutils.utils.alignment', 'abutils.utils.color',
+                      'abutils.utils.cluster', 'abutils.utils.utilities', 'abutils.utils.alignment',
+                      'abutils.utils.codons', 'abutils.utils.pipeline', 'abutils.utils.decorators',
+                    'abutils.core', 
+                      'abutils.core.sequence', 'abutils.core.pair',
+                    ]
+    sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../../'))
 
 # -- General configuration ------------------------------------------------
 
@@ -63,11 +68,12 @@ if os.environ.get('READTHEDOCS', None) == 'True':
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = []
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -90,8 +96,9 @@ author = u'Bryan Briney'
 # built documents.
 #
 # The short X.Y version.
-# version = __version__
-version = '0.0.4'
+from scab.version import __version__
+version = __version__
+# version = '0.0.4'
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -128,7 +135,8 @@ exclude_patterns = []
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+# pygments_style = 'sphinx'
+pygments_style = 'monokai'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -145,7 +153,13 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 # html_theme = 'alabaster'
-html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinx_rtd_theme'
+html_theme = 'furo'
+# html_theme = 'pydata_sphinx_theme'
+# html_theme = 'sphinx_material'
+
+# html_permalinks_icon = '<span>#</span>'
+# html_theme = 'sphinxawesome_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -154,7 +168,7 @@ html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+# html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -175,7 +189,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -238,7 +252,7 @@ html_static_path = ['_static']
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'abstardoc'
+htmlhelp_basename = 'scabdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -290,7 +304,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'scab', u'scab Documentation',
+    (master_doc, 'scab', u'scab documentation',
      [author], 1)
 ]
 
@@ -304,7 +318,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'scab', u'scab Documentation',
+  (master_doc, 'scab', u'scab documentation',
    author, 'scab', 'One line description of project.',
    'Miscellaneous'),
 ]

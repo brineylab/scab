@@ -51,57 +51,67 @@ def filter_and_normalize(
     """
     performs quality filtering and normalization of 10x Genomics count data
 
-    Args:
-    -----
+    Parameters
+    ----------
 
-        adata (anndata.AnnData): AnnData object containing gene count data.
+    adata : anndata.AnnData  
+        ``AnnData`` object containing gene count data.
 
-        make_var_names_unique (bool): If ``True``, ``adata.var_names_make_unique()`` will be called
-                           before filtering and normalization. Default is ``True``.
+    make_var_names_unique : bool, default=True  
+        If ``True``, ``adata.var_names_make_unique()`` will be called before filtering and 
+        normalization.  
 
-        min_genes (int): Minimum number of identified genes for a droplet to be considered a valid cell.
-                         Passed to ``sc.pp.filter_cells()`` as the ``min_genes`` kwarg. Default is ``200``.
+    min_genes : int, default=200  
+        Minimum number of identified genes for a droplet to be considered a valid cell.
+        Passed to ``sc.pp.filter_cells()`` as the ``min_genes`` parameter.  
 
-        min_cells (int): Minimum number of cells in which a gene has been identified. Genes below this
-                         threshold will be filtered. Default is ``None``, which uses a dynamic 
-                         threshold equal to 0.1% of the total number of cells in the dataset. 
+    min_cells : int, optional  
+        Minimum number of cells in which a gene has been identified. Genes below this
+        threshold will be filtered. If not provided, a dynamic threshold equal to 
+        0.1% of the total number of cells in the dataset will be used. 
 
-        n_genes_by_counts (int): Threshold for filtering cells based on the number of genes by counts.
-                                 Default is ``2500``, which results in cells with more than 2500 genes by counts
-                                 being filtered from the dataset.
+    n_genes_by_counts : int, default=2500  
+        Threshold for filtering cells based on the number of genes by counts.  
 
-        percent_mito (float): Threshold for filtering cells based on the fraction of mitochondrial genes.
-                              Default is ``10``, which results in cells with more than 10% mitochondrial
-                              genes being filtered from the dataset.
+    percent_mito : int or float, default=10  
+        Threshold for filtering cells based on the percentage of mitochondrial genes.
 
-        hvg_batch_key (str): When processing an ``AnnData`` object containing multiple samples that may
-                             require integration and batch correction, ``hvg_batch_key`` will be passed to
-                             ``sc.pp.highly_variable_genes()`` to force separate identification of highly
-                             variable genes for each batch. Default is ``None``, which results in highly
-                             variable genes being computed on the entire dataset.
+    hvg_batch_key : str, optional  
+        When processing an ``AnnData`` object containing multiple samples that may
+        require integration and batch correction, `hvg_batch_key` will be passed to
+        ``sc.pp.highly_variable_genes()`` to force separate identification of highly
+        variable genes for each batch. If not provided, variable genes will be computed 
+        on the entire dataset.
 
-        ig_regex_pattern (str): Regular expression pattern used to identify immunoglobulin genes. Default is
-                                ``'IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]"``, which captures all immunoglobulin
-                                germline gene segments (V, D and J). Constant region genes are not captured.
+    ig_regex_pattern : str, default='IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]'  
+        Regular expression pattern used to identify immunoglobulin genes. The default 
+        is designed to match all immunoglobulin germline gene segments (V, D and J). 
+        Constant region genes are not matched.  
 
-        target_sum (int): Target read count for normalization, passed to ``sc.pp.normalize_total()``. Default
-                          is ``None``, which uses the median count of all cells (pre-normalization).
+    target_sum : int, optional  
+        Target read count for normalization, passed to ``sc.pp.normalize_total()``. If not 
+        provided, the median count of all cells (pre-normalization) is used.
 
-        n_top_genes (int): The number of top highly variable genes to retain. Default is ``None``, which results
-                           in the default number of genes for the selected normalization flavor.
+    n_top_genes : int, optional  
+        The number of top highly variable genes to retain. If not provided, the default 
+        number of genes for the selected normalization flavor is used.  
 
-        normalization_flavor (str): Options are ``'cell_ranger'``, ``'seurat'`` or ``'seurat_v3'``. Default
-                                    is ``'cell_ranger'``.
+    normalization_flavor : str, default='cell_ranger'  
+        Options are ``'cell_ranger'``, ``'seurat'`` or ``'seurat_v3'``.  
 
-        log (bool): If ``True``, counts will be log2 transformed. Default is ``True``.
+    log : bool, default=True  
+        If ``True``, counts will be log-plus-1 transformed.  
 
-        scale_max_value (float): Value at which normalized count values will be clipped. Default is ``None``,
-                                 which results in no clipping.
+    scale_max_value : float, optional  
+        Value at which normalized count values will be clipped. Default is no clipping.  
 
-        save_raw (bool): If ``True``, normalized and filtered data will be saved to ``adata.raw`` prior to
-                         scaling and regressing out mitochondrial/immmunoglobulin genes. Default is ``True``.
+    save_raw : bool, default=True  
+        If ``True``, normalized and filtered data will be saved to ``adata.raw`` prior to
+        scaling and regressing out mitochondrial/immmunoglobulin genes.  
 
-        verbose (bool): If ``True``, progress updates will be printed. Default is ``True``.
+    verbose : bool, default=True  
+        If ``True``, progress updates will be printed.  
+    
     """
 
     if make_var_names_unique:
@@ -170,20 +180,30 @@ def filter_and_normalize(
 
 def scrublet(adata, verbose=True):
     """
-    Predicts doublets using scrublet.
+    Predicts doublets using scrublet_ [Wolock19]_.
 
-    Args:
-    -----
+    .. seealso::
+       | Samuel L. Wolock, Romain Lopez, Allon M. Klein  
+       | Scrublet: Computational Identification of Cell Doublets in Single-Cell Transcriptomic Data  
+       | *Cell Systems* 2019. https://doi.org/10.1016/j.cels.2018.11.005  
 
-        adata (anndata.AnnData): AnnData object containing gene count data.
 
-        verbose (bool): If ``True``, progress updates will be printed. Default is ``True``.
+    Parameters
+    ----------
 
-    Returns:
-    --------
+    adata : anndata.AnnData  
+        ``AnnData`` object containing gene count data.
 
-        Returns an anndata.AnnData object with doublet predictions found at ``adata.obs.is_doublet`` 
-        and doublet scores at ``adata.obs.doublet_score``.
+    verbose : bool, default=True  
+        If ``True``, progress updates will be printed.  
+
+    Returns
+    -------
+    Returns an updated `adata` object with doublet predictions found at \
+    ``adata.obs.is_doublet`` and doublet scores at ``adata.obs.doublet_score``.
+
+
+    .. _scrublet: https://github.com/swolock/scrublet
     """
     import scrublet
 
@@ -199,41 +219,57 @@ def scrublet(adata, verbose=True):
 
 def doubletdetection(
     adata,
-    verbose=False,
     n_iters=25,
     use_phenograph=False,
     standard_scaling=True,
     p_thresh=1e-16,
     voter_thresh=0.5,
+    verbose=False,
 ):
     """
-    Predicts doublets using doubletdetection.
+    Predicts doublets using doubletdetection_ [Gayoso20]_.  
 
-    Args:
-    -----
+    .. seealso::
+       | Adam Gayoso, Jonathan Shor, Ambrose J Carr, Roshan Sharma, Dana Pe'er  
+       | DoubletDetection (Version v3.0)  
+       | *Zenodo* 2020. http://doi.org/10.5281/zenodo.2678041  
 
-        adata (anndata.AnnData): AnnData object containing gene count data.
 
-        verbose (bool): If ``True``, progress updates will be printed. Default is ``True``.
+    Parameters
+    ----------
 
-        n_iters (int): Iterations of doubletdetection to perform. Default is 25.
+    adata : anndata.AnnData  
+        ``AnnData`` object containing gene counts data.
 
-        use_phenograph (bool): Passed to ``doubletdection.BoostClassifier()``. Default is ``False``.
+    n_iters : int, default=25  
+        Iterations of doubletdetection to perform.  
 
-        standard_scaling (bool): Passed to ``doubletdection.BoostClassifier()``. Default is ``True``.
+    use_phenograph : bool, default=False  
+        Passed directly to ``doubletdection.BoostClassifier()``.  
 
-        p_thresh (float): P-value threshold. Default is ``1e-16``.
+    standard_scaling : bool, default=True  
+        Passed directly to ``doubletdection.BoostClassifier()``.  
 
-        voter_thresh (float): Voter threshold. Default is ``0.5``.
+    p_thresh : float, default=1e-16  
+        P-value threshold for doublet classification.  
 
-    Returns:
-    --------
+    voter_thresh : float, default=0.5  
+        Voter threshold, as a fraction of all voters.  
 
-        Returns an anndata.AnnData object with doublet predictions found at ``adata.obs.is_doublet`` 
-        and doublet scores at ``adata.obs.doublet_score``. Note that ``adata.obs.is_doublet`` values are
-        ``0.0`` and ``1.0``, not ``True`` and ``False``. This is the default output of ``doubletdetection``
-        and is useful for plotting doublets using ``scanpy.pl.umap``, which does not handle boolean
-        color values well.
+    verbose : bool, default=True  
+        If ``True``, progress updates will be printed.  
+
+    Returns
+    -------
+    Returns an updated `adata` object with doublet predictions found at ``adata.obs.is_doublet`` \
+    and doublet scores at ``adata.obs.doublet_score``. Note that ``adata.obs.is_doublet`` values are \
+    ``0.0`` and ``1.0``, not ``True`` and ``False``. This is the default output of ``doubletdetection`` \
+    and is useful for plotting doublets using ``scanpy.pl.umap()``, which cannot handle boolean \
+    color values.  
+
+
+    .. _doubletdetection: https://github.com/JonathanShor/DoubletDetection
+
     """
     import doubletdetection
 
@@ -250,26 +286,32 @@ def doubletdetection(
     return adata
 
 
-def remove_doublets(adata, verbose=True, doublet_identification_function=None):
+def remove_doublets(adata, doublet_identification_method=None, verbose=True):
     """
     Removes doublets. If not already performed, doublet identification is performed 
-    using either doubletdetection (default) or with scrublet if 
-    ``doublet_identification_function`` is ``'scrublet'``.
+    using either doubletdetection or scrublet.
 
-    Args:
-    -----
+    Parameters
+    ----------
 
-        adata (anndata.AnnData): AnnData object containing gene count data.
+    adata : anndata.AnnData): 
+        ``AnnData`` object containing gene count data.  
 
-        verbose (bool): If ``True``, progress updates will be printed. Default is ``True``.
+    doublet_identification_method : str, default='doubletdetection'  
+        Method for identifying doublets. Only used if ``adata.obs.is_doublet`` does not
+        already exist. Options are ``'doubletdetection'`` and ``'scrublet'``.
 
-    Returns:
-    --------
+    verbose : bool, default=True  
+        If ``True``, progress updates will be printed.  
 
-        Returns an anndata.AnnData object without observations that were identified as doublets.
+    Returns
+    -------
+    An updated ``adata`` object that does not contain observations that were \
+    identified as doublets.
+
     """
     if "is_doublet" not in adata.obs.columns:
-        if doublet_identification_function.lower() == "scrublet":
+        if doublet_identification_method.lower() == "scrublet":
             adata = scrublet(adata, verbose=verbose)
         else:
             adata = doubletdetection(adata, verbose=verbose)

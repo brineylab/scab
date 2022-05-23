@@ -1,5 +1,7 @@
+.. _pl:
+
 pl
 ==================
 
 .. automodule:: scab.pl
-    :no-undoc-members:
+    :members:

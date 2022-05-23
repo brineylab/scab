@@ -2,4 +2,5 @@ tl
 ==================
 
 .. automodule:: scab.tl
-    :no-undoc-members:
+    :members:
+    :exclude-members: calculate_agbc_confidence
