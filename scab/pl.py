@@ -49,6 +49,8 @@ from natsort import natsorted
 from abutils.utils.color import get_cmap
 from abutils.utils.utilities import nested_dict_lookup
 
+from .ut import get_adata_values
+
 
 # ===========================
 
@@ -1095,6 +1097,276 @@ def feature_ridge(
         plt.show()
 
 
+
+# ===========================
+
+#          GENERAL
+
+# ===========================
+
+
+def bar(
+    adata, 
+    x, 
+    hue=None, 
+    order=None, 
+    hue_order=None, 
+    palette=None,
+    color=None,
+    alt_color='#D3D3D3',
+    normalize=False, 
+    highlight=None, 
+    highlight_color=None,  
+    receptor='bcr',
+    chain='heavy', 
+    plot_kwargs=None,
+    legend_kwargs=None,
+    hide_legend=False,
+    xlabel=None,
+    ylabel=None,
+    xlabel_fontsize=16,
+    ylabel_fontsize=16,
+    xtick_labelsize=14,
+    ytick_labelsize=14,
+    xtick_labelrotation=0,
+    ytick_labelrotation=0,
+    show=False,
+    figsize=[6,4],
+    figfile=None,):
+    '''
+    Produces a bar plot of categorical data. For data with distinct batches, a stacked 
+    bar plot will be constructed.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData  
+        An ``AnnData`` object containing the input data. `adata` must have ``adata.obs.bcr`` 
+        or ``adata.obs.tcr`` populated with annotated BCR/TCR information. Required
+        
+    x : str
+        Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be plotted on the 
+        x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain`. 
+        Required.
+
+    hue : str, optional  
+        Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be used to 
+        group data into stacked bars. If not provided, an un-stacked bar plot is created.  
+        
+    order : iterable object, optional  
+        List of `x` categories in the order they should be plotted. If `order` contains a 
+        subset of all categories found in `x`, only the supplied categories will be plotted.  
+        If not provided, categories will be plotted in ``natsort.natsorted()`` order.
+        
+    hue_order : iterable object, optional  
+        List of `hue` categories in the order they should be plotted. If `hue_order` contains a 
+        subset of all categories found in `hue`, only the supplied categories will be plotted.  
+        If not provided, `hue` categories will be plotted in ``natsort.natsorted()`` order.
+        
+    palette : dict, optional  
+        Dictionary mapping `hue` or `x` names to colors. If both are provided, `hue` categories 
+        take priority. If neither `palette` nor `color` are provided, bars are colored using 
+        `color` (if `hue` is ``None``) or a palette is generated automatically using 
+        ``sns.hls_palette()``.   
+
+    color : str or iterable, optional  
+        Single color to be used for the bar plot. If not provided, the first color in the 
+        default ``Seaborn`` color palette will be used. If `highlight` is provided but 
+        `highlight_color` is not, `color` will be used to color highlighted bars.  
+        
+    alt_color : str or iterable, default='#D3D3D3'  
+        Alternate color for the bar plot. Used to color categories not provided in `palette` 
+        or to color categories not present in `highlight`.  
+        
+    normalize : bool, default=False  
+        If ``True``, normalized frequencies are plotted instead of raw counts. If multiple `hue`
+        categories are present, each `x` category will be separately normalized such that all 
+        bars extend from [0,1] and each stacked bar is sized according to its fraction of the 
+        `x` category. If `hue` is not provided or there is only one `hue` category, the entire 
+        dataset is normalized.
+        
+    highlight : iterable, optional
+        List of `x` or `hue` categories to be highlighted. If `highlight_color` is provided, 
+        categories in `highlight` will use `highlight_color` and all others will use `alt_color`. 
+        If `highlight_color` is not provided, `palette` will be used. If both `highlight_color` 
+        and `palette` are not provided, `color` will be used. 
+        
+    highlight_color : str or iterable, optional  
+        Color to be used for categories in `highlight`. If  
+
+    receptor : str, default='bcr'  
+        Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.  
+
+    chain : str, default='heavy'  
+        If `x` is a BCR/TCR annotation field, chain for which annotation will be retrieved. 
+        Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``, 
+        ``'beta'``, ``'delta'`` or ``'gamma'``.  
+
+    plot_kwargs : dict, optional  
+        Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
+
+    legend_kwargs : dict, optional  
+        Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
+
+    hide_legend : bool, default=False  
+        By default, a plot legend will be shown if multiple batches are plotted. If ``True``, 
+        the legend will not be shown.  
+        
+    xlabel : str, optional  
+        Text for the X-axis label. 
+
+    ylabel : str, optional  
+        Text for the Y-axis label.  
+        
+    xlabel_fontsize : int or float, default=16  
+        Fontsize for the X-axis label text.
+
+    ylabel_fontsize : int or float, default=16  
+        Fontsize for the Y-axis label text.
+
+    xtick_labelsize : int or float, default=14  
+        Fontsize for the X-axis tick labels.  
+
+    ytick_labelsize : int or float, default=14  
+        Fontsize for the Y-axis tick labels.  
+
+    xtick_labelrotation : int or float, default=0  
+        Rotation of the X-axis tick labels.  
+    
+    ytick_labelrotation : int or float, default=0  
+        Rotation of the Y-axis tick labels. 
+
+    show :bool, default=False  
+        If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
+        is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
+
+    figsize : iterable object, default=[6, 4]  
+        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches. 
+
+    figfile : str, optional  
+        Path at which to save the figure file. If not provided, the figure is not saved
+        and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.  
+    '''
+    # process input data
+    if order is None:
+        x_vals = natsorted(set(get_adata_values(adata, x, receptor=receptor, chain=chain)))
+    else:
+        x_vals = order
+    
+    # process hue, if provided
+    if hue is not None:
+        hue_vals = get_adata_values(adata, hue, receptor=receptor, chain=chain)
+        hue_order = (
+            hue_order
+            if hue_order is not None
+            else natsorted(set(hue_vals))
+        )
+        hue_batches = [adata[[_hue_val == h for _hue_val in hue_vals]] for h in hue_order]
+    else:
+        hue_order = [
+            None,
+        ]
+        hue_batches = [
+            adata,
+        ]
+        
+    # process batches
+    batch_data = []
+    for batch in hue_batches:
+        y_dict = Counter(get_adata_values(batch, x, chain=chain, receptor=receptor))
+        batch_data.append(y_dict)
+    if normalize:
+        if len(batch_data) > 1:
+            ytots = {xval: sum([b[xval] for b in batch_data]) for xval in x_vals}
+            for y_dict in batch_data:
+                for xval, yval in y_dict.items():
+                    y_dict[xval] = yval / ytots[xval]
+        else:
+            for ydict in batch_data:
+                tot = sum(ydict.values())
+                for xval, yval in y_dict.items():
+                    y_dict[xval] = yval / tot
+        
+    # colors
+    if palette is None:
+        if len(hue_batches) > 1:
+            palette = {h: c for h, c in zip(hue_order, sns.hls_palette(len(hue_order)))}
+        else:
+            palette = {}
+        # palette is a dict assigning colors to x and/or hue categories
+        # if both are present, hue takes priority
+    colors = []
+    color = color if color is not None else sns.color_palette()[0]
+    for _hue, batch in zip(hue_order, hue_batches):
+        _colors = []
+        for _x in x_vals:
+            if highlight is not None:
+                if _x in highlight:
+                    if highlight_color is not None:
+                        _colors.append(highlight_color)
+                    else:
+                        _colors.append(palette.get(_hue, palette.get(_x, color)))
+                else:
+                    _colors.append(alt_color)
+            else:
+                _colors.append(palette.get(_hue, palette.get(_x, alt_color)))
+        colors.append(_colors)
+            
+    # plot kwargs
+    default_plot_kwargs = {"width": 0.8, "linewidth": 1.5, "edgecolor": "w"}
+    if plot_kwargs is not None:
+        default_plot_kwargs.update(plot_kwargs)
+    plot_kwargs = default_plot_kwargs
+
+    # legend kwargs
+    default_legend_kwargs = {"frameon": True, "loc": "best", "fontsize": 12}
+    if legend_kwargs is not None:
+        default_legend_kwargs.update(legend_kwargs)
+    legend_kwargs = default_legend_kwargs
+    
+    # make the plot
+    plt.figure(figsize=figsize)
+    bottom = np.zeros(len(x_vals))
+    for h, d, c in zip(hue_order, batch_data, colors):
+        y_vals = np.asarray([d.get(_x, 0) for _x in x_vals])
+        plt.bar(x_vals, y_vals, bottom=bottom, color=c, label=h, **plot_kwargs)
+        bottom += y_vals
+        
+    # style the plot
+    ax = plt.gca()
+    if ylabel is None:
+        ylabel = "Frequency (%)" if normalize else "Count"
+    ax.set_xlabel(xlabel, fontsize=xlabel_fontsize)
+    ax.set_ylabel(ylabel, fontsize=ylabel_fontsize)
+    ax.tick_params(
+        axis="x", labelsize=xtick_labelsize, labelrotation=xtick_labelrotation
+    )
+    ax.tick_params(axis="y", labelsize=ytick_labelsize, labelrotation=ytick_labelrotation)
+    for s in ["left", "right", "top"]:
+        ax.spines[s].set_visible(False)
+    # ax.set_xlim([-0.75, len(x_vals) - 0.25])
+
+    # legend
+    if len(hue_batches) > 1 and not hide_legend:
+        ax.legend(**legend_kwargs)
+    if hide_legend or palette is None:
+        ax.get_legend().remove()
+
+    # save, show or return the ax
+    if figfile is not None:
+        plt.tight_layout()
+        plt.savefig(figfile)
+    elif show:
+        plt.show()
+    else:
+        return ax
+
+
+
+
+
+
+
+
 # ===========================
 
 #           VDJ
@@ -1873,12 +2145,12 @@ def lineage_donut(
         plt.show()
 
 
-def _get_monochrome_colors(monochrome_color, N):
+def _get_monochrome_colors(monochrome_color, n_col):
     cmap = get_cmap(from_color=monochrome_color)
     # this is a bit convoluted, but what's happening is we're getting different colormap
-    # values (which range from 0 to 1). Calling cmap(i) returns an rgba tuple, but we just need
-    # the rbg, so we drop the a. To make sure that one of the colors isn't pure white,
-    # we ask np.linspace() for one more value than we need, reverse the list of RGB tuples
-    # so that it goes from dark to light, and drop the lightest value
-    RGB_tuples = [cmap(i)[:-1] for i in np.linspace(0, 1, N + 1)][::-1][:-1]
+    # values -- which range from 1 (darkest) to 0 (lightest). Calling cmap(i) returns an 
+    # rgba tuple, but we just need the rbg, so we drop the a. To make sure that one of 
+    # the colors isn't pure white, we ask np.linspace() for one more value than we need 
+    # and drop the lightest value
+    RGB_tuples = [cmap(i)[:-1] for i in np.linspace(1, 0, n_col + 1)][:-1]
     return RGB_tuples
