@@ -1278,12 +1278,14 @@ def bar(
         if len(batch_data) > 1:
             ytots = {xval: sum([b[xval] for b in batch_data]) for xval in x_vals}
             for y_dict in batch_data:
-                for xval, yval in y_dict.items():
+                for xval in x_vals:
+                    yval = y_dict.get(xval, 0)
                     y_dict[xval] = yval / ytots[xval]
         else:
             for ydict in batch_data:
                 tot = sum(ydict.values())
-                for xval, yval in y_dict.items():
+                for xval in x_vals:
+                    yval = y_dict.get(xval, 0)
                     y_dict[xval] = yval / tot
         
     # colors
