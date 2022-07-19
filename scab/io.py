@@ -546,7 +546,8 @@ def concat(
     keys: Optional[Collection] = None,
     index_unique: Optional[str] = None,
     fill_value: Optional[Any] = None,
-    pairwise: bool = False,
+    pairwise: bool = False, 
+    obs_names_make_unique: bool = True
 ) -> AnnData:
     '''Concatenates AnnData objects using ``anndata.concat()``. Documentation was copied almost verbatim from the ``anndata.concat()`` `docstring`_
 
@@ -725,7 +726,7 @@ def concat(
     .. _docstring
         https://github.com/scverse/anndata/blob/master/anndata/_core/merge.py#L628
     '''
-    return anndata.concat(
+    adata = anndata.concat(
         adatas,
         axis=axis,
         join=join,
@@ -737,6 +738,10 @@ def concat(
         fill_value=fill_value,
         pairwise=pairwise,
     )
+
+    if obs_names_make_unique:
+        adata.obs_names_make_unique()
+    return adata
 
 
 
