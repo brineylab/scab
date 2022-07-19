@@ -77,6 +77,7 @@ def read_10x_mtx(
     cellhash_quantile=0.95,
     agbc_quantile=0.95,
     feature_quantile=0.95,
+    cache=True,
     verbose=True,
 ):
 
@@ -250,7 +251,7 @@ def read_10x_mtx(
     # read 10x matrix file
     if verbose:
         print("reading 10x Genomics matrix file...")
-    adata = sc.read_10x_mtx(mtx_path, gex_only=False)
+    adata = sc.read_10x_mtx(mtx_path, gex_only=False, cache=cache)
     gex = adata[:, adata.var.feature_types == "Gene Expression"]
 
     # process BCR data:
@@ -279,7 +280,10 @@ def read_10x_mtx(
             if verbose:
                 print("annotating BCR sequences with abstar...")
             sequences = abstar.run(
-                raw_seqs, output_type=abstar_output_format, germ_db=abstar_germ_db
+                raw_seqs, 
+                output_type=abstar_output_format, 
+                germ_db=abstar_germ_db, 
+                verbose=verbose,
             )
         pairs = assign_pairs(
             sequences,
@@ -322,6 +326,7 @@ def read_10x_mtx(
                 receptor="tcr",
                 output_type=abstar_output_format,
                 germ_db=abstar_germ_db,
+                verbose=verbose,
             )
         pairs = assign_pairs(
             sequences,
