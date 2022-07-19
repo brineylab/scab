@@ -417,7 +417,8 @@ class LineageSummary:
     def _cdr_alignment_block(self, sequences, dot_alignment=True, color=True):
         aln_data = []
         # get a representative sequence for parsing junction germline info
-        ref = sequences[0]
+        notnone_sequences = [s for s in sequences if s is not None]
+        ref = notnone_sequences[0]
         # get region positions for germline
         cdr1_start = IMGT_REGION_START_POSITIONS_AA["CDR1"] - 1
         cdr1_end = IMGT_REGION_END_POSITIONS_AA["CDR1"]
@@ -427,11 +428,11 @@ class LineageSummary:
         # junction_end = IMGT_REGION_START_POSITIONS_AA['FR4']
         # get data for germline line
         d = {"name": "germ", "order": 0}
-        dbname = Counter([s["germline_database"] for s in sequences]).most_common(1)[0][
+        dbname = Counter([s["germline_database"] for s in notnone_sequences]).most_common(1)[0][
             0
         ]
-        v_gene = Counter([s["v_call"] for s in sequences]).most_common(1)[0][0]
-        j_gene = Counter([s["j_call"] for s in sequences]).most_common(1)[0][0]
+        v_gene = Counter([s["v_call"] for s in notnone_sequences]).most_common(1)[0][0]
+        j_gene = Counter([s["j_call"] for s in notnone_sequences]).most_common(1)[0][0]
         v_germ = get_imgt_germlines(dbname, "V", gene=v_gene)
         # j_germ = get_imgt_germlines(dbname, 'J', gene=j_gene)
         junction_v = ref["junction_germ_v_aa"]
