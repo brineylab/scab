@@ -64,7 +64,9 @@ def qc_metrics(
     adata,
     ngenes_cutoff=2500,
     mito_cutoff=10,
-    ig_cutoff=50,
+    ig_cutoff=100,
+    read_count_bounds=[0, 5000],
+    gene_count_bounds=[0, 500],
     fig_dir=None,
     fig_prefix=None,
 ):
@@ -178,6 +180,52 @@ def qc_metrics(
             fig_name = f"{fig_prefix}_n-genes-by-counts.pdf"
         else:
             fig_name = "n_genes_by_counts.pdf"
+        plt.savefig(os.path.join(fig_dir, fig_name))
+    else:
+        plt.show()
+
+
+    # histogram of read counts
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[12, 4])
+    sns.histplot(data=adata.obs, x='total_counts', binwidth=500, ax=ax1)
+    sns.histplot(data=adata.obs, x='total_counts', binwidth=100, ax=ax2)
+    ax2.set_xlim(read_count_bounds)
+
+    for ax in [ax1, ax2]:
+        ax.set_xlabel('read count', fontsize=16)
+        ax.set_ylabel('# of cells', fontsize=16)
+        ax.tick_params(axis='both', labelsize=12)
+        for s in ['left', 'right', 'top']:
+            ax.spines[s].set_visible(False)
+    if fig_dir is not None:
+        plt.tight_layout()
+        if fig_prefix is not None:
+            fig_name = f"{fig_prefix}_read-counts.pdf"
+        else:
+            fig_name = "read-counts.pdf"
+        plt.savefig(os.path.join(fig_dir, fig_name))
+    else:
+        plt.show()
+
+
+    # histogram of gene counts
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[12, 4])
+    sns.histplot(data=adata.obs, x='n_genes_by_counts', binwidth=100, ax=ax1)
+    sns.histplot(data=adata.obs, x='n_genes_by_counts', binwidth=10, ax=ax2)
+    ax2.set_xlim(gene_count_bounds)
+
+    for ax in [ax1, ax2]:
+        ax.set_xlabel('gene count', fontsize=16)
+        ax.set_ylabel('# of cells', fontsize=16)
+        ax.tick_params(axis='both', labelsize=12)
+        for s in ['left', 'right', 'top']:
+            ax.spines[s].set_visible(False)
+    if fig_dir is not None:
+        plt.tight_layout()
+        if fig_prefix is not None:
+            fig_name = f"{fig_prefix}_gene-counts.pdf"
+        else:
+            fig_name = "gene-counts.pdf"
         plt.savefig(os.path.join(fig_dir, fig_name))
     else:
         plt.show()
