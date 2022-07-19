@@ -24,12 +24,21 @@
 
 
 import codecs
+from collections.abc import Iterable
+import pathlib
 import pickle
 import re
+import typing
+from typing import Any, Callable, Collection, Optional, Union
 
 import numpy as np
 
 import scanpy as sc
+
+import anndata
+from anndata import AnnData
+from anndata.compat import Literal
+from anndata._core.merge import StrategiesLiteral
 
 import abstar
 from abutils.core.pair import Pair, assign_pairs
@@ -37,48 +46,49 @@ from abutils.core.sequence import read_csv, read_fasta, read_json
 
 
 def read_10x_mtx(
-    mtx_path,
-    bcr_file=None,
-    bcr_annot=None,
-    bcr_format="fasta",
-    bcr_delimiter="\t",
-    bcr_id_key="sequence_id",
-    bcr_sequence_key="sequence",
-    bcr_id_delimiter="_",
-    bcr_id_delimiter_num=1,
-    tcr_file=None,
-    tcr_annot=None,
-    tcr_format="fasta",
-    tcr_delimiter="\t",
-    tcr_id_key="sequence_id",
-    tcr_sequence_key="sequence",
-    tcr_id_delimiter="_",
-    tcr_id_delimiter_num=1,
-    chain_selection_func=None,
-    abstar_output_format="airr",
-    abstar_germ_db="human",
-    gex_only=False,
-    hashes=None,
-    cellhash_regex="cell ?hash",
-    ignore_cellhash_case=True,
-    agbcs=None,
-    agbc_regex="agbc",
-    ignore_agbc_case=True,
-    log_transform_cellhashes=True,
-    ignore_zero_quantile_cellhashes=True,
-    rename_cellhashes=None,
-    log_transform_agbcs=True,
-    ignore_zero_quantile_agbcs=True,
-    rename_agbcs=None,
-    log_transform_features=True,
-    ignore_zero_quantile_features=True,
-    rename_features=None,
-    feature_suffix="_FBC",
-    cellhash_quantile=0.95,
-    agbc_quantile=0.95,
-    feature_quantile=0.95,
-    cache=True,
-    verbose=True,
+    mtx_path: str,
+    *,
+    bcr_file: Optional[str] = None,
+    bcr_annot: Optional[str] = None,
+    bcr_format: Literal["fasta", "delimited", "json"] = "fasta",
+    bcr_delimiter: str = "\t",
+    bcr_id_key: str = "sequence_id",
+    bcr_sequence_key: str = "sequence",
+    bcr_id_delimiter: str = "_",
+    bcr_id_delimiter_num: int = 1,
+    tcr_file: Optional[str] = None,
+    tcr_annot: Optional[str] = None,
+    tcr_format: Literal["fasta", "delimited", "json"] = "fasta",
+    tcr_delimiter: str = "\t",
+    tcr_id_key: str = "sequence_id",
+    tcr_sequence_key: str = "sequence",
+    tcr_id_delimiter: str = "_",
+    tcr_id_delimiter_num: int = 1,
+    chain_selection_func: Optional[Callable] = None,
+    abstar_output_format: Literal["airr", "json"] = "airr",
+    abstar_germ_db: str = "human",
+    gex_only: bool = False,
+    hashes: Optional[Iterable] = None,
+    cellhash_regex: str = "cell ?hash",
+    ignore_cellhash_case: bool = True,
+    agbcs: Optional[Iterable] = None,
+    agbc_regex: str= "agbc",
+    ignore_agbc_case: bool = True,
+    log_transform_cellhashes: bool = True,
+    ignore_zero_quantile_cellhashes: bool = True,
+    rename_cellhashes: Optional[dict[str, str]] = None,
+    log_transform_agbcs: bool = True,
+    ignore_zero_quantile_agbcs: bool = True,
+    rename_agbcs: Optional[dict[str, str]] = None,
+    log_transform_features: bool = True,
+    ignore_zero_quantile_features: bool = True,
+    rename_features: Optional[dict[str, str]] = None,
+    feature_suffix: str = "_FBC",
+    cellhash_quantile: Union[float, int] = 0.95,
+    agbc_quantile: Union[float, int] = 0.95,
+    feature_quantile: Union[float, int] = 0.95,
+    cache: bool = True,
+    verbose: bool = True,
 ):
 
     """
@@ -432,7 +442,7 @@ def read_10x_mtx(
     return gex
 
 
-def read(h5ad_file):
+def read(h5ad_file: Union[str, pathlib.Path]) -> AnnData:
     """
     Reads a serialized ``AnnData`` object. Similar to ``scanpy.read()``, except that ``scanpy`` 
     does not support serialized BCR/TCR data. If BCR/TCR data is included in the serialized ``AnnData``
@@ -465,7 +475,7 @@ def read(h5ad_file):
     return adata
 
 
-def write(adata, h5ad_file):
+def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
     """
     Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to 
     ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
@@ -475,15 +485,15 @@ def write(adata, h5ad_file):
     Parameters
     ----------
 
-    adata : anndata.AnnData  
+    adata
         An ``AnnData`` object containing gene expression, feature barcode and 
         VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
-        from raw CellRanger outputs. Required.
+        from raw CellRanger outputs.
 
-    h5ad_file : str  
+    h5ad_file 
         Path to the output file. The output will be written in ``h5ad`` format and must
         include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
-        be added. Required.    
+        be added.  
     """
     if not h5ad_file.endswith("h5ad"):
         h5ad_file += ".h5ad"
@@ -501,7 +511,7 @@ def write(adata, h5ad_file):
     _adata.write(h5ad_file)
 
 
-def save(adata, h5ad_file):
+def save(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
     """
     Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to 
     ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
@@ -511,14 +521,222 @@ def save(adata, h5ad_file):
     Parameters
     ----------
 
-    adata : anndata.AnnData  
+    adata
         An ``AnnData`` object containing gene expression, feature barcode and 
         VDJ data. ``scab.read_10x_mtx()`` can be used to construct a multi-omics ``AnnData`` object
-        from raw CellRanger outputs. Required.
+        from raw CellRanger outputs.
 
-    h5ad_file : str  
+    h5ad_file
         Path to the output file. The output will be written in ``h5ad`` format and must
         include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
-        be added. Required.    
+        be added.   
     """
     write(adata, h5ad_file)
+
+
+
+def concat(
+    adatas: Union[Collection[AnnData], "typing.Mapping[str, AnnData]"],
+    *,
+    axis: Literal[0, 1] = 0,
+    join: Literal["inner", "outer"] = "inner",
+    merge: Union[StrategiesLiteral, Callable, None] = None,
+    uns_merge: Union[StrategiesLiteral, Callable, None] = None,
+    label: Optional[str] = None,
+    keys: Optional[Collection] = None,
+    index_unique: Optional[str] = None,
+    fill_value: Optional[Any] = None,
+    pairwise: bool = False,
+) -> AnnData:
+    '''Concatenates AnnData objects using ``anndata.concat()``. Documentation was copied almost verbatim from the ``anndata.concat()`` `docstring`_
+
+    Parameters
+    ----------
+
+    adatas
+        The objects to be concatenated. If a Mapping is passed, keys are used for the `keys`
+        argument and values are concatenated.
+    
+    axis
+        Which axis to concatenate along. ``0`` is row-wise, ``1`` is column-wise.
+
+    join
+        How to align values when concatenating. If ``"outer"``, the union of the other axis
+        is taken. If ``"inner"``, the intersection is taken. For example::  
+    
+    merge
+        How elements not aligned to the axis being concatenated along are selected.
+        Currently implemented strategies include:
+        * ``None``: No elements are kept.
+        * ``"same"``: Elements that are the same in each of the objects.
+        * ``"unique"``: Elements for which there is only one possible value.
+        * ``"first"``: The first element seen at each from each position.
+        * ``"only"``: Elements that show up in only one of the objects.
+    
+    uns_merge
+        How the elements of ``.uns`` are selected. Uses the same set of strategies as
+        the `merge` argument, except applied recursively.
+    
+    label
+        Column in axis annotation (i.e. ``.obs`` or ``.var``) to place batch information in.
+        If it's None, no column is added.
+    
+    keys
+        Names for each object being added. These values are used for column values for
+        `label` or appended to the index if `index_unique` is not ``None``. Defaults to
+        incrementing integer labels.
+    
+    index_unique
+        Whether to make the index unique by using the keys. If provided, this
+        is the delimeter between "{orig_idx}{index_unique}{key}". When ``None``,
+        the original indices are kept.
+    
+    fill_value
+        When ``join="outer"``, this is the value that will be used to fill the introduced
+        indices. By default, sparse arrays are padded with zeros, while dense arrays and
+        DataFrames are padded with missing values.
+    
+    pairwise
+        Whether pairwise elements along the concatenated dimension should be included.
+        This is False by default, since the resulting arrays are often not meaningful.
+
+
+    Notes
+    -----
+    .. warning::
+        If you use ``join='outer'`` this fills 0s for sparse data when
+        variables are absent in a batch. Use this with care. Dense data is
+        filled with ``NaN``.
+
+
+    Examples
+    --------
+    Preparing example objects
+    >>> import anndata as ad, pandas as pd, numpy as np
+    >>> from scipy import sparse
+    >>> a = ad.AnnData(
+    ...     X=sparse.csr_matrix(np.array([[0, 1], [2, 3]])),
+    ...     obs=pd.DataFrame({"group": ["a", "b"]}, index=["s1", "s2"]),
+    ...     var=pd.DataFrame(index=["var1", "var2"]),
+    ...     varm={"ones": np.ones((2, 5)), "rand": np.random.randn(2, 3), "zeros": np.zeros((2, 5))},
+    ...     uns={"a": 1, "b": 2, "c": {"c.a": 3, "c.b": 4}},
+    ... )
+    >>> b = ad.AnnData(
+    ...     X=sparse.csr_matrix(np.array([[4, 5, 6], [7, 8, 9]])),
+    ...     obs=pd.DataFrame({"group": ["b", "c"], "measure": [1.2, 4.3]}, index=["s3", "s4"]),
+    ...     var=pd.DataFrame(index=["var1", "var2", "var3"]),
+    ...     varm={"ones": np.ones((3, 5)), "rand": np.random.randn(3, 5)},
+    ...     uns={"a": 1, "b": 3, "c": {"c.b": 4}},
+    ... )
+    >>> c = ad.AnnData(
+    ...     X=sparse.csr_matrix(np.array([[10, 11], [12, 13]])),
+    ...     obs=pd.DataFrame({"group": ["a", "b"]}, index=["s1", "s2"]),
+    ...     var=pd.DataFrame(index=["var3", "var4"]),
+    ...     uns={"a": 1, "b": 4, "c": {"c.a": 3, "c.b": 4, "c.c": 5}},
+    ... )
+    
+    Concatenating along different axes
+    
+    >>> ad.concat([a, b]).to_df()
+        var1  var2
+    s1   0.0   1.0
+    s2   2.0   3.0
+    s3   4.0   5.0
+    s4   7.0   8.0
+    >>> ad.concat([a, c], axis=1).to_df()
+        var1  var2  var3  var4
+    s1   0.0   1.0  10.0  11.0
+    s2   2.0   3.0  12.0  13.0
+    
+    Inner and outer joins
+    
+    >>> inner = ad.concat([a, b])  # Joining on intersection of variables
+    >>> inner
+    AnnData object with n_obs × n_vars = 4 × 2
+        obs: 'group'
+    >>> (inner.obs_names, inner.var_names)
+    (Index(['s1', 's2', 's3', 's4'], dtype='object'),
+    Index(['var1', 'var2'], dtype='object'))
+    >>> outer = ad.concat([a, b], join="outer") # Joining on union of variables
+    >>> outer
+    AnnData object with n_obs × n_vars = 4 × 3
+        obs: 'group', 'measure'
+    >>> outer.var_names
+    Index(['var1', 'var2', 'var3'], dtype='object')
+    >>> outer.to_df()  # Sparse arrays are padded with zeroes by default
+        var1  var2  var3
+    s1   0.0   1.0   0.0
+    s2   2.0   3.0   0.0
+    s3   4.0   5.0   6.0
+    s4   7.0   8.0   9.0
+    
+    Keeping track of source objects
+    
+    >>> ad.concat({"a": a, "b": b}, label="batch").obs
+       group batch
+    s1     a     a
+    s2     b     a
+    s3     b     b
+    s4     c     b
+    >>> ad.concat([a, b], label="batch", keys=["a", "b"]).obs  # Equivalent to previous
+       group batch
+    s1     a     a
+    s2     b     a
+    s3     b     b
+    s4     c     b
+    >>> ad.concat({"a": a, "b": b}, index_unique="-").obs
+         group
+    s1-a     a
+    s2-a     b
+    s3-b     b
+    s4-b     c
+    
+    Combining values not aligned to axis of concatenation
+    
+    >>> ad.concat([a, b], merge="same")
+    AnnData object with n_obs × n_vars = 4 × 2
+        obs: 'group'
+        varm: 'ones'
+    >>> ad.concat([a, b], merge="unique")
+    AnnData object with n_obs × n_vars = 4 × 2
+        obs: 'group'
+        varm: 'ones', 'zeros'
+    >>> ad.concat([a, b], merge="first")
+    AnnData object with n_obs × n_vars = 4 × 2
+        obs: 'group'
+        varm: 'ones', 'rand', 'zeros'
+    >>> ad.concat([a, b], merge="only")
+    AnnData object with n_obs × n_vars = 4 × 2
+        obs: 'group'
+        varm: 'zeros'
+    
+    The same merge strategies can be used for elements in `.uns`
+    
+    >>> dict(ad.concat([a, b, c], uns_merge="same").uns)
+    {'a': 1, 'c': {'c.b': 4}}
+    >>> dict(ad.concat([a, b, c], uns_merge="unique").uns)
+    {'a': 1, 'c': {'c.a': 3, 'c.b': 4, 'c.c': 5}}
+    >>> dict(ad.concat([a, b, c], uns_merge="only").uns)
+    {'c': {'c.c': 5}}
+    >>> dict(ad.concat([a, b, c], uns_merge="first").uns)
+    {'a': 1, 'b': 2, 'c': {'c.a': 3, 'c.b': 4, 'c.c': 5}}
+
+
+    .. _docstring
+        https://github.com/scverse/anndata/blob/master/anndata/_core/merge.py#L628
+    '''
+    return anndata.concat(
+        adatas,
+        axis=axis,
+        join=join,
+        merge=merge,
+        uns_merge=uns_merge,
+        label=label,
+        keys=keys,
+        index_unique=index_unique,
+        fill_value=fill_value,
+        pairwise=pairwise,
+    )
+
+
+
