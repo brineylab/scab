@@ -29,7 +29,7 @@ import pathlib
 import pickle
 import re
 import typing
-from typing import Any, Callable, Collection, Optional, Union
+from typing import Any, Callable, Collection, Dict, Optional, Union
 
 import numpy as np
 
@@ -76,13 +76,13 @@ def read_10x_mtx(
     ignore_agbc_case: bool = True,
     log_transform_cellhashes: bool = True,
     ignore_zero_quantile_cellhashes: bool = True,
-    rename_cellhashes: Optional[dict[str, str]] = None,
+    rename_cellhashes: Optional[Dict[str, str]] = None,
     log_transform_agbcs: bool = True,
     ignore_zero_quantile_agbcs: bool = True,
-    rename_agbcs: Optional[dict[str, str]] = None,
+    rename_agbcs: Optional[Dict[str, str]] = None,
     log_transform_features: bool = True,
     ignore_zero_quantile_features: bool = True,
-    rename_features: Optional[dict[str, str]] = None,
+    rename_features: Optional[Dict[str, str]] = None,
     feature_suffix: str = "_FBC",
     cellhash_quantile: Union[float, int] = 0.95,
     agbc_quantile: Union[float, int] = 0.95,
