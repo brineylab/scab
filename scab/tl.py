@@ -611,7 +611,7 @@ def demultiplex(
     cellhash_regex="cell ?hash",
     ignore_cellhash_case=True,
     rename=None,
-    assignment_key="sample",
+    assignment_key="cellhash_assignment",
     threshold_minimum=4.0,
     threshold_maximum=10.0,
     kde_maximum=15.0,
@@ -655,7 +655,7 @@ def demultiplex(
         labeled as ``'Sample1'`` in the resulting assignment column (``adata.obs.sample`` 
         by default, adjustable using `assignment_key`).
 
-    assignment_key : str, default='sample'  
+    assignment_key : str, default='cellhash_assignment'  
         Column name (in ``adata.obs``) into which cellhash assignments will be stored.  
 
     threshold_minimum : float, default=4.0  
@@ -707,7 +707,7 @@ def demultiplex(
         if debug:
             print(hash_name)
         thresholds[hash_name] = positive_feature_cutoff(
-            adata.obs[hash_name],
+            adata.obs[hash_name].dropna(),
             threshold_minimum=threshold_minimum,
             threshold_maximum=threshold_maximum,
             kde_maximum=kde_maximum,
