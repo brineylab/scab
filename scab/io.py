@@ -601,6 +601,10 @@ def concat(
         Whether pairwise elements along the concatenated dimension should be included.
         This is False by default, since the resulting arrays are often not meaningful.
 
+    obs_names_make_unique
+        If ``True``, will call ``obs_names_make_unique()`` on the concatenated ``AnnData``
+        object prior to returning. Default is ``True``.
+
 
     Notes
     -----
