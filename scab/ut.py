@@ -28,9 +28,9 @@
 
 
 def get_adata_values(adata, key, receptor='bcr', chain='heavy'):
-    if key in adata.obs:
-        return adata.obs[key]
-    else:
+    try:
+        return adata.obs_vector(key)
+    except KeyError:
         data = []
         if receptor not in adata.obs:
             raise ValueError(f'Receptor {receptor} was not found in the supplied AnnData object')
