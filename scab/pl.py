@@ -593,14 +593,20 @@ def scatter(
     hide_legend=False,
     xlabel=None,
     ylabel=None,
+    title=None,
+    title_fontsize=20,
+    title_fontweight='normal',
+    title_loc='center',
+    title_pad=None,
+    show_title=False,
     xlabel_fontsize=16,
     ylabel_fontsize=16,
     xtick_labelsize=14,
     ytick_labelsize=14,
     xtick_labelrotation=0,
     ytick_labelrotation=0,
-    cbar_width=35,
-    cbar_height=5,
+    cbar_width=0.35,
+    cbar_height=0.05,
     cbar_loc="lower right",
     cbar_orientation="horizontal",
     cbar_bbox_to_anchor=None,
@@ -609,6 +615,7 @@ def scatter(
     cbar_title_fontsize=12,
     hide_cbar=False,
     equal_axes=True,
+    ax=None,
     show=False,
     figsize=None,
     figfile=None):
@@ -870,6 +877,12 @@ def scatter(
         hide_legend=hide_legend,
         xlabel=xlabel if xlabel is not None else x,
         ylabel=ylabel if ylabel is not None else y,
+        title=title,
+        title_fontsize=title_fontsize,
+        title_fontweight=title_fontweight,
+        title_loc=title_loc,
+        title_pad=title_pad,
+        show_title=show_title,
         xlabel_fontsize=xlabel_fontsize,
         ylabel_fontsize=ylabel_fontsize,
         xtick_labelsize=xtick_labelsize,
@@ -886,6 +899,7 @@ def scatter(
         cbar_title_fontsize=cbar_title_fontsize,
         hide_cbar=hide_cbar,
         equal_axes=equal_axes,
+        ax=ax,
         show=False,
         figsize=figsize,
         figfile=None
@@ -912,8 +926,9 @@ def umap(
     palette=None,
     color=None,
     cmap=None,
-    size=20,
+    size=10,
     alpha=0.6,
+    n_col=2,
     receptor='bcr',
     chain='heavy', 
     hue_chain=None,
@@ -926,10 +941,21 @@ def umap(
     highlight_name=None,
     highlight_alpha=0.9,  
     plot_kwargs=None,
+    legend_on_data=False,
+    legend_fontsize=12,
+    legend_fontweight='bold',
+    legend_fontoutline=None,
+    legend_marker_alpha=0.8,
     legend_kwargs=None,
     hide_legend=False,
     xlabel='UMAP1',
     ylabel='UMAP2',
+    title=None,
+    title_fontsize=20,
+    title_fontweight='normal',
+    title_loc='center',
+    title_pad=None,
+    show_title=False,
     xlabel_fontsize=16,
     ylabel_fontsize=16,
     xtick_labelsize=14,
@@ -937,8 +963,8 @@ def umap(
     xtick_labelrotation=0,
     ytick_labelrotation=0,
     tiny_axis=True,
-    cbar_width=35,
-    cbar_height=5,
+    cbar_width=0.35,
+    cbar_height=0.05,
     cbar_loc="lower right",
     cbar_orientation="horizontal",
     cbar_bbox_to_anchor=None,
@@ -947,6 +973,7 @@ def umap(
     cbar_title_fontsize=12,
     hide_cbar=False,
     equal_axes=True,
+    ax=None,
     show=False,
     figsize=None,
     figfile=None):
@@ -1104,10 +1131,10 @@ def umap(
     ytick_labelrotation : int or float, default=0  
         Rotation of the Y-axis tick labels. 
 
-    cbar_width : int, default=35  
+    cbar_width : float, default=0.35  
         Width of the colorbar. Only used for continuous `hue` types.  
 
-    cbar_height : int, default=5  
+    cbar_height : float, default=0.05  
         Height of the colorbar. Only used for continuous `hue` types.  
 
     cbar_loc : str or iterable object, default='lower right'  
@@ -1161,99 +1188,180 @@ def umap(
         https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
         
     '''    
-
-    # get X/Y data
-    d = {}
+    # check that the UMAP data exists
     if 'X_umap' not in adata.obsm:
         from .tl import dimensionality_reduction
         adata = dimensionality_reduction(adata)
-    x, y = zip(*adata.obsm['X_umap'])
-    d['x'] = x
-    d['y'] = y
+    
+    # parse hues (if provided)
     if hue is not None:
-        d[hue] = get_adata_values(
-            adata,
-            hue, 
-            receptor=receptor, 
-            chain=hue_chain if hue_chain is not None else chain)
-    df = pd.DataFrame(d)
+        if isinstance(hue, str):
+            hues = [hue, ]
+        else:
+            hues = hue
+    else:
+        hues = [None, ]
+    
+    # set some UMAP-specific defaults
+    figsize = figsize if figsize is not None else [7, 7]
+    if legend_fontsize is not None:
+            if legend_kwargs is None:
+                legend_kwargs = {'fontsize': legend_fontsize}
+            else:
+                legend_kwargs['fontsize'] = legend_fontsize
+    
+    if len(hues) > 1:
+        n_row = int(np.ceil(len(hues) / n_col))
+        gridsize = [figsize[0] * n_col, figsize[1] * n_row]
+        fig, axes = plt.subplots(n_row, n_col, figsize=gridsize)
+        axes = axes.flatten()
+    else:
+        axes = [ax, ]
+    
+    # make plots
+    for ax, hue in zip(axes, hues):
+        # get X/Y data
+        d = {}
+        x, y = zip(*adata.obsm['X_umap'])
+        d['x'] = x
+        d['y'] = y
+        if hue is not None:
+            d[hue] = get_adata_values(
+                adata,
+                hue, 
+                receptor=receptor, 
+                chain=hue_chain if hue_chain is not None else chain)
+            continuous_hue = all([isinstance(h, float) for h in d[hue]]) and not force_categorical_hue
+        df = pd.DataFrame(d)        
 
-    ax = abutils.pl.scatter(
-        data=df,
-        x='x',
-        y='y', 
-        hue=hue, 
-        marker=marker,
-        hue_order=hue_order, 
-        force_categorical_hue=force_categorical_hue,
-        palette=palette,
-        color=color,
-        cmap=cmap,
-        size=size,
-        alpha=alpha,
-        highlight_index=highlight_index,
-        highlight_x=highlight_x,
-        highlight_y=highlight_y,
-        highlight_marker=highlight_marker,
-        highlight_size=highlight_size,
-        highlight_color=highlight_color,
-        highlight_name=highlight_name,
-        highlight_alpha=highlight_alpha,  
-        plot_kwargs=plot_kwargs,
-        legend_kwargs=legend_kwargs,
-        hide_legend=hide_legend,
-        xlabel=xlabel if xlabel is not None else x,
-        ylabel=ylabel if ylabel is not None else y,
-        xlabel_fontsize=xlabel_fontsize,
-        ylabel_fontsize=ylabel_fontsize,
-        xtick_labelsize=xtick_labelsize,
-        ytick_labelsize=ytick_labelsize,
-        xtick_labelrotation=xtick_labelrotation,
-        ytick_labelrotation=ytick_labelrotation,
-        cbar_width=cbar_width,
-        cbar_height=cbar_height,
-        cbar_loc=cbar_loc,
-        cbar_orientation=cbar_orientation,
-        cbar_bbox_to_anchor=cbar_bbox_to_anchor,
-        cbar_flip_ticks=cbar_flip_ticks,
-        cbar_title=cbar_title,
-        cbar_title_fontsize=cbar_title_fontsize,
-        hide_cbar=hide_cbar,
-        equal_axes=equal_axes,
-        show=False,
-        figsize=figsize,
-        figfile=None
-    )
+        # make the plot
+        ax = abutils.pl.scatter(
+            data=df,
+            x='x',
+            y='y', 
+            hue=hue, 
+            marker=marker,
+            hue_order=hue_order, 
+            force_categorical_hue=force_categorical_hue,
+            palette=palette,
+            color=color,
+            cmap=cmap if cmap is not None else loupe_cmap,
+            size=size,
+            alpha=alpha,
+            highlight_index=highlight_index,
+            highlight_x=highlight_x,
+            highlight_y=highlight_y,
+            highlight_marker=highlight_marker,
+            highlight_size=highlight_size,
+            highlight_color=highlight_color,
+            highlight_name=highlight_name,
+            highlight_alpha=highlight_alpha,  
+            plot_kwargs=plot_kwargs,
+            legend_kwargs=legend_kwargs,
+            hide_legend=True if legend_on_data else hide_legend,
+            xlabel=xlabel if xlabel is not None else x,
+            ylabel=ylabel if ylabel is not None else y,
+            title=title if title is not None else hue,
+            title_fontsize=title_fontsize,
+            title_fontweight=title_fontweight,
+            title_loc=title_loc,
+            title_pad=title_pad,
+            show_title=show_title,
+            xlabel_fontsize=xlabel_fontsize,
+            ylabel_fontsize=ylabel_fontsize,
+            xtick_labelsize=xtick_labelsize,
+            ytick_labelsize=ytick_labelsize,
+            xtick_labelrotation=xtick_labelrotation,
+            ytick_labelrotation=ytick_labelrotation,
+            cbar_width=cbar_width,
+            cbar_height=cbar_height,
+            cbar_loc=cbar_loc,
+            cbar_orientation=cbar_orientation,
+            cbar_bbox_to_anchor=cbar_bbox_to_anchor,
+            cbar_flip_ticks=cbar_flip_ticks,
+            cbar_title=cbar_title,
+            cbar_title_fontsize=cbar_title_fontsize,
+            hide_cbar=hide_cbar,
+            equal_axes=equal_axes,
+            ax=ax,
+            show=False,
+            figsize=figsize,
+            figfile=None
+        )
 
-    if tiny_axis:
-        # get coords for the UMAP-specific axes
-        xmin, xmax = ax.get_xlim()
-        ymin, ymax = ax.get_ylim()
-        x_start = xmin + abs((xmax - xmin) * 0.065)
-        y_start = ymin + abs((ymax - ymin) * 0.065)
-        if any([v[0] <= y_start and v[1] <= x_start for v in zip(x, y)]):
+        if tiny_axis:
+            # get coords for the UMAP-specific axes
+            xmin = df['x'].min()
+            xmax = df['x'].max()
+            ymin = df['y'].min()
+            ymax = df['y'].max()
             x_start = xmin
             y_start = ymin
-        x_end = xmin + abs((xmax - xmin) / 4)
-        x_center = x_start + ((x_end - x_start) / 2)
-        y_end = ymin + abs((ymax - ymin) / 4)
-        y_center = y_start + ((y_end - y_start) / 2)
-        # draw the new "mini" axis lines
-        ax.hlines(y_start, x_start, x_end, 'k')
-        ax.vlines(x_start, y_start, y_end, 'k')
-        ax.text(x_center, ymin, xlabel, fontsize=xlabel_fontsize, ha='center', va='bottom')
-        ax.text(xmin, y_center, ylabel, fontsize=ylabel_fontsize, rotation='vertical', ha='left', va='center')
-        # remove the normal axis lines
-        ax.set_xlabel('', fontsize=0)
-        ax.set_ylabel('', fontsize=0)
-        for s in ['left', 'right', 'top', 'bottom']:
-            ax.spines[s].set_visible(False)
+            x_end = xmin + abs((xmax - xmin) / 5)
+            x_center = x_start + ((x_end - x_start) / 2)
+            y_end = ymin + abs((ymax - ymin) / 5)
+            y_center = y_start + ((y_end - y_start) / 2)
+            # draw the new "mini" axis lines
+            ax.hlines(y_start, x_start, x_end, 'k', lw=2)
+            ax.vlines(x_start, y_start, y_end, 'k', lw=2)
+            ax.annotate(
+                xlabel,
+                xy=(x_center, ymin), 
+                xytext=(0, -5), 
+                textcoords='offset points',
+                fontsize=xlabel_fontsize, 
+                ha='center', 
+                va='top')
+            ax.annotate(
+                ylabel,
+                xy=(xmin, y_center), 
+                xytext=(-5, 0), 
+                textcoords='offset points',
+                fontsize=ylabel_fontsize, 
+                rotation='vertical',
+                ha='right', 
+                va='center')
+            # ax.text(xmin, y_center, ylabel, fontsize=ylabel_fontsize, rotation='vertical', ha='right', va='center')
+            # remove the normal axis lines
+            ax.set_xlabel('', fontsize=0)
+            ax.set_ylabel('', fontsize=0)
+            for s in ['left', 'right', 'top', 'bottom']:
+                ax.spines[s].set_visible(False)
+        # hide the ticks
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+        if legend_on_data and not continuous_hue:
+            # configure the legend font outline
+            if legend_fontoutline is not None:
+                path_effect = [
+                    mpl.patheffects.withStroke(linewidth=legend_fontoutline, foreground='w')
+                ]
+            else:
+                path_effect = None
+            # add the on-data legend
+            for h in df[hue].unique():
+                _df = df[df[hue] == h]
+                hue_x = _df['x'].median()
+                hue_y = _df['y'].median()
+                ax.text(
+                    hue_x, 
+                    hue_y, 
+                    h, 
+                    c='k', 
+                    weight=legend_fontweight,
+                    verticalalignment='center',
+                    horizontalalignment='center',
+                    fontsize=legend_fontsize,
+                    path_effects=path_effect
+                )
 
     # save, show or return the ax
     if figfile is not None:
         plt.tight_layout()
         plt.savefig(figfile)
     elif show:
+        plt.tight_layout()
         plt.show()
     else:
         return ax
@@ -3131,3 +3239,19 @@ def _get_monochrome_colors(monochrome_color, n_col):
     # and drop the lightest value
     RGB_tuples = [cmap(i)[:-1] for i in np.linspace(1, 0, n_col + 1)][:-1]
     return RGB_tuples
+
+
+
+def get_loupe_cmap():
+    ylorbr = mpl.cm.get_cmap("YlOrBr").copy()
+    cropped_ylorbr = ylorbr(np.linspace(0.1, 1, 255))
+    loupe_colors = [np.array([0.9, 0.9, 0.9, 1.0])] + list(cropped_ylorbr)
+
+    return mpl.colors.LinearSegmentedColormap.from_list('loupe', loupe_colors)
+
+loupe_cmap = get_loupe_cmap()
+
+
+
+
+
