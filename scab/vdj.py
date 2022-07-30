@@ -158,7 +158,7 @@ def clonify(
             s["mutations"] = [f"{m['position']}:{m['was']}>{m['is']}" for m in muts]
         else:
             muts = h[muts_key]
-            if any([np.isnan(muts), muts is None]):
+            if any([pd.isnull(muts), muts is None]):
                 s['mutations'] = []
             else:
                 muts = muts.split('|')
