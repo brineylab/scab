@@ -1,0 +1,53 @@
+# RUNS
+# if url is provided, the run data will be downloaded to the project folder
+# if path is provided, the run data will be copied to the project folder 
+# (unless copy_to_project is False)
+# 
+# by default, 
+runs:
+  NS001:
+    url: s3://brineylab/run_data/ns001.tar.gz
+    samplesheet: /data/samplesheets/ns001.csv
+
+  NS002:
+    path: ./ns002_run-data/
+    is_compressed: False
+    simple_csv: ./ns002.csv
+    copy_to_project: False
+
+
+# SAMPLES
+# for each sample, specify all of the library names by 
+# library type. Any library type accepted by CellRanger multi
+# can be used.
+# https://support.10xgenomics.com/single-cell-vdj/software/pipelines/latest/using/multi)
+samples:
+  sample1:
+    Gene Expression: sample1_gex
+    Antibody Capture: sample1_features
+    VDJ-B: sample1_ig
+    VDJ-T: sample1_tcr
+    VDJ-T-GD: sample1_tcr-gd
+
+  sample2:
+    Gene Expression: sample2_gex
+    CRISPR Guide Capture: sample2_crispr
+
+
+# REFERENCES
+# "default" reference will be used on all samples unless otherwise specified
+vdj_reference:
+  default: /path/to/default_vdj_reference
+  sample1: /path/to/alternate_vdj_reference
+
+transcriptome:
+  default: /path/to/default_transcriptome
+  sample1: /path/to/alternate_transcriptome
+  
+feature_reference:
+  default: /path/to/default_feature_reference
+
+
+# GENERAL
+uiport: 40909  # port for the cellranger UI
+cellranger: cellranger  # path to the cellranger binary
