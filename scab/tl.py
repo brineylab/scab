@@ -52,6 +52,7 @@ def dimensionality_reduction(
     solver="arpack",
     n_neighbors=20,
     n_pcs=40,
+    ignore_ig=True,
     paga=True,
     use_rna_velocity=False,
     use_rep=None,
@@ -61,7 +62,7 @@ def dimensionality_reduction(
 ):
     """
     Performs PCA, neighborhood graph construction and UMAP embedding. 
-    PAGA is optional.  
+    PAGA is optional, but is performed by default.  
 
     Parameters
     ----------
@@ -114,7 +115,16 @@ def dimensionality_reduction(
     """
     if verbose:
         print("performing PCA...")
-    sc.tl.pca(adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
+    if ignore_ig:
+        _adata = adata.copy()
+        _adata.var['highly_variable'] = _adata.var['highly_variable'] & ~(_adata.var['ig'])
+        sc.tl.pca(_adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
+        adata.obsm['X_pca'] = _adata.obsm['X_pca']
+        adata.varm['PCs'] = _adata.varm['PCs']
+        adata.uns['pca'] = {'variance_ratio': _adata.uns['pca']['variance_ratio'],
+                            'variance': _adata.uns['pca']['variance']}
+    else:
+        sc.tl.pca(adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
     if verbose:
         print("calculating neighbors...")
     sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, use_rep=use_rep)
@@ -307,7 +317,7 @@ def scanorama(adata, batch_key="batch", dim_red=True):
     all_s = np.concatenate(scanorama_int)
     adata_scanorama.obsm["Scanorama"] = all_s
     if dim_red:
-        adata_scanorama = dimensionality_reduction(adata_scanorama, rep="Scanorama")
+        adata_scanorama = dimensionality_reduction(adata_scanorama, use_rep="Scanorama")
     return adata_scanorama
 
 
@@ -601,7 +611,7 @@ def demultiplex(
     cellhash_regex="cell ?hash",
     ignore_cellhash_case=True,
     rename=None,
-    assignment_key="sample",
+    assignment_key="cellhash_assignment",
     threshold_minimum=4.0,
     threshold_maximum=10.0,
     kde_maximum=15.0,
@@ -645,7 +655,7 @@ def demultiplex(
         labeled as ``'Sample1'`` in the resulting assignment column (``adata.obs.sample`` 
         by default, adjustable using `assignment_key`).
 
-    assignment_key : str, default='sample'  
+    assignment_key : str, default='cellhash_assignment'  
         Column name (in ``adata.obs``) into which cellhash assignments will be stored.  
 
     threshold_minimum : float, default=4.0  
@@ -697,7 +707,7 @@ def demultiplex(
         if debug:
             print(hash_name)
         thresholds[hash_name] = positive_feature_cutoff(
-            adata.obs[hash_name],
+            adata.obs[hash_name].dropna(),
             threshold_minimum=threshold_minimum,
             threshold_maximum=threshold_maximum,
             kde_maximum=kde_maximum,

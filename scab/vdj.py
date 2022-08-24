@@ -157,8 +157,12 @@ def clonify(
             muts = nested_dict_lookup(h, muts_key.split("."), [])
             s["mutations"] = [f"{m['position']}:{m['was']}>{m['is']}" for m in muts]
         else:
-            muts = nested_dict_lookup(h, muts_key.split("."), "").split("|")
-            s["mutations"] = [m for m in muts if m.strip()]
+            muts = h[muts_key]
+            if any([pd.isnull(muts), muts is None]):
+                s['mutations'] = []
+            else:
+                muts = muts.split('|')
+                s["mutations"] = [m for m in muts if m.strip()]
         required_fields = ["v_gene", "j_gene", "cdr3", "mutations"]
         if preclustering:
             s["preclustering"] = nested_dict_lookup(h, preclustering_field.split("."))
