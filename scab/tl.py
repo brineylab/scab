@@ -317,7 +317,7 @@ def scanorama(adata, batch_key="batch", dim_red=True):
     all_s = np.concatenate(scanorama_int)
     adata_scanorama.obsm["Scanorama"] = all_s
     if dim_red:
-        adata_scanorama = dimensionality_reduction(adata_scanorama, rep="Scanorama")
+        adata_scanorama = dimensionality_reduction(adata_scanorama, use_rep="Scanorama")
     return adata_scanorama
 
 
