@@ -849,7 +849,7 @@ def scatter(
             hue, 
             receptor=receptor, 
             chain=hue_chain if hue_chain is not None else chain)
-    df = pd.DataFrame(d)
+    df = pd.DataFrame(d, index=adata.obs.index)
 
     ax = abutils.pl.scatter(
         data=df,
@@ -1232,9 +1232,10 @@ def umap(
                 receptor=receptor, 
                 chain=hue_chain if hue_chain is not None else chain)
             continuous_hue = all([isinstance(h, float) for h in d[hue]]) and not force_categorical_hue
-        df = pd.DataFrame(d)        
+        df = pd.DataFrame(d, index=adata.obs.index)        
 
         # make the plot
+        # ax = scatter(
         ax = abutils.pl.scatter(
             data=df,
             x='x',
@@ -1291,15 +1292,23 @@ def umap(
 
         if tiny_axis:
             # get coords for the UMAP-specific axes
+            if tiny_axis_xoffset is None:
+                tiny_axis_xoffset = 0
+            if tiny_axis_yoffset is None:
+                tiny_axis_yoffset = 0
             xmin = df['x'].min()
             xmax = df['x'].max()
             ymin = df['y'].min()
             ymax = df['y'].max()
-            x_start = xmin
-            y_start = ymin
-            x_end = xmin + abs((xmax - xmin) / 5)
+            x_range = abs(xmax - xmin)
+            y_range = abs(ymax - ymin)
+            x_offset = x_range * tiny_axis_xoffset
+            y_offset = y_range * tiny_axis_yoffset
+            x_start = xmin + x_offset
+            y_start = ymin + x_offset
+            x_end = xmin + (x_range / 5) + x_offset
             x_center = x_start + ((x_end - x_start) / 2)
-            y_end = ymin + abs((ymax - ymin) / 5)
+            y_end = ymin + (y_range / 5) + y_offset
             y_center = y_start + ((y_end - y_start) / 2)
             # draw the new "mini" axis lines
             ax.hlines(y_start, x_start, x_end, 'k', lw=2)
