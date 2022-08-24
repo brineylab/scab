@@ -188,13 +188,13 @@ def read_10x_mtx(
         `cellhash_quantile` is ``0.95``, resulting in cellhashes with zero counts for the 95th
         percentile being ignored.  
         
-    ignore_zero_median_agbcs : bool, default=True  
+    ignore_zero_quantile_agbcs : bool, default=True  
         If ``True``, any AgBCs for which the `agbc_quantile`
         percentile have a count of zero are ignored. Default is ``True`` and the default 
         `agbc_quantile` is ``0.95``, resulting in AgBCs with zero counts for the 95th
         percentile being ignored.  
 
-    ignore_zero_median_features : bool, default=True  
+    ignore_zero_quantile_features : bool, default=True  
         If ``True``, any features for which the `feature_quantile`
         percentile have a count of zero are ignored. Default is ``True`` and the default 
         `feature_quantile` is ``0.95``, resulting in features with zero counts for the 95th
