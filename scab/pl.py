@@ -963,6 +963,8 @@ def umap(
     xtick_labelrotation=0,
     ytick_labelrotation=0,
     tiny_axis=True,
+    tiny_axis_xoffset=None,
+    tiny_axis_yoffset=None,
     cbar_width=0.35,
     cbar_height=0.05,
     cbar_loc="lower right",
