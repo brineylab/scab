@@ -462,7 +462,7 @@ class LineageSummary:
             aln_dict = {}
             for rec in aln:
                 if not str(rec.seq).replace("-", "").replace("X", ""):
-                    aln_dict[rec.id] = " " + len(str(rec.seq))
+                    aln_dict[rec.id] = " " * len(str(rec.seq))
                 else:
                     aln_dict[rec.id] = str(rec.seq)
             df[f"{region}_aligned"] = [aln_dict[str(n)] for n in names]
