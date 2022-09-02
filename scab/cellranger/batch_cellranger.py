@@ -262,7 +262,7 @@ class Run():
         self.simple_csv = os.path.abspath(config['simple_csv']) if 'simple_csv' in config else None
         self.copy_to_project = config.get('copy_to_project', False)
         self._fastq_path = None
-        # self._libraries = None
+        self._libraries = None
 
     def __repr__(self):
         rstring = 'RUN: {}'.format(self.name)
@@ -298,15 +298,15 @@ class Run():
         self._fastq_path = path
 
 
-    # @property
-    # def libraries(self):
-    #     if self._libraries is None:
-    #         self._libraries = self._parse_libraries()
-    #     return self._libraries
+    @property
+    def libraries(self):
+        if self._libraries is None:
+            self._libraries = self._parse_libraries()
+        return self._libraries
 
-    # @libraries.setter
-    # def libraries(self, libraries):
-    #     self._libraries = libraries
+    @libraries.setter
+    def libraries(self, libraries):
+        self._libraries = libraries
 
     
     @property
@@ -509,37 +509,37 @@ class Run():
         return run_dir
 
     
-    # def _parse_libraries(self):
-    #     '''
-    #     docstring for _parse_libraries()
-    #     '''
-    #     if self.samplesheet is not None:
-    #         return self._parse_samplesheet()
-    #     if self.simple_csv is not None:
-    #         return self._parse_simple_csv()
+    def _parse_libraries(self):
+        '''
+        docstring for _parse_libraries()
+        '''
+        if self.samplesheet is not None:
+            return self._parse_samplesheet()
+        if self.simple_csv is not None:
+            return self._parse_simple_csv()
 
     
-    # def _parse_samplesheet(self):
-    #     '''
-    #     docstring for _parse_samplesheet()
-    #     '''
-    #     ss = SampleSheet(self.samplesheet)
-    #     samples = []
-    #     for s in ss.samples:
-    #         samples.append(Sample(s.Sample_ID, name=s.Sample_Name, index=s.index))
-    #     return samples
+    def _parse_samplesheet(self):
+        '''
+        docstring for _parse_samplesheet()
+        '''
+        ss = SampleSheet(self.samplesheet)
+        samples = []
+        for s in ss.samples:
+            samples.append(Sample(s.Sample_ID, name=s.Sample_Name, index=s.index))
+        return samples
 
 
-    # def _parse_simple_csv(self):
-    #     '''
-    #     docstring for _parse_simple_csv()
-    #     '''
-    #     samples = []
-    #     with open(self.simple_csv) as csvfile:
-    #         reader = csv.DictReader(csvfile)
-    #         for r in reader:
-    #             samples.append(Sample(r['Sample'], index=r['Index']))
-    #     return samples
+    def _parse_simple_csv(self):
+        '''
+        docstring for _parse_simple_csv()
+        '''
+        samples = []
+        with open(self.simple_csv) as csvfile:
+            reader = csv.DictReader(csvfile)
+            for r in reader:
+                samples.append(Sample(r['Sample'], index=r['Index']))
+        return samples
 
 
 
