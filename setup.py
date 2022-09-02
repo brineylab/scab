@@ -42,7 +42,7 @@ config = {
     "version": __version__,
     "install_requires": install_requires,
     "packages": ["scab"],
-    "scripts": [],
+    "scripts": ['bin/batch_cellranger'],
     "name": "scab",
     "include_package_data": True,
     "classifiers": [
