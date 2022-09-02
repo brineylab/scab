@@ -145,7 +145,7 @@ class Config():
         return self._runs
 
     @runs.setter
-    def runs(self, runs: Sequence[Run]):
+    def runs(self, runs: Sequence):
         self._runs = runs
 
     
@@ -156,17 +156,17 @@ class Config():
         return self._samples
 
     @samples.setter
-    def samples(self, samples: Sequence[Sample]):
+    def samples(self, samples: Sequence):
         self._samples = samples
 
     
-    def get_multi_cli_options(self, sample_name):
+    def get_multi_cli_options(self, sample_name: str):
         if sample_name in self.cli_options['multi']:
             return self.cli_options['multi'][sample_name]
         return self.cli_options['multi'].get('default', '')
 
     
-    def get_mkfastq_cli_options(self, run_name):
+    def get_mkfastq_cli_options(self, run_name: str):
         if run_name in self.cli_options['mkfastq']:
             return self.cli_options['mkfastq'][run_name]
         return self.cli_options['mkfastq'].get('default', '')
