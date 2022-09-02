@@ -26,12 +26,15 @@
 from argparse import ArgumentParser
 import csv
 import os
+import pathlib
 import shutil
 import subprocess as sp
 import sys
 import time
 from unicodedata import name
 import urllib
+
+from typing import Any, Callable, Collection, Dict, Mapping, Optional, Sequence, Union
 
 import yaml
 
@@ -67,7 +70,15 @@ def parse_arguments(print_help=False):
 
 
 class Args():
-    def __init__(self, project_dir=None, config_file=None, debug=False):
+    '''
+    docstring for Args()
+    '''
+    def __init__(
+        self, 
+        project_dir: Union[str, pathlib.Path, None] = None, 
+        config_file: Union[str, pathlib.Path, None] = None, 
+        debug: bool = False,
+    ):
         super(Args, self).__init__()
         self.project_dir = os.path.abspath(project_dir)
         self.config_file = os.path.abspath(config_file)
@@ -90,7 +101,7 @@ class Config():
             assumes that the cellranger binary is on your $PATH.
 
     '''
-    def __init__(self, config_file):
+    def __init__(self, config_file: Union[str, pathlib.Path]):
         self.config_file = os.path.abspath(config_file)
         self.gex_reference = None
         self.vdj_reference = None
@@ -134,7 +145,7 @@ class Config():
         return self._runs
 
     @runs.setter
-    def runs(self, runs):
+    def runs(self, runs: Sequence[Run]):
         self._runs = runs
 
     
@@ -145,7 +156,7 @@ class Config():
         return self._samples
 
     @samples.setter
-    def samples(self, samples):
+    def samples(self, samples: Sequence[Sample]):
         self._samples = samples
 
     
@@ -237,7 +248,11 @@ class Run():
     '''
     Object for aggregation of sequencing run information throughput the 10x processing
     '''
-    def __init__(self, name, config):
+    def __init__(
+        self, 
+        name: str, 
+        config: Union[str, pathlib.Path],
+    ):
         self.name = name
         self.config = config
         self.url = config.get('url', None)
@@ -247,7 +262,7 @@ class Run():
         self.simple_csv = os.path.abspath(config['simple_csv']) if 'simple_csv' in config else None
         self.copy_to_project = config.get('copy_to_project', False)
         self._fastq_path = None
-        self._libraries = None
+        # self._libraries = None
 
     def __repr__(self):
         rstring = 'RUN: {}'.format(self.name)
@@ -279,19 +294,19 @@ class Run():
         return self._fastq_path
 
     @fastq_path.setter
-    def fastq_path(self, path):
+    def fastq_path(self, path: Union[str, pathlib.Path]):
         self._fastq_path = path
 
 
-    @property
-    def libraries(self):
-        if self._libraries is None:
-            self._libraries = self._parse_libraries()
-        return self._libraries
+    # @property
+    # def libraries(self):
+    #     if self._libraries is None:
+    #         self._libraries = self._parse_libraries()
+    #     return self._libraries
 
-    @libraries.setter
-    def libraries(self, libraries):
-        self._libraries = libraries
+    # @libraries.setter
+    # def libraries(self, libraries):
+    #     self._libraries = libraries
 
     
     @property
@@ -307,7 +322,12 @@ class Run():
         logger.info('-' * (l + 4))
 
 
-    def get(self, raw_dir, log_dir=None, debug=None):
+    def get(
+        self, 
+        raw_dir: Union[str, pathlib.Path], 
+        log_dir: Union[str, pathlib.Path, None] = None, 
+        debug: bool = False,
+    ):
         '''
         docstring for get()
         '''
@@ -322,13 +342,13 @@ class Run():
 
     def mkfastq(
         self, 
-        fastq_dir, 
-        cellranger='cellranger', 
-        uiport=None, 
-        log_dir=None, 
-        cli_options=None, 
-        debug=None
-    ):
+        fastq_dir: Union[str, pathlib.Path], 
+        cellranger: str = 'cellranger', 
+        uiport: Optional[int] = None, 
+        log_dir: Optional[str] = None, 
+        cli_options: Optional[str] = None, 
+        debug: bool = False,
+    ) -> str:
         '''
         docstring for mkfastq()
         '''
@@ -337,8 +357,10 @@ class Run():
         mkfastq_cmd += f" --id={self.name}"
         mkfastq_cmd += f" --run='{self.path}'"
         if self.samplesheet is not None:
+            self._copy_samplesheet(fastq_dir)
             mkfastq_cmd += f" --samplesheet='{self.samplesheet}'"
         else:
+            self._copy_simple_csv(fastq_dir)
             mkfastq_cmd += f" --csv='{self.simple_csv}'"
         if uiport is not None:
             mkfastq_cmd += f" --uiport={uiport}"
@@ -373,9 +395,50 @@ class Run():
     def _copy(self, destination, log_dir=None, debug=False):
         shutil.copytree(self.path, destination)
         return destination
+
+    
+    def _copy_samplesheet(
+        self, 
+        d: Union[str, pathlib.Path],
+    ):
+        '''
+        Copies the run's samplesheet to a different directory.
+
+        Parameters
+        ----------
+        d
+            Directory into which the samlesheet will be copied.
+        '''
+        dest = os.path.join(d, f'{self.name}_samplesheet.csv')
+        shutil.copy(self.samplesheet, dest)
+
+
+    def _copy_simple_csv(
+        self, 
+        d: Union[str, pathlib.Path],
+    ):
+        '''
+        Copies the run's simple CSV to a different directory.
+
+        Parameters
+        ----------
+        d
+            Directory into which the simple CSV will be copied.
+        '''
+        dest = os.path.join(d, f'{self.name}_simple.csv')
+        shutil.copy(self.simple_csv, dest)
     
 
-    def _download(self, url, destination, log_dir=None, debug=False):
+    def _download(
+        self, 
+        url: str, 
+        destination: Union[str, pathlib.Path], 
+        log_dir: Union[str, pathlib.Path, None] = None,
+        debug: bool = False,
+    ) -> str:
+        '''
+        docstring for _download()
+        '''
         logger.info('downloading run data....')
         destination = os.path.abspath(destination)
         make_dir(destination)
@@ -396,7 +459,16 @@ class Run():
         return os.path.join(destination, fname)
 
 
-    def _decompress(self, source, destination, log_dir=None, debug=False):
+    def _decompress(
+        self, 
+        source: Union[str, pathlib.Path], 
+        destination: Union[str, pathlib.Path], 
+        log_dir: Union[str, pathlib.Path, None] = None, 
+        debug: bool = False,
+    ) -> str:
+        '''
+        docstring for _decompress()
+        '''
         source = os.path.abspath(source)
         destination = os.path.abspath(destination)
         if os.path.isdir(source):
@@ -437,28 +509,37 @@ class Run():
         return run_dir
 
     
-    def _parse_libraries(self):
-        if self.samplesheet is not None:
-            return self._parse_samplesheet()
-        if self.simple_csv is not None:
-            return self._parse_simple_csv()
+    # def _parse_libraries(self):
+    #     '''
+    #     docstring for _parse_libraries()
+    #     '''
+    #     if self.samplesheet is not None:
+    #         return self._parse_samplesheet()
+    #     if self.simple_csv is not None:
+    #         return self._parse_simple_csv()
 
     
-    def _parse_samplesheet(self):
-        ss = SampleSheet(self.samplesheet)
-        samples = []
-        for s in ss.samples:
-            samples.append(Sample(s.Sample_ID, name=s.Sample_Name, index=s.index))
-        return samples
+    # def _parse_samplesheet(self):
+    #     '''
+    #     docstring for _parse_samplesheet()
+    #     '''
+    #     ss = SampleSheet(self.samplesheet)
+    #     samples = []
+    #     for s in ss.samples:
+    #         samples.append(Sample(s.Sample_ID, name=s.Sample_Name, index=s.index))
+    #     return samples
 
 
-    def _parse_simple_csv(self):
-        samples = []
-        with open(self.simple_csv) as csvfile:
-            reader = csv.DictReader(csvfile)
-            for r in reader:
-                samples.append(Sample(r['Sample'], index=r['Index']))
-        return samples
+    # def _parse_simple_csv(self):
+    #     '''
+    #     docstring for _parse_simple_csv()
+    #     '''
+    #     samples = []
+    #     with open(self.simple_csv) as csvfile:
+    #         reader = csv.DictReader(csvfile)
+    #         for r in reader:
+    #             samples.append(Sample(r['Sample'], index=r['Index']))
+    #     return samples
 
 
 
@@ -468,11 +549,11 @@ class Sample():
     '''
     def __init__(
         self, 
-        name, 
-        library_dict,
-        gex_reference=None, 
-        vdj_reference=None, 
-        feature_reference=None, 
+        name: str, 
+        library_dict: Dict,
+        gex_reference: Union[str, pathlib.Path, None] = None, 
+        vdj_reference: Union[str, pathlib.Path, None] = None, 
+        feature_reference: Union[str, pathlib.Path, None] = None, 
     ):
         self.name = name
         self.gex_reference = gex_reference
@@ -511,7 +592,7 @@ class Sample():
 
 
 
-    def make_config_csv(self, csv_path):
+    def make_config_csv(self, csv_path: Union[str, pathlib.Path]):
         csv_dir = os.path.dirname(csv_path)
         if not os.path.isdir(csv_dir):
             make_dir(csv_dir)
@@ -543,7 +624,7 @@ class Library():
     '''
     Object for aggregating information about a single library
     '''
-    def __init__(self, name, library_type):
+    def __init__(self, name: str, library_type: str):
         self.name = name
         self.type = library_type
         self._fastq_paths = None
@@ -556,7 +637,7 @@ class Library():
         return self._fastq_paths
 
 
-    def add_fastq_path(self, fastq_path):
+    def add_fastq_path(self, fastq_path: Union[str, pathlib.Path]):
         self.fastq_path.append(os.path.abspath(fastq_path))
 
 
@@ -572,14 +653,17 @@ class Library():
 
 
 def cellranger_multi(
-    sample, 
-    output_dir, 
-    cellranger='cellranger', 
-    uiport=None, 
-    log_dir=None,
-    cli_options=None,
-    debug=None
+    sample: Sample, 
+    output_dir: Union[str, pathlib.Path], 
+    cellranger: Optional[str] = 'cellranger', 
+    uiport: Optional[int] = None, 
+    log_dir: Union[str, pathlib.Path, None] = None,
+    cli_options: Optional[str] = None,
+    debug: bool = False,
 ):
+    '''
+    docstring for cellranger_multi()
+    '''
     logger.info(f'building config CSV...')
     config_csv = os.path.join(output_dir, f"{sample.name}_config.csv")
     sample.make_config_csv(config_csv)
@@ -770,7 +854,13 @@ def cellranger_multi(
 
 
 
-def build_directory_structure(project_dir, cfg):
+def build_directory_structure(
+    project_dir: Union[str, pathlib.Path], 
+    cfg: Config
+):
+    '''
+    docstring for build_directory_structure()
+    '''
     dirs = {}
     make_dir(project_dir)
     shutil.copy(cfg.config_file, os.path.join(project_dir, 'config.yaml'))
@@ -783,7 +873,15 @@ def build_directory_structure(project_dir, cfg):
     return dirs
 
 
-def write_log(prefix, dir, stdout=None, stderr=None):
+def write_log(
+    prefix: str, 
+    dir: Union[str, pathlib.Path], 
+    stdout: Optional[str] = None, 
+    stderr: Optional[str] = None,
+):
+    '''
+    docstring for write_log()
+    '''
     if stdout is not None:
         stdout_file = os.path.join(dir, '{}.stdout'.format(prefix))
         with open(stdout_file, 'w') as f:
@@ -794,7 +892,7 @@ def write_log(prefix, dir, stdout=None, stderr=None):
             f.write(stderr)
 
 
-def print_plan(cfg):
+def print_plan(cfg: Config):
     '''
     prints the plan (runs, samples, references, etc)
     '''
@@ -858,7 +956,7 @@ def print_plan(cfg):
 
 
 
-def main(args):
+def main(args: Args):
     # parse the config file
     cfg = Config(args.config_file)
 
