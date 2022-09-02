@@ -76,26 +76,18 @@ class Args():
 
 class Config():
     '''
-    ``Config`` provides the following attributes:
+    Config provides the following attributes:
 
-      - ``config_file``: path to the configuration file, in YAML format.
-      - ``runs``: a list of ``Run`` objects
-      - ``samples``: a list of `Sample` objects. Samples are parsed from `Run`s, so
-                   samples may exist in this list that will not be processed by any
-                   of the cellranger operations.
-      - ``ops``: a dictionary with cellranger operations (count, vdj, aggr or features)
-               as keys and a list of subjects as values. Maps the operation with
-               the samples on which the operation will be performed.
-      - ``reference``: dictionary mapping sample names to the VDJ reference. Must include
-                     a ``default`` reference, which will be used for all subjects not
-                     specifically named in the dictionary.
-      - ``transcriptome``: same as ``reference``, but mapping samples to a reference
-                         transcriptome for ``cellranger count`` operations.
-      - ``feature_reference``: same as ``reference``, but mapping samples to a 
-                             feature reference.
-      - ``uiport``: port for the cellranger UI. Default is 72647.
-      - ``cellranger``: path to the cellranger binary. Default is "cellranger", which
-                      assumes that the cellranger binary is on your PATH.
+      - config_file: path to the configuration file, in YAML format.
+      - runs: a list of ``Run`` objects
+      - samples: a list of `Sample` objects.
+      - [gex|vdj|feature]_reference: dictionary mapping sample names to 
+            GEX, VDJ or Feature references. Each reference tuype must include 
+            a ``default`` reference, which will be used for all samples not
+            specifically named in the dictionary.
+      - uiport: port for the cellranger UI. Default is 72647.
+      - cellranger: path to the cellranger binary. Default is ``"cellranger"``, which
+            assumes that the cellranger binary is on your $PATH.
 
     '''
     def __init__(self, config_file):
@@ -116,32 +108,22 @@ class Config():
         rlist.append('VDJ reference:')
         rlist.append('  - default: {}'.format(self.reference['default']))
         for k, v in self.reference.items():
-            if k == 'default':
-                continue
-            rlist.append('  - {}: {}'.format(k, v))
+            if k != 'default':
+                rlist.append('  - {}: {}'.format(k, v))
         rlist.append('transcriptome:')
         rlist.append('  - default: {}'.format(self.transcriptome['default']))
         for k, v in self.transcriptome.items():
-            if k == 'default':
-                continue
-            rlist.append('  - {}: {}'.format(k, v))
+            if k != 'default':
+                rlist.append('  - {}: {}'.format(k, v))
         rlist.append('feature reference:')
         rlist.append('  - default: {}'.format(self.feature_reference['default']))
         for k, v in self.feature_reference.items():
-            if k == 'default':
-                continue
-            rlist.append('  - {}: {}'.format(k, v))
+            if k != 'default':
+                rlist.append('  - {}: {}'.format(k, v))
         rlist.append('UI port: {}'.format(self.uiport))
         rlist.append('cellranger binary: {}'.format(self.cellranger))
         rlist.append('runs: {}'.format([r.name for r in self.runs]))
         rlist.append('samples: {}'.format([s.name for s in self.samples]))
-        rlist.append('operations:')
-        rlist.append('  - vdj: {}'.format(self.ops.get('vdj', [])))
-        rlist.append('  - count: {}'.format(self.ops.get('count', [])))
-        # rlist.append('  - features: {}'.format(self.ops.get('features', [])))
-        rlist.append('  - aggr:')
-        for k, v in self.ops.get('aggr', {}).items():
-            rlist.append('    - {}: {}'.format(k, v))
         return '\n'.join(rlist)
 
     
@@ -167,22 +149,27 @@ class Config():
         self._samples = samples
 
     
-    @property
-    def ops(self):
-        if self._ops is None:
-            return []
-        return self._ops
+    def get_multi_cli_options(self, sample_name):
+        if sample_name in self.cli_options['multi']:
+            return self.cli_options['multi'][sample_name]
+        return self.cli_options['multi'].get('default', '')
 
-    @ops.setter
-    def ops(self, ops):
-        self._ops = ops
+    
+    def get_mkfastq_cli_options(self, run_name):
+        if run_name in self.cli_options['mkfastq']:
+            return self.cli_options['mkfastq'][run_name]
+        return self.cli_options['mkfastq'].get('default', '')
 
 
     def _parse_config_file(self):
+        '''
+        Parses the user-provided YAML configuration file.
+        '''
         with open(self.config_file) as f:
             config = yaml.safe_load(f)
         # runs
-        self.runs = [Run(name, cfg) for name, cfg in config['runs'].items()]
+        if 'sequencing_runs' in config:
+            self.runs = [Run(name, cfg) for name, cfg in config['sequencing_runs'].items()]
         # references
         self.gex_reference = config.get('gex_reference', {})
         self.vdj_reference = config.get('vdj_reference', {})
@@ -201,6 +188,13 @@ class Config():
          # general config options
         self.uiport = config.get('uiport', 72647)
         self.cellranger = config.get('cellranger', 'cellranger')
+
+        # cli options
+        self.cli_options = config.get('cli_options', {})
+        if 'mkfastq' not in self.cli_options:
+            self.cli_options['mkfastq'] = {'default': ''}
+        if 'multi' not in self.cli_options:
+            self.cli_options['multi'] = {'default': ''}
 
             # for name, lib_dict in config['samples'].itmes()
         # collect samples from runs
@@ -298,6 +292,11 @@ class Run():
     def libraries(self, libraries):
         self._libraries = libraries
 
+    
+    @property
+    def mkfastq_cli_options(self):
+        return self.config.get_mkfastq_cli_options(self.name)
+
 
     def print_splash(self):
         l = len(self.name)
@@ -308,6 +307,9 @@ class Run():
 
 
     def get(self, raw_dir, log_dir=None, debug=None):
+        '''
+        docstring for get()
+        '''
         destination = os.path.join(os.path.abspath(raw_dir), self.name)
         if all([self.path is not None, self.copy_to_project, not self.is_compressed]):
             self.path = self._copy(destination, log_dir=log_dir, debug=debug)
@@ -317,10 +319,19 @@ class Run():
             self.path = self._decompress(self.path, destination, log_dir=log_dir, debug=debug)
 
 
-    def mkfastq(self, fastq_dir, cellranger='cellranger', uiport=None, log_dir=None, debug=None):
+    def mkfastq(
+        self, 
+        fastq_dir, 
+        cellranger='cellranger', 
+        uiport=None, 
+        log_dir=None, 
+        cli_options=None, 
+        debug=None
+    ):
+        '''
+        docstring for mkfastq()
+        '''
         logger.info('Running mkfastq....')
-        # fastq_dir = os.path.abspath(fastq_dir)
-        # make_dir(fastq_dir)
         mkfastq_cmd = f"cd '{fastq_dir}' && {cellranger} mkfastq"
         mkfastq_cmd += f" --id={self.name}"
         mkfastq_cmd += f" --run='{self.path}'"
@@ -330,6 +341,8 @@ class Run():
             mkfastq_cmd += f" --csv='{self.simple_csv}'"
         if uiport is not None:
             mkfastq_cmd += f" --uiport={uiport}"
+        if cli_options is not None:
+            mkfastq_cmd += f" {cli_options}"
         p = sp.Popen(mkfastq_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
         time.sleep(5)
         uifile = os.path.join(fastq_dir, f'{self.name}/_uiport')
@@ -349,8 +362,8 @@ class Run():
             log_subdir = os.path.join(log_dir, 'mkfastq')
             make_dir(log_subdir)
             write_log(self.name, log_subdir, stdout=o, stderr=e)
-        # logger.info('done')
-        ## NEED TO DOUBLE-CHECK WHAT THE FASTQ PATH ACTUALLY IS
+
+        ## TODO:NEED TO DOUBLE-CHECK WHAT THE FASTQ PATH ACTUALLY IS
         ## is it just --output-dir? or do they go into an --id subfolder?
         self.fastq_path = os.path.join(fastq_dir, f'{self.name}/outs/fastq_path')
         return self.fastq_path
@@ -379,44 +392,47 @@ class Run():
             make_dir(log_subdir)
             write_log(self.name, log_subdir, stdout=o, stderr=e)
         fname = os.path.basename(url)
-        # logger.info('done')
         return os.path.join(destination, fname)
 
 
     def _decompress(self, source, destination, log_dir=None, debug=False):
-        logger.info('Decompressing run data....')
         source = os.path.abspath(source)
         destination = os.path.abspath(destination)
-        make_dir(destination)
-        if source.endswith(('.tar.gz', '.tgz')):
-            cmd = f"tar xzvf '{source}' -C '{destination}'"
-        elif source.endswith('.tar'):
-            cmd = f"tar xvf '{source}' -C '{destination}'"
-        elif source.endswith('.zip'):
-            cmd = f"unzip {source} -d {destination}"
+        if os.path.isdir(source):
+            logger.info('Source is a directory, not a compressed file. ')
+            logger.info('Copying to the destination path instead of decompressing...')
+            shutil.copytree(source, destination)
         else:
-            err = f'ERROR: input file {source} has an unsupported compression type. ' 
-            err += 'Only files with .tar, .tar.gz, .tgz or .zip extensions are supported.'
-            print(err)
-            sys.exit()
-        p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        o, e = p.communicate()
-        if debug:
-            logger.info('\nDECOMPRESS')
-            logger.info(cmd)
-            logger.info(o)
-            logger.info(e)
-            logger.info('\n')
-        if log_dir is not None:
-            log_subdir = os.path.join(log_dir, 'decompress')
-            make_dir(log_subdir)
-            write_log(self.name, log_subdir, stdout=o, stderr=e)
+            logger.info('Decompressing run data....')
+            make_dir(destination)
+            if source.endswith(('.tar.gz', '.tgz')):
+                cmd = f"tar xzvf '{source}' -C '{destination}'"
+            elif source.endswith('.tar'):
+                cmd = f"tar xvf '{source}' -C '{destination}'"
+            elif source.endswith('.zip'):
+                cmd = f"unzip {source} -d {destination}"
+            else:
+                err = f'ERROR: input file {source} has an unsupported compression type. ' 
+                err += 'Only files with .tar, .tar.gz, .tgz or .zip extensions are supported.'
+                print(err)
+                sys.exit()
+            p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+            o, e = p.communicate()
+            if debug:
+                logger.info('\nDECOMPRESS')
+                logger.info(cmd)
+                logger.info(o)
+                logger.info(e)
+                logger.info('\n')
+            if log_dir is not None:
+                log_subdir = os.path.join(log_dir, 'decompress')
+                make_dir(log_subdir)
+                write_log(self.name, log_subdir, stdout=o, stderr=e)
         run_dir = destination
         for (root, subdirs, files) in os.walk(destination):
             if 'RTAComplete.txt' in files:
                 run_dir = os.path.join(destination, root)
                 break
-        # logger.info('done')
         return run_dir
 
     
@@ -463,6 +479,7 @@ class Sample():
         self.feature_reference = feature_reference
         self._library_dict = library_dict
         self._libraries = None
+        self._libraries_by_type = None
 
 
     def __lt__(self, other):
@@ -479,6 +496,18 @@ class Sample():
             for lib_type, name in self._library_dict.items():
                 self._libraries.append(Library(name, lib_type))
         return self._libraries
+
+    
+    @property
+    def libraries_by_type(self):
+        if self._libraries_by_type is None:
+            self._libraries_by_type = {}
+            for l in self.libraries:
+                if l.type not in self._libraries_by_type:
+                    self._libraries_by_type[l.type] = []
+                self._libraries_by_type[l.type].append(l)
+        return self._libraries_by_type
+
 
 
     def make_config_csv(self, csv_path):
@@ -547,6 +576,7 @@ def cellranger_multi(
     cellranger='cellranger', 
     uiport=None, 
     log_dir=None,
+    cli_options=None,
     debug=None
 ):
     logger.info(f'building config CSV...')
@@ -556,6 +586,8 @@ def cellranger_multi(
     multi_cmd += f" && {cellranger} multi --id {sample.name} --csv {config_csv}"
     if uiport is not None:
         multi_cmd += f' --uiport {uiport}'
+    if cli_options is not None:
+        multi_cmd += f' {cli_options}'
     logger.info(f'running CellRanger..')
     p = sp.Popen(multi_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
     time.sleep(3)
@@ -687,50 +719,50 @@ def cellranger_multi(
 #     return os.path.join(feature_dir, sample.name)
 
 
-def _make_feature_library_csv(samples, feature_dir):
-    lib_str = 'fastqs,sample,library_type\n'
-    for sample in samples:
-        for fastq in sample.fastqs:
-            lib_str += '{},{},{}'.format(fastq, sample.name, sample.op_type)
-    lib_path = os.path.join(feature_dir, '{}_feature-library.csv'.format(sample.name))
-    with open(lib_path, 'w') as f:
-        f.write(lib_str)
-    return lib_path
+# def _make_feature_library_csv(samples, feature_dir):
+#     lib_str = 'fastqs,sample,library_type\n'
+#     for sample in samples:
+#         for fastq in sample.fastqs:
+#             lib_str += '{},{},{}'.format(fastq, sample.name, sample.op_type)
+#     lib_path = os.path.join(feature_dir, '{}_feature-library.csv'.format(sample.name))
+#     with open(lib_path, 'w') as f:
+#         f.write(lib_str)
+#     return lib_path
 
 
-def cellranger_aggr(samples, group, aggr_dir, normalize='mapped', cellranger='cellranger', uiport=None, log_dir=None, debug=False):
-    aggr_dir = os.path.abspath(aggr_dir)
-    aggr_csv = _make_aggr_csv(samples, aggr_dir)
-    aggr_cmd = "cd '{}'".format(aggr_dir)
-    aggr_cmd += " && {} count --id {} --csv '{}' --normalize {}".format(cellranger, 
-                                                                        group,
-                                                                        aggr_csv,
-                                                                        normalize)
-    ## Eventually want to replace grabbing stdout/stderr with p.communicate(), so we can grab the standard output
-    ## in real time, parse out the url for the UI and print to screen so the user can follow along with the UI
-    p = sp.Popen(aggr_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-    o, e = p.communicate()
-    if debug:
-        logger.info('\nCELLRANGER AGGR')
-        logger.info(o)
-        logger.info(e)
-    if log_dir is not None:
-        log_subdir = os.path.join(log_dir, 'aggr')
-        make_dir(log_subdir)
-        write_log(group, log_subdir, stdout=o, stderr=e)
-    return os.path.join(aggr_dir, group)
+# def cellranger_aggr(samples, group, aggr_dir, normalize='mapped', cellranger='cellranger', uiport=None, log_dir=None, debug=False):
+#     aggr_dir = os.path.abspath(aggr_dir)
+#     aggr_csv = _make_aggr_csv(samples, aggr_dir)
+#     aggr_cmd = "cd '{}'".format(aggr_dir)
+#     aggr_cmd += " && {} count --id {} --csv '{}' --normalize {}".format(cellranger, 
+#                                                                         group,
+#                                                                         aggr_csv,
+#                                                                         normalize)
+#     ## Eventually want to replace grabbing stdout/stderr with p.communicate(), so we can grab the standard output
+#     ## in real time, parse out the url for the UI and print to screen so the user can follow along with the UI
+#     p = sp.Popen(aggr_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+#     o, e = p.communicate()
+#     if debug:
+#         logger.info('\nCELLRANGER AGGR')
+#         logger.info(o)
+#         logger.info(e)
+#     if log_dir is not None:
+#         log_subdir = os.path.join(log_dir, 'aggr')
+#         make_dir(log_subdir)
+#         write_log(group, log_subdir, stdout=o, stderr=e)
+#     return os.path.join(aggr_dir, group)
 
 
-def _make_aggr_csv(samples, aggr_dir):
-    aggr_dir = os.path.join(aggr_dir)
-    aggr_csv = os.path.join(aggr_dir, 'aggr.csv')
-    lines = ['library_id,molecule_h5', ]
-    for sample in samples:
-        h5_path = os.path.join(sample.count_path, 'outs/molecule_info.h5')
-        lines.append('{},{}'.format(sample.id, h5_path))
-    with open(aggr_csv, 'w') as f:
-        f.write('\n'.join(lines))
-    return aggr_csv
+# def _make_aggr_csv(samples, aggr_dir):
+#     aggr_dir = os.path.join(aggr_dir)
+#     aggr_csv = os.path.join(aggr_dir, 'aggr.csv')
+#     lines = ['library_id,molecule_h5', ]
+#     for sample in samples:
+#         h5_path = os.path.join(sample.count_path, 'outs/molecule_info.h5')
+#         lines.append('{},{}'.format(sample.id, h5_path))
+#     with open(aggr_csv, 'w') as f:
+#         f.write('\n'.join(lines))
+#     return aggr_csv
 
 
 
@@ -744,14 +776,9 @@ def build_directory_structure(project_dir, cfg):
     dirs['run'] = os.path.join(project_dir, 'run_data')
     dirs['mkfastq'] = os.path.join(project_dir, 'cellranger/mkfastq')
     dirs['multi'] = os.path.join(project_dir, 'cellranger/multi')
-    # dirs['vdj'] = os.path.join(project_dir, 'vdj')
-    # dirs['count'] = os.path.join(project_dir, 'count')
-    # dirs['features'] = os.path.join(project_dir, 'features')
-    # dirs['aggr'] = os.path.join(project_dir, 'aggr')
-    for op in dirs.keys():
-        make_dir(dirs[op])
     dirs['log'] = os.path.join(project_dir, 'logs')
-    make_dir(dirs['log'])
+    for path in dirs.values():
+        make_dir(path)
     return dirs
 
 
@@ -768,17 +795,57 @@ def write_log(prefix, dir, stdout=None, stderr=None):
 
 def print_plan(cfg):
     '''
-    prints the plan (runs, samples, ops, references, etc)
+    prints the plan (runs, samples, references, etc)
     '''
-    pass
+    logger.info('RUN PARAMETERS')
+    logger.info('--------------')
+    # CellRanger version
+    version_cmd = f"{cfg.cellranger} --version"
+    p = sp.Popen(version_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+    o, e = p.communicate()
+    version = o.decode('utf-8')
+    logger.info(f'CELLRANGER VERSION: {version}')
+    if cfg.gex_reference:
+        gex_plural = 'S' if len(cfg.gex_reference) > 1 else ''
+        logger.info(f'GEX REFERENCE PATH{gex_plural}')
+        for n, r in cfg.gex_reference.items():
+            logger.info(f'  - {n}: {r}')
+    if cfg.vdj_reference:
+        vdj_plural = 'S' if len(cfg.vdj_reference) > 1 else ''
+        logger.info(f'VDJ REFERENCE PATH{vdj_plural}')
+        for n, r in cfg.vdj_reference.items():
+            logger.info(f'  - {n}: {r}')
+    if cfg.feature_reference:
+        feature_plural = 'S' if len(cfg.feature_reference) > 1 else ''
+        logger.info(f'FEATURE REFERENCE PATH{feature_plural}')
+        for n, r in cfg.feature_reference.items():
+            logger.info(f'  - {n}: {r}')
+    logger.info('RUNS:')
+    for run in cfg.runs:
+        logger.info(f'  - {run.name}')
+        if run.url is not None:
+            logger.info(f'    url: {run.url}')
+        if run.path is not None:
+            logger.info(f'    path: {run.path}')
+        if run.simple_csv is not None:
+            logger.info(f'    simple CSV: {run.simple_csv}')
+        if run.samplesheet is not None:
+            logger.info(f'    samplesheet: {run.samplesheet}')
+    logger.info('SAMPLES:')
+    for sample in cfg.samples:
+        logger.info(f"  - {sample.name}")
+        for lib_type, libs in natsorted(sample.libraries_by_type.items()):
+            logger.info(f"    {lib_type}: {', '.join([l.name for l in libs])}")
 
 
-def print_op_splash(op, samples):
-    pass
+# def print_op_splash(op, samples):
+#     # TODO
+#     pass
 
 
-def print_aggr_splash(aggr):
-    pass
+# def print_aggr_splash(aggr):
+#     # TODO
+#     pass
 
 
 
@@ -811,6 +878,7 @@ def main(args):
             dirs['mkfastq'],
             cellranger=cfg.cellranger,
             log_dir=dirs['log'],
+            cli_options=cfg.get_mkfastq_cli_options(run.name),
             debug=args.debug
         )
         for sample in cfg.samples:
@@ -831,8 +899,18 @@ def main(args):
             cellranger=cfg.cellranger, 
             uiport=cfg.uiport, 
             log_dir=dirs['log'],
+            cli_options=cfg.get_multi_cli_options(sample.name),
             debug=args.debug
         )
+
+
+    # compress
+    # TODO
+
+
+    # upload to S3
+    # TODO
+
 
 
 
@@ -855,46 +933,46 @@ def main(args):
     #                    debug=args.debug)
     
     # vdj
-    print_op_splash('vdj', cfg.samples)
-    for sample in cfg.samples:
-        if 'vdj' not in sample.ops:
-            continue
-        path = cellranger_vdj(sample,
-                              dirs['vdj'],
-                              cellranger=cfg.cellranger,
-                              uiport=cfg.uiport,
-                              log_dir=dirs['log'],
-                              debug=args.debug)
-        sample.vdj_path = path
+    # print_op_splash('vdj', cfg.samples)
+    # for sample in cfg.samples:
+    #     if 'vdj' not in sample.ops:
+    #         continue
+    #     path = cellranger_vdj(sample,
+    #                           dirs['vdj'],
+    #                           cellranger=cfg.cellranger,
+    #                           uiport=cfg.uiport,
+    #                           log_dir=dirs['log'],
+    #                           debug=args.debug)
+    #     sample.vdj_path = path
 
-    # count
-    print_op_splash('count', cfg.samples)
-    for group, sample_dict in cfg.ops['count']:
-        samples = [s for s in cfg.samples if s.name in sample_dict]
-        for s in samples:
-            s.op_type = sample_dict[s.name]
-        path = cellranger_count(samples,
-                                dirs['count'],
-                                cellranger=cfg.cellranger,
-                                uiport=cfg.uiport,
-                                log_dir=dirs['log'],
-                                debug=args.debug)    
+    # # count
+    # print_op_splash('count', cfg.samples)
+    # for group, sample_dict in cfg.ops['count']:
+    #     samples = [s for s in cfg.samples if s.name in sample_dict]
+    #     for s in samples:
+    #         s.op_type = sample_dict[s.name]
+    #     path = cellranger_count(samples,
+    #                             dirs['count'],
+    #                             cellranger=cfg.cellranger,
+    #                             uiport=cfg.uiport,
+    #                             log_dir=dirs['log'],
+    #                             debug=args.debug)    
         
 
 
 
 
 
-    for sample in cfg.samples:
-        if 'count' not in sample.ops:
-            continue
-        path = cellranger_count(sample,
-                                dirs['count'],
-                                cellranger=cfg.cellranger,
-                                uiport=cfg.uiport,
-                                log_dir=dirs['log'],
-                                debug=args.debug)
-        sample.count_path = path
+    # for sample in cfg.samples:
+    #     if 'count' not in sample.ops:
+    #         continue
+    #     path = cellranger_count(sample,
+    #                             dirs['count'],
+    #                             cellranger=cfg.cellranger,
+    #                             uiport=cfg.uiport,
+    #                             log_dir=dirs['log'],
+    #                             debug=args.debug)
+    #     sample.count_path = path
 
     # # features
     # print_op_splash('features', cfg.samples)
@@ -909,20 +987,20 @@ def main(args):
     #                                         debug=args.debug)
     #     sample.feature_path = path
 
-    # aggr
-    print_aggr_splash(cfg.ops['aggr'])
-    for group, sample_names in cfg.ops['aggr'].items():
-        samples = [s for s in cfg.samples if s.name in sample_names]
-        path = cellranger_aggr(samples,
-                               group,
-                               dirs['aggr'],
-                               normalize='mapped',
-                               cellranger=cfg.cellranger,
-                               uiport=cfg.uiport,
-                               log_dir=dirs['log'],
-                               debug=args.debug)
-        for s in samples:
-            s.aggr_path = path
+    # # aggr
+    # print_aggr_splash(cfg.ops['aggr'])
+    # for group, sample_names in cfg.ops['aggr'].items():
+    #     samples = [s for s in cfg.samples if s.name in sample_names]
+    #     path = cellranger_aggr(samples,
+    #                            group,
+    #                            dirs['aggr'],
+    #                            normalize='mapped',
+    #                            cellranger=cfg.cellranger,
+    #                            uiport=cfg.uiport,
+    #                            log_dir=dirs['log'],
+    #                            debug=args.debug)
+    #     for s in samples:
+    #         s.aggr_path = path
     
     # compress
 
