@@ -805,7 +805,10 @@ def print_plan(cfg):
     version_cmd = f"{cfg.cellranger} --version"
     p = sp.Popen(version_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
     o, e = p.communicate()
-    cellranger_version = o.decode('utf-8').replace('cellranger', '').strip()
+    cellranger_version = o.decode('utf-8') \
+        .replace('cellranger', '') \
+        .lstrip('-') \
+        .strip()
     logger.info(f'CELLRANGER VERSION: {cellranger_version}')
     logger.info(f'SCAB VERSION: {__version__}')
     if cfg.gex_reference:
