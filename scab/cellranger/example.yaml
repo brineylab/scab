@@ -42,13 +42,13 @@ samples:
 # REFERENCES
 # ----------
 # "default" reference will be used on all samples unless otherwise specified
+gex_reference:
+  default: /path/to/default_transcriptome
+  sample1: /path/to/alternate_transcriptome
+
 vdj_reference:
   default: /path/to/default_vdj_reference
   sample1: /path/to/alternate_vdj_reference
-
-transcriptome:
-  default: /path/to/default_transcriptome
-  sample1: /path/to/alternate_transcriptome
   
 feature_reference:
   default: /path/to/default_feature_reference
