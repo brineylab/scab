@@ -335,7 +335,7 @@ class Run():
     def print_splash(self):
         l = len(self.name)
         logger.info('')
-        logger.info('-' * (l + 4))
+        # logger.info('-' * (l + 4))
         logger.info('  ' + self.name)
         logger.info('-' * (l + 4))
 
@@ -630,6 +630,13 @@ class Sample():
                 self._libraries_by_type[l.type].append(l)
         return self._libraries_by_type
 
+
+    def print_splash(self):
+        l = len(self.name)
+        logger.info('')
+        # logger.info('-' * (l + 4))
+        logger.info('  ' + self.name)
+        logger.info('-' * (l + 4))
 
 
     def make_config_csv(self, csv_path: Union[str, pathlib.Path]):
@@ -937,8 +944,9 @@ def print_plan(cfg: Config):
     prints the plan (runs, samples, references, etc)
     '''
     print_logo()
-    logger.info('RUN PARAMETERS')
-    logger.info('--------------')
+    logger.info('------------------')
+    logger.info('  RUN PARAMETERS')
+    logger.info('------------------')
     # CellRanger version
     version_cmd = f"{cfg.cellranger} --version"
     p = sp.Popen(version_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
@@ -996,6 +1004,22 @@ def print_logo():
         logger.info(l)
 
 
+def print_runs_header():
+    logger.info('')
+    logger.info('')
+    logger.info('=======================')
+    logger.info('    SEQUENCING RUNS')
+    logger.info('=======================')
+
+
+def print_samples_header():
+    logger.info('')
+    logger.info('')
+    logger.info('===============')
+    logger.info('    SAMPLES')
+    logger.info('===============')
+
+
 # def print_op_splash(op, samples):
 #     # TODO
 #     pass
@@ -1025,6 +1049,7 @@ def main(args: Args):
     print_plan(cfg)
 
     # mkfastq
+    print_runs_header()
     for run in cfg.runs:
         run.print_splash()
         run.get(
@@ -1045,12 +1070,11 @@ def main(args: Args):
                     library.add_fastq_path(run.fastq_path)
 
     # cellranger multi
+    print_samples_header()
     for sample in cfg.samples:
         if not sample.libraries:
             continue
-        logger.info('')
-        logger.info(sample.name)
-        logger.info('-' * len(sample.name))
+        sample.print_splash()
         config_csv = os.path.join(dirs['multi'], f"{sample.name}_config.csv")
         sample.make_config_csv(config_csv)
         cellranger_multi(
