@@ -724,7 +724,7 @@ def cellranger_multi(
     logger.info(f'  - cellranger UI: {uistring}')
     o, e = p.communicate()
     if debug:
-        logger.info('\CELLRANGER MULTI')
+        logger.info('\nCELLRANGER MULTI')
         logger.info(multi_cmd)
         logger.info(o)
         logger.info(e)
@@ -936,6 +936,7 @@ def print_plan(cfg: Config):
     '''
     prints the plan (runs, samples, references, etc)
     '''
+    print_logo()
     logger.info('')
     logger.info('RUN PARAMETERS')
     logger.info('--------------')
@@ -980,6 +981,21 @@ def print_plan(cfg: Config):
         logger.info(f"  {sample.name}")
         for lib_type, libs in natsorted(sample.libraries_by_type.items()):
             logger.info(f"    {lib_type}: {', '.join([l.name for l in libs])}")
+
+
+def print_logo():
+    logo = ''' 
+    __          __       __                 ____                                
+   / /_  ____ _/ /______/ /_     ________  / / /________ _____  ____ ____  _____
+  / __ \/ __ `/ __/ ___/ __ \   / ___/ _ \/ / / ___/ __ `/ __ \/ __ `/ _ \/ ___/
+ / /_/ / /_/ / /_/ /__/ / / /  / /__/  __/ / / /  / /_/ / / / / /_/ /  __/ /    
+/_.___/\__,_/\__/\___/_/ /_/   \___/\___/_/_/_/   \__,_/_/ /_/\__, /\___/_/     
+                                                             /____/             
+ '''
+    logger.info('')
+    for l in logo.split('\n'):
+        logger.info(l)
+    logger.info('')
 
 
 # def print_op_splash(op, samples):
@@ -1034,7 +1050,7 @@ def main(args: Args):
     for sample in cfg.samples:
         if not sample.libraries:
             continue
-        logger.info('\n')
+        logger.info('')
         logger.info(sample.name)
         logger.info('-' * len(sample.name))
         config_csv = os.path.join(dirs['multi'], f"{sample.name}_config.csv")
