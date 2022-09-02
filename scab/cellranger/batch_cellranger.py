@@ -944,9 +944,9 @@ def print_plan(cfg: Config):
     prints the plan (runs, samples, references, etc)
     '''
     print_logo()
-    logger.info('------------------')
-    logger.info('  RUN PARAMETERS')
-    logger.info('------------------')
+    logger.info('======================')
+    logger.info('    RUN PARAMETERS')
+    logger.info('======================')
     # CellRanger version
     version_cmd = f"{cfg.cellranger} --version"
     p = sp.Popen(version_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
@@ -957,21 +957,23 @@ def print_plan(cfg: Config):
         .strip()
     logger.info(f'CELLRANGER VERSION: {cellranger_version}')
     logger.info(f'SCAB VERSION: {__version__}')
+    logger.info('')
     if cfg.gex_reference:
         gex_plural = 'S' if len(cfg.gex_reference) > 1 else ''
-        logger.info(f'GEX REFERENCE PATH{gex_plural}')
+        logger.info(f'GEX REFERENCE PATH{gex_plural}:')
         for n, r in cfg.gex_reference.items():
             logger.info(f'  - {n}: {r}')
     if cfg.vdj_reference:
         vdj_plural = 'S' if len(cfg.vdj_reference) > 1 else ''
-        logger.info(f'VDJ REFERENCE PATH{vdj_plural}')
+        logger.info(f'VDJ REFERENCE PATH{vdj_plural}:')
         for n, r in cfg.vdj_reference.items():
             logger.info(f'  - {n}: {r}')
     if cfg.feature_reference:
         feature_plural = 'S' if len(cfg.feature_reference) > 1 else ''
-        logger.info(f'FEATURE REFERENCE PATH{feature_plural}')
+        logger.info(f'FEATURE REFERENCE PATH{feature_plural}:')
         for n, r in cfg.feature_reference.items():
             logger.info(f'  - {n}: {r}')
+    logger.info('')
     logger.info('RUNS:')
     for run in cfg.runs:
         logger.info(f'  {run.name}')
@@ -983,6 +985,7 @@ def print_plan(cfg: Config):
             logger.info(f'  - simple csv: {run.simple_csv}')
         if run.samplesheet is not None:
             logger.info(f'  - samplesheet: {run.samplesheet}')
+    logger.info('')
     logger.info('SAMPLES:')
     for sample in cfg.samples:
         logger.info(f"  {sample.name}")
@@ -1086,6 +1089,8 @@ def main(args: Args):
             cli_options=cfg.get_multi_cli_options(sample.name),
             debug=args.debug
         )
+    logger.info('')
+    logger.info('')
 
 
     # compress
