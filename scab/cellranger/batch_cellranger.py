@@ -524,22 +524,28 @@ class Run():
         docstring for _parse_samplesheet()
         '''
         ss = SampleSheet(self.samplesheet)
-        samples = []
-        for s in ss.samples:
-            samples.append(Sample(s.Sample_ID, name=s.Sample_Name, index=s.index))
-        return samples
+        libraries = [s.Sample_Name for s in ss.samples]
+        return libraries
+        # samples = []
+        # for s in ss.samples:
+        #     samples.append(Sample(s.Sample_ID, name=s.Sample_Name, index=s.index))
+        # return samples
 
 
     def _parse_simple_csv(self):
         '''
         docstring for _parse_simple_csv()
         '''
-        samples = []
+        # samples = []
+        libraries = []
         with open(self.simple_csv) as csvfile:
             reader = csv.DictReader(csvfile)
             for r in reader:
-                samples.append(Sample(r['Sample'], index=r['Index']))
-        return samples
+                rlower = {k.lower(): v for k, v in r.items()}
+                libraries.append(rlower['sample'])
+        return libraries
+                # samples.append(Sample(r['Sample'], index=r['Index']))
+        # return samples
 
 
 
