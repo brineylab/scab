@@ -175,15 +175,16 @@ class Config():
         self.vdj_reference = config.get('vdj_reference', {})
         self.feature_reference = config.get('feature_reference', {})
         # samples
+        sample_dict = config.get('samples', {})
         self.samples = [
             Sample(
                 name, 
-                lib_dict,
+                library_dict,
                 gex_reference=self.gex_reference,
                 vdj_reference=self.vdj_reference,
                 feature_reference=self.feature_reference
             ) 
-            for name, lib_dict in config['samples'].items()
+            for name, library_dict in sample_dict.items()
         ]
          # general config options
         self.uiport = config.get('uiport', 72647)
