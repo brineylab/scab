@@ -379,7 +379,7 @@ class Run():
         logger.info('Downloading run data....')
         destination = os.path.abspath(destination)
         make_dir(destination)
-        wget_cmd = "wget {} '{}'".format(url, destination)
+        wget_cmd = "wget -P '{}' {}".format(destination, url)
         p = sp.Popen(wget_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
         o, e = p.communicate()
         if debug:
