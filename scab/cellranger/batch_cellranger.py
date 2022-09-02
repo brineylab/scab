@@ -381,6 +381,7 @@ class Run():
             delta = self.get_finish - self.get_start
             logger.info(f'successfully retrieved run data in {humanize.precisedelta(delta)}')
         else:
+            logger.info('')
             logger.info('run data was not found in the expected location')
             logger.info(f'  --> {self.path}')
             logger.info('check the logs to see if any errors occured')
@@ -391,10 +392,12 @@ class Run():
         if self.successful_mkfastq:
             delta = self.mkfastq_finish - self.mkfastq_start
             logger.info(f'mkfastq completed successfully in {humanize.precisedelta(delta)}')
+            logger.info('')
             logger.info('FASTQ files were created for the following libraries:')
             for l in self.successful_mkfastq_libraries:
                 logger.info(f'  - {l}')
         else:
+            logger.info('')
             logger.info(f'mkfastq may have failed, because no FASTQ output files were found at the expected location')
             logger.info(f'  --> {run.fastq_path}')
             logger.info('check the logs to see if any errors occured')
@@ -465,7 +468,7 @@ class Run():
             logger.info(e)
             logger.info('\n')
         if log_dir is not None:
-            log_subdir = os.path.join(log_dir, 'mkfastq')
+            log_subdir = os.path.join(log_dir, 'cellranger_mkfastq')
             make_dir(log_subdir)
             write_log(self.name, log_subdir, stdout=o, stderr=e)
 
@@ -839,6 +842,7 @@ def cellranger_multi(
     # check for successful completion
     sample_output_dir = os.path.join(output_dir, sample.name)
     if 'outs' not in os.listdir(sample_output_dir):
+        logger.info('')
         logger.info(f'cellranger multi may have failed, because the "outs" directory was not found at the expected location')
         logger.info(f'  --> {sample_output_dir}')
         logger.info('check the logs to see if any errors occured')
