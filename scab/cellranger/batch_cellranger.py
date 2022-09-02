@@ -332,7 +332,7 @@ class Run():
         '''
         docstring for mkfastq()
         '''
-        logger.info('Running mkfastq....')
+        logger.info('running cellranger mkfastq....')
         mkfastq_cmd = f"cd '{fastq_dir}' && {cellranger} mkfastq"
         mkfastq_cmd += f" --id={self.name}"
         mkfastq_cmd += f" --run='{self.path}'"
@@ -351,7 +351,7 @@ class Run():
             uistring = f.read().strip()
         external_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
         uistring = f"http://{external_ip}:{uistring.split(':')[-1]}"
-        logger.info(f'UI is at {uistring}')
+        logger.info(f'  - cellranger UI: {uistring}')
         o, e = p.communicate()
         if debug:
             logger.info('\nMKFASTQ')
@@ -376,7 +376,7 @@ class Run():
     
 
     def _download(self, url, destination, log_dir=None, debug=False):
-        logger.info('Downloading run data....')
+        logger.info('downloading run data....')
         destination = os.path.abspath(destination)
         make_dir(destination)
         wget_cmd = "wget -P '{}' {}".format(destination, url)
@@ -400,11 +400,11 @@ class Run():
         source = os.path.abspath(source)
         destination = os.path.abspath(destination)
         if os.path.isdir(source):
-            logger.info('Source is a directory, not a compressed file. ')
-            logger.info('Copying to the destination path instead of decompressing...')
+            logger.info('source is a directory, not a compressed file. ')
+            logger.info('copying to the destination path instead of decompressing...')
             shutil.copytree(source, destination)
         else:
-            logger.info('Decompressing run data....')
+            logger.info('decompressing run data....')
             make_dir(destination)
             if source.endswith(('.tar.gz', '.tgz')):
                 cmd = f"tar xzvf '{source}' -C '{destination}'"
@@ -413,8 +413,8 @@ class Run():
             elif source.endswith('.zip'):
                 cmd = f"unzip {source} -d {destination}"
             else:
-                err = f'ERROR: input file {source} has an unsupported compression type. ' 
-                err += 'Only files with .tar, .tar.gz, .tgz or .zip extensions are supported.'
+                err = f'\nERROR: input file {source} has an unsupported compression type\n' 
+                err += 'only files with .tar, .tar.gz, .tgz or .zip extensions are supported\n'
                 print(err)
                 sys.exit()
             p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
@@ -589,18 +589,15 @@ def cellranger_multi(
         multi_cmd += f' --uiport {uiport}'
     if cli_options is not None:
         multi_cmd += f' {cli_options}'
-    logger.info(f'running CellRanger..')
+    logger.info(f'running cellranger multi..')
     p = sp.Popen(multi_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
     time.sleep(3)
-    try:
-        uifile = os.path.join(output_dir, f'{sample.name}/_uiport')
-        with open(uifile) as f:
-            uistring = f.read().strip()
-        external_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
-        uistring = f"http://{external_ip}:{uistring.split(':')[-1]}"
-        logger.info(f'CellRanger UI is at {uistring}')
-    except FileNotFoundError:
-        pass
+    uifile = os.path.join(output_dir, f'{sample.name}/_uiport')
+    with open(uifile) as f:
+        uistring = f.read().strip()
+    external_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
+    uistring = f"http://{external_ip}:{uistring.split(':')[-1]}"
+    logger.info(f'  - cellranger UI: {uistring}')
     o, e = p.communicate()
     if debug:
         logger.info('\CELLRANGER MULTI')
@@ -801,13 +798,14 @@ def print_plan(cfg):
     '''
     prints the plan (runs, samples, references, etc)
     '''
+    logger.info('')
     logger.info('RUN PARAMETERS')
     logger.info('--------------')
     # CellRanger version
     version_cmd = f"{cfg.cellranger} --version"
     p = sp.Popen(version_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
     o, e = p.communicate()
-    version = o.decode('utf-8')
+    version = o.decode('utf-8').strip()
     logger.info(f'CELLRANGER VERSION: {version}')
     if cfg.gex_reference:
         gex_plural = 'S' if len(cfg.gex_reference) > 1 else ''
@@ -826,18 +824,18 @@ def print_plan(cfg):
             logger.info(f'  - {n}: {r}')
     logger.info('RUNS:')
     for run in cfg.runs:
-        logger.info(f'  - {run.name}')
+        logger.info(f'  {run.name}')
         if run.url is not None:
-            logger.info(f'    url: {run.url}')
+            logger.info(f'  - url: {run.url}')
         if run.path is not None:
-            logger.info(f'    path: {run.path}')
+            logger.info(f'  - path: {run.path}')
         if run.simple_csv is not None:
-            logger.info(f'    simple CSV: {run.simple_csv}')
+            logger.info(f'  - simple csv: {run.simple_csv}')
         if run.samplesheet is not None:
-            logger.info(f'    samplesheet: {run.samplesheet}')
+            logger.info(f'  - samplesheet: {run.samplesheet}')
     logger.info('SAMPLES:')
     for sample in cfg.samples:
-        logger.info(f"  - {sample.name}")
+        logger.info(f"  {sample.name}")
         for lib_type, libs in natsorted(sample.libraries_by_type.items()):
             logger.info(f"    {lib_type}: {', '.join([l.name for l in libs])}")
 
