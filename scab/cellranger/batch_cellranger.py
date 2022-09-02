@@ -807,7 +807,7 @@ def print_plan(cfg):
     o, e = p.communicate()
     cellranger_version = o.decode('utf-8') \
         .replace('cellranger', '') \
-        .lstrip('-') \
+        .replace('-', '') \
         .strip()
     logger.info(f'CELLRANGER VERSION: {cellranger_version}')
     logger.info(f'SCAB VERSION: {__version__}')
