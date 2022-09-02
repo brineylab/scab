@@ -159,6 +159,23 @@ class Config():
     def samples(self, samples: Sequence):
         self._samples = samples
 
+
+    @staticmethod
+    def get_ref(
+        ref_dict: Dict, 
+        key: str
+    ) -> Union[str, pathlib.Path, None]:
+        '''
+        Looks for the reference that corresponds to `key`. If it doesn't exist,
+        looks for the `'default'` reference. If that doesn't exist either, 
+        return `None`.
+        '''
+        if key in ref_dict:
+            return ref_dict[key]
+        if 'default' in ref_dict:
+            return ref_dict['default']
+        return None
+
     
     def get_multi_cli_options(self, sample_name: str):
         if sample_name in self.cli_options['multi']:
@@ -191,9 +208,9 @@ class Config():
             Sample(
                 name, 
                 library_dict,
-                gex_reference=self.gex_reference,
-                vdj_reference=self.vdj_reference,
-                feature_reference=self.feature_reference
+                gex_reference=Config.get_ref(self.gex_reference, name),
+                vdj_reference=Config.get_ref(self.vdj_reference, name),
+                feature_reference=Config.get_ref(self.feature_reference, name),
             ) 
             for name, library_dict in sample_dict.items()
         ]
@@ -998,6 +1015,8 @@ def main(args: Args):
 
     # cellranger multi
     for sample in cfg.samples:
+        if not sample.libraries:
+            continue
         logger.info('\n')
         logger.info(sample.name)
         logger.info('-' * len(sample.name))
