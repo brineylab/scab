@@ -644,7 +644,7 @@ class Library():
 
 
     def add_fastq_path(self, fastq_path: Union[str, pathlib.Path]):
-        self.fastq_path.append(os.path.abspath(fastq_path))
+        self.fastq_paths.append(os.path.abspath(fastq_path))
 
 
 
