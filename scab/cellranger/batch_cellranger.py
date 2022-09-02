@@ -361,8 +361,9 @@ class Run():
             return []
         lib_names = []
         for item in os.listdir(self.fastq_path):
-            if os.path.isdir(item):
-                if any([f.endswith('.fastq.gz') for f in os.listdir(item)]):
+            item_path = os.path.join(self.fastq_path, item)
+            if os.path.isdir(item_path):
+                if any([f.endswith('.fastq.gz') for f in os.listdir(item_path)]):
                     lib_names.append(item)
         return lib_names
 
@@ -385,7 +386,7 @@ class Run():
         if self.successful_mkfastq:
             delta = self.mkfastq_finish - self.mkfastq_start
             logger.info('successfully created FASTQ files for the following libraries:')
-            for l in run.successful_mkfastq_libraries:
+            for l in self.successful_mkfastq_libraries:
                 logger.info(f'  - {l}')
             logger.info(f'mkfastq completed in {humanize.precisedelta(delta)}')
 
