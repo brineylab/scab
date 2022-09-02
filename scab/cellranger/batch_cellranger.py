@@ -115,7 +115,7 @@ class Config():
         self._samples = None
         self._parse_config_file()
         
-    def __repr__(self):
+    def __repr__(self) -> str:
         rlist = ['BATCH CELLRANGER CONFIGURATION']
         rlist.append('------------------------------')
         rlist.append('config file: {}'.format(self.config_file))
@@ -142,7 +142,7 @@ class Config():
 
     
     @property
-    def runs(self):
+    def runs(self) -> Sequence:
         if self._runs is None:
             return []
         return self._runs
@@ -153,7 +153,7 @@ class Config():
 
     
     @property
-    def samples(self):
+    def samples(self) -> Sequence:
         if self._samples is None:
             return []
         return self._samples
@@ -165,7 +165,7 @@ class Config():
 
     @staticmethod
     def get_ref(
-        ref_dict: Dict, 
+        ref_dict: Mapping, 
         key: str
     ) -> Union[str, pathlib.Path, None]:
         '''
@@ -180,13 +180,13 @@ class Config():
         return None
 
     
-    def get_multi_cli_options(self, sample_name: str):
+    def get_multi_cli_options(self, sample_name: str) -> str:
         if sample_name in self.cli_options['multi']:
             return self.cli_options['multi'][sample_name]
         return self.cli_options['multi'].get('default', '')
 
     
-    def get_mkfastq_cli_options(self, run_name: str):
+    def get_mkfastq_cli_options(self, run_name: str) -> str:
         if run_name in self.cli_options['mkfastq']:
             return self.cli_options['mkfastq'][run_name]
         return self.cli_options['mkfastq'].get('default', '')
@@ -308,14 +308,14 @@ class Run():
 
     
     @property
-    def sample_names(self):
+    def sample_names(self) -> Sequence:
         if self.samples is not None:
             return [s.name for s in self.samples]
         return []
 
 
     @property
-    def fastq_path(self):
+    def fastq_path(self) -> Union[str, pathlib.Path, None]:
         return self._fastq_path
 
     @fastq_path.setter
@@ -324,7 +324,7 @@ class Run():
 
 
     @property
-    def libraries(self):
+    def libraries(self) -> Sequence:
         if self._libraries is None:
             self._libraries = self._parse_libraries()
         return self._libraries
@@ -335,7 +335,7 @@ class Run():
 
 
     @property
-    def successful_get(self):
+    def successful_get(self) -> bool:
         return self._successful_get
 
     @successful_get.setter
@@ -344,19 +344,19 @@ class Run():
 
     
     @property
-    def successful_mkfastq(self):
+    def successful_mkfastq(self) -> bool:
         if self.successful_mkfastq_libraries:
             return True
         return False
 
     
     @property
-    def mkfastq_cli_options(self):
+    def mkfastq_cli_options(self) -> str:
         return self.config.get_mkfastq_cli_options(self.name)
 
     
     @property
-    def successful_mkfastq_libraries(self):
+    def successful_mkfastq_libraries(self) -> Sequence:
         if self.fastq_path is None:
             return []
         lib_names = []
@@ -390,13 +390,15 @@ class Run():
     def print_mkfastq_completion(self):
         if self.successful_mkfastq:
             delta = self.mkfastq_finish - self.mkfastq_start
-            logger.info('successfully created FASTQ files for the following libraries:')
+            logger.info(f'mkfastq completed successfully in {humanize.precisedelta(delta)}')
+            logger.info('FASTQ files were created for the following libraries:')
             for l in self.successful_mkfastq_libraries:
                 logger.info(f'  - {l}')
-            logger.info(f'mkfastq completed in {humanize.precisedelta(delta)}')
         else:
             logger.info(f'mkfastq may have failed, because no FASTQ output files were found at the expected location')
             logger.info(f'  --> {run.fastq_path}')
+            logger.info('check the logs to see if any errors occured')
+        logger.info('')
 
 
     def get(
@@ -454,7 +456,7 @@ class Run():
             uistring = f.read().strip()
         external_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
         uistring = f"http://{external_ip}:{uistring.split(':')[-1]}"
-        logger.info(f'  - cellranger UI: {uistring}')
+        logger.info(f'  --> cellranger UI: {uistring}')
         o, e = p.communicate()
         if debug:
             logger.info('\nMKFASTQ')
@@ -683,7 +685,7 @@ class Sample():
 
 
     @property
-    def libraries(self):
+    def libraries(self) -> Sequence:
         if self._libraries is None:
             self._libraries = []
             for lib_type, name in self._library_dict.items():
@@ -692,7 +694,7 @@ class Sample():
 
     
     @property
-    def libraries_by_type(self):
+    def libraries_by_type(self) -> Dict:
         if self._libraries_by_type is None:
             self._libraries_by_type = {}
             for l in self.libraries:
@@ -702,7 +704,7 @@ class Sample():
         return self._libraries_by_type
 
 
-    def print_splash(self):
+    def print_splash(self) -> None:
         l = len(self.name)
         logger.info('')
         logger.info('  ' + self.name)
@@ -717,17 +719,30 @@ class Sample():
             logger.info(f'  - vdj: {self.vdj_reference}')
         if self.feature_reference is not None:
             logger.info(f'  - features: {self.feature_reference}')
+        logger.info('')
 
 
-    def make_config_csv(self, csv_path: Union[str, pathlib.Path]):
-        csv_dir = os.path.dirname(csv_path)
+    def make_config_csv(
+        self, 
+        csv_dir: Union[str, pathlib.Path]
+    ) -> str:
+        '''
+        Makes a config CSV for cellranger multi. CSV will be named 
+        ``{sample.name}_config.csv`` and deposited into `csv_dir`.
+        '''
         if not os.path.isdir(csv_dir):
             make_dir(csv_dir)
+        csv_path = os.path.join(csv_dir, f'{self.name}_config.csv')
         with open(csv_path, 'w') as f:
             f.write(self._build_config_csv())
+        return csv_path
 
 
-    def _build_config_csv(self):
+    def _build_config_csv(self) -> str:
+        '''
+        Builds a config CSV string, which can be written to file
+        and used with cellranger multi.
+        '''
         config = ''
         if self.gex_reference is not None:
             config += '[gene-expression]\n'
@@ -758,7 +773,7 @@ class Library():
 
 
     @property
-    def fastq_paths(self):
+    def fastq_paths(self) -> Sequence:
         if self._fastq_paths is None:
             self._fastq_paths = []
         return self._fastq_paths
@@ -791,9 +806,10 @@ def cellranger_multi(
     '''
     docstring for cellranger_multi()
     '''
-    logger.info(f'building config CSV...')
-    config_csv = os.path.join(output_dir, f"{sample.name}_config.csv")
-    sample.make_config_csv(config_csv)
+    start = datetime.now()
+    logger.info(f'making config CSV...')
+    # config_csv = os.path.join(output_dir, f"{sample.name}_config.csv")
+    config_csv = sample.make_config_csv(output_dir)
     multi_cmd = f"cd '{output_dir}'"
     multi_cmd += f" && {cellranger} multi --id {sample.name} --csv {config_csv}"
     if uiport is not None:
@@ -808,7 +824,7 @@ def cellranger_multi(
         uistring = f.read().strip()
     external_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
     uistring = f"http://{external_ip}:{uistring.split(':')[-1]}"
-    logger.info(f'  - cellranger UI: {uistring}')
+    logger.info(f'  --> cellranger UI: {uistring}')
     o, e = p.communicate()
     if debug:
         logger.info('\nCELLRANGER MULTI')
@@ -820,6 +836,16 @@ def cellranger_multi(
         log_subdir = os.path.join(log_dir, 'cellranger_multi')
         make_dir(log_subdir)
         write_log(sample.name, log_subdir, stdout=o, stderr=e)
+    # check for successful completion
+    sample_output_dir = os.path.join(output_dir, sample.name)
+    if 'outs' not in os.listdir(sample_output_dir):
+        logger.info(f'cellranger multi may have failed, because the "outs" directory was not found at the expected location')
+        logger.info(f'  --> {sample_output_dir}')
+        logger.info('check the logs to see if any errors occured')
+    else:
+        delta = datetime.now() - start
+        logger.info(f'cellranger multi completed in {humanize.precisedelta(delta)}')
+    logger.info('')
 
 
 # op_lookup = {'gex': 'Gene Expression',
@@ -1098,7 +1124,7 @@ def print_runs_header():
 
 
 def print_samples_header():
-    logger.info('')
+    # logger.info('')
     logger.info('')
     logger.info('')
     logger.info('===============')
@@ -1134,10 +1160,11 @@ def main(args: Args):
     logger = log.get_logger('batch_cellranger')
     print_plan(cfg)
 
-    # mkfastq
+    # sequencing runs
     print_runs_header()
     for run in cfg.runs:
         run.print_splash()
+        # get data
         run.get(
             dirs['run'], 
             log_dir=dirs['log'], 
@@ -1146,6 +1173,7 @@ def main(args: Args):
         run.print_get_completion()
         if not run.successful_get:
             continue
+        # mkfastq
         run.mkfastq(
             dirs['mkfastq'],
             cellranger=cfg.cellranger,
@@ -1165,8 +1193,8 @@ def main(args: Args):
         if not sample.libraries:
             continue
         sample.print_splash()
-        config_csv = os.path.join(dirs['multi'], f"{sample.name}_config.csv")
-        sample.make_config_csv(config_csv)
+        # sample.make_config_csv(config_csv)
+        # config_csv = os.path.join(dirs['multi'], f"{sample.name}_config.csv")
         cellranger_multi(
             sample, 
             dirs['multi'],
