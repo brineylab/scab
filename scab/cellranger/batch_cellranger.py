@@ -937,7 +937,6 @@ def print_plan(cfg: Config):
     prints the plan (runs, samples, references, etc)
     '''
     print_logo()
-    logger.info('')
     logger.info('RUN PARAMETERS')
     logger.info('--------------')
     # CellRanger version
@@ -995,7 +994,6 @@ def print_logo():
     logger.info('')
     for l in logo.split('\n'):
         logger.info(l)
-    logger.info('')
 
 
 # def print_op_splash(op, samples):
