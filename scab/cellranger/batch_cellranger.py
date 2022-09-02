@@ -856,16 +856,16 @@ def print_plan(cfg):
 def main(args):
     # parse the config file
     cfg = Config(args.config_file)
-    print_plan(cfg)
 
     # build directory structure
     dirs = build_directory_structure(args.project_dir, cfg)
 
-    # setup logging
+    # setup logging and print plan
     run_log = os.path.join(dirs['log'], 'batch_cellranger.log')
     log.setup_logging(run_log, print_log_location=False, debug=args.debug)
     global logger
     logger = log.get_logger()
+    print_plan(cfg)
 
     # mkfastq
     for run in cfg.runs:
