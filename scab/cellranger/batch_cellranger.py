@@ -25,6 +25,8 @@
 
 from argparse import ArgumentParser
 import csv
+from datetime import datetime
+import humanize
 import os
 import pathlib
 import re
@@ -279,6 +281,11 @@ class Run():
         self.samplesheet = os.path.abspath(config['samplesheet']) if 'samplesheet' in config else None
         self.simple_csv = os.path.abspath(config['simple_csv']) if 'simple_csv' in config else None
         self.copy_to_project = config.get('copy_to_project', False)
+        self.get_start = None
+        self.get_finish = None
+        self.mkfastq_start = None
+        self.mkfastq_finish = None
+        self._successful_get = False
         self._fastq_path = None
         self._libraries = None
 
@@ -326,10 +333,38 @@ class Run():
     def libraries(self, libraries):
         self._libraries = libraries
 
+
+    @property
+    def successful_get(self):
+        return self._successful_get
+
+    @successful_get.setter
+    def successful_get(self, successful_get):
+        self._successful_get = successful_get
+
+    
+    @property
+    def successful_mkfastq(self):
+        if self.successful_mkfastq_libraries:
+            return True
+        return False
+
     
     @property
     def mkfastq_cli_options(self):
         return self.config.get_mkfastq_cli_options(self.name)
+
+    
+    @property
+    def successful_mkfastq_libraries(self):
+        if self.fastq_path is None:
+            return []
+        lib_names = []
+        for item in os.listdir(self.fastq_path):
+            if os.path.isdir(item):
+                if any([f.endswith('.fastq.gz') for f in os.listdir(item)]):
+                    lib_names.append(item)
+        return lib_names
 
 
     def print_splash(self):
@@ -338,6 +373,21 @@ class Run():
         # logger.info('-' * (l + 4))
         logger.info('  ' + self.name)
         logger.info('-' * (l + 4))
+
+    
+    def print_get_completion(self):
+        if self.successful_get:
+            delta = self.get_finish - self.get_start
+            logger.info(f'successfully retrieved run data in {humanize.precisedelta(delta)}')
+
+
+    def print_mkfastq_completion(self):
+        if self.successful_mkfastq:
+            delta = self.mkfastq_finish - self.mkfastq_start
+            logger.info('successfully created FASTQ files for the following libraries:')
+            for l in run.successful_mkfastq_libraries:
+                logger.info(f'  - {l}')
+            logger.info(f'mkfastq completed in {humanize.precisedelta(delta)}')
 
 
     def get(
@@ -349,6 +399,7 @@ class Run():
         '''
         docstring for get()
         '''
+        self.get_start = datetime.now()
         destination = os.path.join(os.path.abspath(raw_dir), self.name)
         if all([self.path is not None, self.copy_to_project, not self.is_compressed]):
             self.path = self._copy(destination, log_dir=log_dir, debug=debug)
@@ -356,6 +407,8 @@ class Run():
             self.path = self._download(self.url, destination, log_dir=log_dir, debug=debug)
         if self.is_compressed:
             self.path = self._decompress(self.path, destination, log_dir=log_dir, debug=debug)
+        self.successful_get = self._verify_get_success()
+        self.get_finish = datetime.now()
 
 
     def mkfastq(
@@ -370,6 +423,7 @@ class Run():
         '''
         docstring for mkfastq()
         '''
+        self.mkfastq_start = datetime.now()
         logger.info('running cellranger mkfastq....')
         mkfastq_cmd = f"cd '{fastq_dir}' && {cellranger} mkfastq"
         mkfastq_cmd += f" --id={self.name}"
@@ -422,6 +476,7 @@ class Run():
                     self.fastq_path = os.path.join(root, subdir)
                     break
             if self.fastq_path is not None: break
+        self.mkfastq_finish = datetime.now()
         return self.fastq_path
 
 
@@ -543,6 +598,13 @@ class Run():
         return run_dir
 
     
+    def _verify_get_success(self):
+        if os.path.isdir(self.path):
+            if 'RTAComplete.txt' in os.listdir(self.path):
+                return True
+        return False
+
+    
     def _parse_libraries(self):
         '''
         docstring for _parse_libraries()
@@ -634,9 +696,18 @@ class Sample():
     def print_splash(self):
         l = len(self.name)
         logger.info('')
-        # logger.info('-' * (l + 4))
         logger.info('  ' + self.name)
         logger.info('-' * (l + 4))
+        logger.info('libraries:')
+        for l in self.libraries:
+            logger.info(f'  - {l.name}')
+        logger.info('references:')
+        if self.gex_reference is not None:
+            logger.info(f'  - gex: {self.gex_reference}')
+        if self.vdj_reference is not None:
+            logger.info(f'  - vdj: {self.vdj_reference}')
+        if self.feature_reference is not None:
+            logger.info(f'  - features: {self.feature_reference}')
 
 
     def make_config_csv(self, csv_path: Union[str, pathlib.Path]):
@@ -947,6 +1018,7 @@ def print_plan(cfg: Config):
     logger.info('======================')
     logger.info('    RUN PARAMETERS')
     logger.info('======================')
+    logger.info('')
     # CellRanger version
     version_cmd = f"{cfg.cellranger} --version"
     p = sp.Popen(version_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
@@ -1010,12 +1082,14 @@ def print_logo():
 def print_runs_header():
     logger.info('')
     logger.info('')
+    logger.info('')
     logger.info('=======================')
     logger.info('    SEQUENCING RUNS')
     logger.info('=======================')
 
 
 def print_samples_header():
+    logger.info('')
     logger.info('')
     logger.info('')
     logger.info('===============')
@@ -1060,6 +1134,7 @@ def main(args: Args):
             log_dir=dirs['log'], 
             debug=args.debug
         )
+        run.print_get_completion()
         run.mkfastq(
             dirs['mkfastq'],
             cellranger=cfg.cellranger,
@@ -1067,10 +1142,13 @@ def main(args: Args):
             cli_options=cfg.get_mkfastq_cli_options(run.name),
             debug=args.debug
         )
+        run.print_mkfastq_completion()
         for sample in cfg.samples:
             for library in sample.libraries:
-                if library.name in run.libraries:
+                if library.name in run.successful_mkfastq_libraries:
                     library.add_fastq_path(run.fastq_path)
+        else:
+            logger.info(f'no FASTQ output files were found at the expected location ({run.fastq_path})')
 
     # cellranger multi
     print_samples_header()

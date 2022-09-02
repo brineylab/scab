@@ -4,6 +4,7 @@ anndata
 dnachisel
 fastcluster
 harmonypy
+humanize
 leidenalg
 matplotlib
 mnemonic
