@@ -3,4 +3,5 @@ include requirements*
 include bin/*
 include docs/*.txt
 include scab/*
+include scab/cellranger/*
 include scab/models/*
