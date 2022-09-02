@@ -27,6 +27,7 @@ from argparse import ArgumentParser
 import csv
 import os
 import pathlib
+import re
 import shutil
 import subprocess as sp
 import sys
@@ -403,10 +404,26 @@ class Run():
             make_dir(log_subdir)
             write_log(self.name, log_subdir, stdout=o, stderr=e)
 
+
         ## TODO:NEED TO DOUBLE-CHECK WHAT THE FASTQ PATH ACTUALLY IS
         ## is it just --output-dir? or do they go into an --id subfolder?
-        self.fastq_path = os.path.join(fastq_dir, f'{self.name}/outs/fastq_path')
+
+        ## Turns out, NO. It's not just /outs/fastq_path. We actually need to
+        ## get the flowcell directory, since otherwise cellranger just finds
+        ## the Undetermined FASTQs, which are in the /outs/fastq_path directory
+        ##
+        ## see here: https://github.com/10XGenomics/supernova/blob/master/tenkit/lib/python/tenkit/illumina_instrument.py#L12-L45
+        ## for some regex ideas of how to spot the flowcell ID.
+        fastq_path = os.path.join(fastq_dir, f'{self.name}/outs/fastq_path')
+        flowcell_pattern = re.compile('[[CH][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$]')  # first part of the pattern matches all flowcells except MiSeq, second part matches MiSeq
+        for root, subdirs, files in os.walk(fastq_path):
+            for subdir in subdirs:
+                if flowcell_pattern.match(subdir) is not None:
+                    self.fastq_path = os.path.join(root, subdir)
+                    break
+            if self.fastq_path is not None: break
         return self.fastq_path
+
 
 
     def _copy(self, destination, log_dir=None, debug=False):
