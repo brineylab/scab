@@ -592,12 +592,15 @@ def cellranger_multi(
     logger.info(f'running CellRanger..')
     p = sp.Popen(multi_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
     time.sleep(3)
-    uifile = os.path.join(output_dir, f'{sample.name}/_uiport')
-    with open(uifile) as f:
-        uistring = f.read().strip()
-    external_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
-    uistring = f"http://{external_ip}:{uistring.split(':')[-1]}"
-    logger.info(f'CellRanger UI is at {uistring}')
+    try:
+        uifile = os.path.join(output_dir, f'{sample.name}/_uiport')
+        with open(uifile) as f:
+            uistring = f.read().strip()
+        external_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
+        uistring = f"http://{external_ip}:{uistring.split(':')[-1]}"
+        logger.info(f'CellRanger UI is at {uistring}')
+    except FileNotFoundError:
+        pass
     o, e = p.communicate()
     if debug:
         logger.info('\CELLRANGER MULTI')
@@ -864,7 +867,7 @@ def main(args):
     run_log = os.path.join(dirs['log'], 'batch_cellranger.log')
     log.setup_logging(run_log, print_log_location=False, debug=args.debug)
     global logger
-    logger = log.get_logger()
+    logger = log.get_logger('batch_cellranger')
     print_plan(cfg)
 
     # mkfastq
