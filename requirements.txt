@@ -1,5 +1,5 @@
-abstar
-abutils>=0.2.5
+abstar >= 0.5.9
+abutils >= 0.2.5
 anndata
 dnachisel
 fastcluster
@@ -13,10 +13,12 @@ pandas
 prettytable
 pytest
 python-Levenshtein
+pyyaml
+sample-sheet
 scanpy
 scanorama
 scipy
 scrublet
 scvelo
-seaborn>=0.11
+seaborn >= 0.11
 umap-learn
