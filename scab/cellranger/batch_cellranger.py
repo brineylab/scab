@@ -380,6 +380,11 @@ class Run():
         if self.successful_get:
             delta = self.get_finish - self.get_start
             logger.info(f'successfully retrieved run data in {humanize.precisedelta(delta)}')
+        else:
+            logger.info('run data was not found in the expected location')
+            logger.info(f'  --> {self.path}')
+            logger.info('check the logs to see if any errors occured')
+        logger.info('')
 
 
     def print_mkfastq_completion(self):
@@ -389,6 +394,9 @@ class Run():
             for l in self.successful_mkfastq_libraries:
                 logger.info(f'  - {l}')
             logger.info(f'mkfastq completed in {humanize.precisedelta(delta)}')
+        else:
+            logger.info(f'mkfastq may have failed, because no FASTQ output files were found at the expected location')
+            logger.info(f'  --> {run.fastq_path}')
 
 
     def get(
@@ -1136,6 +1144,8 @@ def main(args: Args):
             debug=args.debug
         )
         run.print_get_completion()
+        if not run.successful_get:
+            continue
         run.mkfastq(
             dirs['mkfastq'],
             cellranger=cfg.cellranger,
@@ -1148,8 +1158,6 @@ def main(args: Args):
             for library in sample.libraries:
                 if library.name in run.successful_mkfastq_libraries:
                     library.add_fastq_path(run.fastq_path)
-        else:
-            logger.info(f'no FASTQ output files were found at the expected location ({run.fastq_path})')
 
     # cellranger multi
     print_samples_header()
