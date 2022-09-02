@@ -344,7 +344,7 @@ class Run():
             mkfastq_cmd += f" --uiport={uiport}"
         if cli_options is not None:
             mkfastq_cmd += f" {cli_options}"
-        p = sp.Popen(mkfastq_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        p = sp.Popen(mkfastq_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
         time.sleep(5)
         uifile = os.path.join(fastq_dir, f'{self.name}/_uiport')
         with open(uifile) as f:
@@ -417,7 +417,7 @@ class Run():
                 err += 'Only files with .tar, .tar.gz, .tgz or .zip extensions are supported.'
                 print(err)
                 sys.exit()
-            p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+            p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
             o, e = p.communicate()
             if debug:
                 logger.info('\nDECOMPRESS')
@@ -590,7 +590,7 @@ def cellranger_multi(
     if cli_options is not None:
         multi_cmd += f' {cli_options}'
     logger.info(f'running CellRanger..')
-    p = sp.Popen(multi_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+    p = sp.Popen(multi_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
     time.sleep(3)
     uifile = os.path.join(output_dir, f'{sample.name}/_uiport')
     with open(uifile) as f:
