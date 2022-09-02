@@ -380,7 +380,7 @@ class Run():
         destination = os.path.abspath(destination)
         make_dir(destination)
         wget_cmd = "wget {} '{}'".format(url, destination)
-        p = sp.Popen(wget_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        p = sp.Popen(wget_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
         o, e = p.communicate()
         if debug:
             logger.info('\nDOWNLOAD')
