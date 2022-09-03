@@ -27,6 +27,7 @@ from argparse import ArgumentParser
 import csv
 from datetime import datetime
 import humanize
+from natsort import natsorted
 import os
 import pathlib
 import re
@@ -327,7 +328,7 @@ class Run():
     def libraries(self) -> Sequence:
         if self._libraries is None:
             self._libraries = self._parse_libraries()
-        return self._libraries
+        return natsorted(self._libraries)
 
     @libraries.setter
     def libraries(self, libraries):
@@ -365,7 +366,7 @@ class Run():
             if os.path.isdir(item_path):
                 if any([f.endswith('.fastq.gz') for f in os.listdir(item_path)]):
                     lib_names.append(item)
-        return lib_names
+        return natsorted(lib_names)
 
 
     def print_splash(self):
@@ -576,7 +577,7 @@ class Run():
         destination = os.path.abspath(destination)
         if os.path.isdir(source):
             logger.info('source is a directory, not a compressed file. ')
-            logger.info('copying to the destination path instead of decompressing...')
+            logger.info('copying to the project directory without decompressing...')
             shutil.copytree(source, destination)
         else:
             logger.info('decompressing run data....')
