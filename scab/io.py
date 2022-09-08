@@ -541,7 +541,7 @@ def concat(
     axis: Literal[0, 1] = 0,
     join: Literal["inner", "outer"] = "inner",
     merge: Union[StrategiesLiteral, Callable, None] = None,
-    uns_merge: Union[StrategiesLiteral, Callable, None] = None,
+    uns_merge: Union[StrategiesLiteral, Callable, None] = 'unique',
     label: Optional[str] = None,
     keys: Optional[Collection] = None,
     index_unique: Optional[str] = None,
@@ -549,7 +549,12 @@ def concat(
     pairwise: bool = False, 
     obs_names_make_unique: bool = True
 ) -> AnnData:
-    '''Concatenates AnnData objects using ``anndata.concat()``. Documentation was copied almost verbatim from the ``anndata.concat()`` `docstring`_
+    '''Concatenates AnnData objects using ``anndata.concat()``. 
+    Documentation was copied almost verbatim from the ``anndata.concat()`` `docstring`_.
+    
+    The only major difference is that the default for `uns_merge` has been changed from 
+    ``None`` (which doesn't merge any of the data in ``adata.uns``) to ``'unique'``, which 
+    only merges ``adata.uns`` elements for which there is only one possible value. 
 
     Parameters
     ----------
