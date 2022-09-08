@@ -330,6 +330,7 @@ def classify_specificity(
     percentile=0.997,
     percentile_dict=None,
     update=True,
+    uns_batch=None,
     verbose=True,
 ):
     """
@@ -396,6 +397,21 @@ def classify_specificity(
         a Pandas ``DataFrame`` containg classifications will be returned and `adata` will 
         not be modified. 
 
+    uns_batch: str, default=None
+        If provided, `uns_batch` will add batch information to the percentile and threshold
+        data stored in ``adata.uns``. This results in an additional layer of nesting, which 
+        allows concateenating multiple ``AnnData`` objects represeting different batches for 
+        which classification is performed separately. If not provided, the data stored in ``uns`` 
+        would be formatted like::
+
+            adata.uns['agbc_percentiles'] = {agbc1: percentile1, ...}
+            adata.uns['agbc_thresholds'] = {agbc1: threshold1, ...}  
+
+        If `uns_batch` is provided, ``uns`` will be formatted like::
+
+            adata.ubs['agbc_percentiles'] = {uns_batch: {agbc1: percentile1, ...}}
+            adata.ubs['agbc_thresholds'] = {uns_batch: {agbc1: threshold1, ...}}
+
     verbose : bool, default=True  
         If ``True``, calculated threshold values are printed.  
             
@@ -444,6 +460,8 @@ def classify_specificity(
         print("")
         print("  THRESHOLDS  ")
         print("--------------")
+    uns_thresholds = {}
+    uns_percentiles = {}
     for group, barcodes in groups.items():
         # remove missing AgBCs
         in_adata = [b for b in barcodes if b in adata.obs]
@@ -478,6 +496,9 @@ def classify_specificity(
         raw_threshold = np.sum(list(raw_bc_thresholds.values()))
         threshold = np.log2(raw_threshold + 1)
         classifications[group_name] = adata_groups[group_name] > threshold
+        # update uns dicts
+        uns_thresholds[group] = threshold
+        uns_percentiles[group] = pctile
         if verbose:
             print(group_name)
             print(f"percentile: {pctile}")
@@ -489,6 +510,12 @@ def classify_specificity(
         for g, group_data in adata_groups.items():
             adata.obs[g] = group_data
             adata.obs[f"is_{g}"] = classifications[g]
+            if uns_batch is not None:
+                adata.uns['agbc_thresholds'] = {uns_batch: uns_thresholds}
+                adata.uns['agbc_percentiles'] = {uns_batch: uns_percentiles}
+            else:
+                adata.uns['agbc_thresholds'] = uns_thresholds
+                adata.uns['agbc_percentiles'] = uns_percentiles
         return adata
     else:
         return pd.DataFrame(classifications, index=adata.obs_names)
