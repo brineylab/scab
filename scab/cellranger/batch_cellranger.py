@@ -362,11 +362,19 @@ class Run():
             return []
         lib_names = []
         for item in os.listdir(self.fastq_path):
+            if item.startswith('Undetermined'):
+                continue
             item_path = os.path.join(self.fastq_path, item)
+            # some versions of CellRanger put fastqs in library-specific subfolders
             if os.path.isdir(item_path):
                 if any([f.endswith('.fastq.gz') for f in os.listdir(item_path)]):
                     lib_names.append(item)
-        return natsorted(lib_names)
+            # others just dump them all in the flowcell folder
+            elif os.path.isfile(item_path):
+                if item.endswith('fastq.gz'):
+                    lib = '_'.join(item.split('_')[:-4])
+                    lib_names.append(lib)
+        return natsorted(set(lib_names))
 
 
     def print_splash(self):
@@ -1189,7 +1197,8 @@ def main(args: Args):
         run.print_mkfastq_completion()
         for sample in cfg.samples:
             for library in sample.libraries:
-                if library.name in run.successful_mkfastq_libraries:
+                # if library.name in run.successful_mkfastq_libraries:
+                if library.name in run.libraries:
                     library.add_fastq_path(run.fastq_path)
 
     # cellranger multi
