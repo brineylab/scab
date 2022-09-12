@@ -400,7 +400,7 @@ class Run():
         else:
             logger.info('')
             logger.info(f'mkfastq may have failed, because no FASTQ output files were found at the expected location')
-            logger.info(f'  --> {run.fastq_path}')
+            logger.info(f'  --> {self.fastq_path}')
             logger.info('check the logs to see if any errors occured')
         logger.info('')
 
@@ -576,7 +576,7 @@ class Run():
         source = os.path.abspath(source)
         destination = os.path.abspath(destination)
         if os.path.isdir(source):
-            logger.info('source is a directory, not a compressed file. ')
+            logger.info('the supplied run data path is a directory, not a compressed file. ')
             logger.info('copying to the project directory without decompressing...')
             shutil.copytree(source, destination)
         else:
