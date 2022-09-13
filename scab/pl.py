@@ -2153,7 +2153,7 @@ def bar(
             chain=hue_chain if hue_chain is not None else chain)
     df = pd.DataFrame(d)
 
-    df = df.dropna(subset='x')
+    df = df.dropna(subset=['x'])
 
     # make the plot
     ax = abutils.pl.bar(
