@@ -23,17 +23,15 @@
 #
 
 
-
-
-
-
-def get_adata_values(adata, key, receptor='bcr', chain='heavy'):
+def get_adata_values(adata, key, receptor="bcr", chain="heavy"):
     try:
         return adata.obs_vector(key)
     except KeyError:
         data = []
         if receptor not in adata.obs:
-            raise ValueError(f'Receptor {receptor} was not found in the supplied AnnData object')
+            raise ValueError(
+                f"Receptor {receptor} was not found in the supplied AnnData object"
+            )
         vdjs = adata.obs[receptor]
         for vdj in vdjs:
             if (seq := getattr(vdj, chain)) is not None:
@@ -41,5 +39,4 @@ def get_adata_values(adata, key, receptor='bcr', chain='heavy'):
             else:
                 data.append(None)
         return data
-
 

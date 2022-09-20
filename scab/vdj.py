@@ -159,9 +159,9 @@ def clonify(
         else:
             muts = h[muts_key]
             if any([pd.isnull(muts), muts is None]):
-                s['mutations'] = []
+                s["mutations"] = []
             else:
-                muts = muts.split('|')
+                muts = muts.split("|")
                 s["mutations"] = [m for m in muts if m.strip()]
         required_fields = ["v_gene", "j_gene", "cdr3", "mutations"]
         if preclustering:

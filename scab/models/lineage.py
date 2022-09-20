@@ -428,9 +428,9 @@ class LineageSummary:
         # junction_end = IMGT_REGION_START_POSITIONS_AA['FR4']
         # get data for germline line
         d = {"name": "germ", "order": 0}
-        dbname = Counter([s["germline_database"] for s in notnone_sequences]).most_common(1)[0][
-            0
-        ]
+        dbname = Counter(
+            [s["germline_database"] for s in notnone_sequences]
+        ).most_common(1)[0][0]
         v_gene = Counter([s["v_call"] for s in notnone_sequences]).most_common(1)[0][0]
         j_gene = Counter([s["j_call"] for s in notnone_sequences]).most_common(1)[0][0]
         v_germ = get_imgt_germlines(dbname, "V", gene=v_gene)

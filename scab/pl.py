@@ -184,18 +184,17 @@ def qc_metrics(
     else:
         plt.show()
 
-
     # histogram of read counts
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[12, 4])
-    sns.histplot(data=adata.obs, x='total_counts', binwidth=500, ax=ax1)
-    sns.histplot(data=adata.obs, x='total_counts', binwidth=100, ax=ax2)
+    sns.histplot(data=adata.obs, x="total_counts", binwidth=500, ax=ax1)
+    sns.histplot(data=adata.obs, x="total_counts", binwidth=100, ax=ax2)
     ax2.set_xlim(read_count_bounds)
 
     for ax in [ax1, ax2]:
-        ax.set_xlabel('read count', fontsize=16)
-        ax.set_ylabel('# of cells', fontsize=16)
-        ax.tick_params(axis='both', labelsize=12)
-        for s in ['left', 'right', 'top']:
+        ax.set_xlabel("read count", fontsize=16)
+        ax.set_ylabel("# of cells", fontsize=16)
+        ax.tick_params(axis="both", labelsize=12)
+        for s in ["left", "right", "top"]:
             ax.spines[s].set_visible(False)
     if fig_dir is not None:
         plt.tight_layout()
@@ -207,18 +206,17 @@ def qc_metrics(
     else:
         plt.show()
 
-
     # histogram of gene counts
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[12, 4])
-    sns.histplot(data=adata.obs, x='n_genes_by_counts', binwidth=100, ax=ax1)
-    sns.histplot(data=adata.obs, x='n_genes_by_counts', binwidth=10, ax=ax2)
+    sns.histplot(data=adata.obs, x="n_genes_by_counts", binwidth=100, ax=ax1)
+    sns.histplot(data=adata.obs, x="n_genes_by_counts", binwidth=10, ax=ax2)
     ax2.set_xlim(gene_count_bounds)
 
     for ax in [ax1, ax2]:
-        ax.set_xlabel('gene count', fontsize=16)
-        ax.set_ylabel('# of cells', fontsize=16)
-        ax.tick_params(axis='both', labelsize=12)
-        for s in ['left', 'right', 'top']:
+        ax.set_xlabel("gene count", fontsize=16)
+        ax.set_ylabel("# of cells", fontsize=16)
+        ax.tick_params(axis="both", labelsize=12)
+        for s in ["left", "right", "top"]:
             ax.spines[s].set_visible(False)
     if fig_dir is not None:
         plt.tight_layout()
@@ -565,18 +563,18 @@ def feature_kde(
 def scatter(
     adata,
     x,
-    y, 
-    hue=None, 
+    y,
+    hue=None,
     marker="o",
-    hue_order=None, 
+    hue_order=None,
     force_categorical_hue=False,
     palette=None,
     color=None,
     cmap=None,
     size=20,
     alpha=0.6,
-    receptor='bcr',
-    chain='heavy', 
+    receptor="bcr",
+    chain="heavy",
     x_chain=None,
     y_chain=None,
     hue_chain=None,
@@ -587,7 +585,7 @@ def scatter(
     highlight_size=90,
     highlight_color="k",
     highlight_name=None,
-    highlight_alpha=0.9,  
+    highlight_alpha=0.9,
     plot_kwargs=None,
     legend_kwargs=None,
     hide_legend=False,
@@ -595,8 +593,8 @@ def scatter(
     ylabel=None,
     title=None,
     title_fontsize=20,
-    title_fontweight='normal',
-    title_loc='center',
+    title_fontweight="normal",
+    title_loc="center",
     title_pad=None,
     show_title=False,
     xlabel_fontsize=16,
@@ -618,8 +616,9 @@ def scatter(
     ax=None,
     show=False,
     figsize=None,
-    figfile=None):
-    '''
+    figfile=None,
+):
+    """
     Produces a scatter plot.
 
     Parameters
@@ -829,35 +828,32 @@ def scatter(
     .. _any valid inset_axes() location: 
         https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
         
-    '''    
+    """
 
     # get x, y and hue data
     d = {}
-    d['x'] = get_adata_values(
-        adata,
-        x, 
-        receptor=receptor, 
-        chain=x_chain if x_chain is not None else chain)
-    d['y'] = get_adata_values(
-        adata,
-        y, 
-        receptor=receptor, 
-        chain=y_chain if y_chain is not None else chain)
+    d["x"] = get_adata_values(
+        adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
+    )
+    d["y"] = get_adata_values(
+        adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
+    )
     if hue is not None:
         d[hue] = get_adata_values(
             adata,
-            hue, 
-            receptor=receptor, 
-            chain=hue_chain if hue_chain is not None else chain)
+            hue,
+            receptor=receptor,
+            chain=hue_chain if hue_chain is not None else chain,
+        )
     df = pd.DataFrame(d, index=adata.obs.index)
 
     ax = abutils.pl.scatter(
         data=df,
-        x='x',
-        y='y', 
-        hue=hue, 
+        x="x",
+        y="y",
+        hue=hue,
         marker=marker,
-        hue_order=hue_order, 
+        hue_order=hue_order,
         force_categorical_hue=force_categorical_hue,
         palette=palette,
         color=color,
@@ -871,7 +867,7 @@ def scatter(
         highlight_size=highlight_size,
         highlight_color=highlight_color,
         highlight_name=highlight_name,
-        highlight_alpha=highlight_alpha,  
+        highlight_alpha=highlight_alpha,
         plot_kwargs=plot_kwargs,
         legend_kwargs=legend_kwargs,
         hide_legend=hide_legend,
@@ -902,7 +898,7 @@ def scatter(
         ax=ax,
         show=False,
         figsize=figsize,
-        figfile=None
+        figfile=None,
     )
 
     # save, show or return the ax
@@ -913,15 +909,13 @@ def scatter(
         plt.show()
     else:
         return ax
-    
-
 
 
 def umap(
     adata,
-    hue=None, 
+    hue=None,
     marker="o",
-    hue_order=None, 
+    hue_order=None,
     force_categorical_hue=False,
     palette=None,
     color=None,
@@ -929,8 +923,8 @@ def umap(
     size=10,
     alpha=0.6,
     n_col=2,
-    receptor='bcr',
-    chain='heavy', 
+    receptor="bcr",
+    chain="heavy",
     hue_chain=None,
     highlight_index=None,
     highlight_x=None,
@@ -939,21 +933,21 @@ def umap(
     highlight_size=90,
     highlight_color="k",
     highlight_name=None,
-    highlight_alpha=0.9,  
+    highlight_alpha=0.9,
     plot_kwargs=None,
     legend_on_data=False,
     legend_fontsize=12,
-    legend_fontweight='bold',
+    legend_fontweight="bold",
     legend_fontoutline=None,
     legend_marker_alpha=0.8,
     legend_kwargs=None,
     hide_legend=False,
-    xlabel='UMAP1',
-    ylabel='UMAP2',
+    xlabel="UMAP1",
+    ylabel="UMAP2",
     title=None,
     title_fontsize=20,
-    title_fontweight='normal',
-    title_loc='center',
+    title_fontweight="normal",
+    title_loc="center",
     title_pad=None,
     show_title=False,
     xlabel_fontsize=16,
@@ -978,8 +972,9 @@ def umap(
     ax=None,
     show=False,
     figsize=None,
-    figfile=None):
-    '''
+    figfile=None,
+):
+    """
     Produces a scatter plot.
 
     Parameters
@@ -1189,62 +1184,73 @@ def umap(
     .. _any valid inset_axes() location: 
         https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
         
-    '''    
+    """
     # check that the UMAP data exists
-    if 'X_umap' not in adata.obsm:
+    if "X_umap" not in adata.obsm:
         from .tl import dimensionality_reduction
+
         adata = dimensionality_reduction(adata)
-    
+
     # parse hues (if provided)
     if hue is not None:
         if isinstance(hue, str):
-            hues = [hue, ]
+            hues = [
+                hue,
+            ]
         else:
             hues = hue
     else:
-        hues = [None, ]
-    
+        hues = [
+            None,
+        ]
+
     # set some UMAP-specific defaults
     figsize = figsize if figsize is not None else [7, 7]
     if legend_fontsize is not None:
-            if legend_kwargs is None:
-                legend_kwargs = {'fontsize': legend_fontsize}
-            else:
-                legend_kwargs['fontsize'] = legend_fontsize
-    
+        if legend_kwargs is None:
+            legend_kwargs = {"fontsize": legend_fontsize}
+        else:
+            legend_kwargs["fontsize"] = legend_fontsize
+
     if len(hues) > 1:
         n_row = int(np.ceil(len(hues) / n_col))
         gridsize = [figsize[0] * n_col, figsize[1] * n_row]
         fig, axes = plt.subplots(n_row, n_col, figsize=gridsize)
         axes = axes.flatten()
     else:
-        axes = [ax, ]
-    
+        axes = [
+            ax,
+        ]
+
     # make plots
     for ax, hue in zip(axes, hues):
         # get X/Y data
         d = {}
-        x, y = zip(*adata.obsm['X_umap'])
-        d['x'] = x
-        d['y'] = y
+        x, y = zip(*adata.obsm["X_umap"])
+        d["x"] = x
+        d["y"] = y
         if hue is not None:
             d[hue] = get_adata_values(
                 adata,
-                hue, 
-                receptor=receptor, 
-                chain=hue_chain if hue_chain is not None else chain)
-            continuous_hue = all([isinstance(h, float) for h in d[hue]]) and not force_categorical_hue
-        df = pd.DataFrame(d, index=adata.obs.index)        
+                hue,
+                receptor=receptor,
+                chain=hue_chain if hue_chain is not None else chain,
+            )
+            continuous_hue = (
+                all([isinstance(h, float) for h in d[hue]])
+                and not force_categorical_hue
+            )
+        df = pd.DataFrame(d, index=adata.obs.index)
 
         # make the plot
         # ax = scatter(
         ax = abutils.pl.scatter(
             data=df,
-            x='x',
-            y='y', 
-            hue=hue, 
+            x="x",
+            y="y",
+            hue=hue,
             marker=marker,
-            hue_order=hue_order, 
+            hue_order=hue_order,
             force_categorical_hue=force_categorical_hue,
             palette=palette,
             color=color,
@@ -1258,7 +1264,7 @@ def umap(
             highlight_size=highlight_size,
             highlight_color=highlight_color,
             highlight_name=highlight_name,
-            highlight_alpha=highlight_alpha,  
+            highlight_alpha=highlight_alpha,
             plot_kwargs=plot_kwargs,
             legend_kwargs=legend_kwargs,
             hide_legend=True if legend_on_data else hide_legend,
@@ -1289,7 +1295,7 @@ def umap(
             ax=ax,
             show=False,
             figsize=figsize,
-            figfile=None
+            figfile=None,
         )
 
         if tiny_axis:
@@ -1298,10 +1304,10 @@ def umap(
                 tiny_axis_xoffset = 0
             if tiny_axis_yoffset is None:
                 tiny_axis_yoffset = 0
-            xmin = df['x'].min()
-            xmax = df['x'].max()
-            ymin = df['y'].min()
-            ymax = df['y'].max()
+            xmin = df["x"].min()
+            xmax = df["x"].max()
+            ymin = df["y"].min()
+            ymax = df["y"].max()
             x_range = abs(xmax - xmin)
             y_range = abs(ymax - ymin)
             x_offset = x_range * tiny_axis_xoffset
@@ -1313,30 +1319,32 @@ def umap(
             y_end = ymin + (y_range / 5) + y_offset
             y_center = y_start + ((y_end - y_start) / 2)
             # draw the new "mini" axis lines
-            ax.hlines(y_start, x_start, x_end, 'k', lw=2)
-            ax.vlines(x_start, y_start, y_end, 'k', lw=2)
+            ax.hlines(y_start, x_start, x_end, "k", lw=2)
+            ax.vlines(x_start, y_start, y_end, "k", lw=2)
             ax.annotate(
                 xlabel,
-                xy=(x_center, ymin), 
-                xytext=(0, -5), 
-                textcoords='offset points',
-                fontsize=xlabel_fontsize, 
-                ha='center', 
-                va='top')
+                xy=(x_center, ymin),
+                xytext=(0, -5),
+                textcoords="offset points",
+                fontsize=xlabel_fontsize,
+                ha="center",
+                va="top",
+            )
             ax.annotate(
                 ylabel,
-                xy=(xmin, y_center), 
-                xytext=(-5, 0), 
-                textcoords='offset points',
-                fontsize=ylabel_fontsize, 
-                rotation='vertical',
-                ha='right', 
-                va='center')
+                xy=(xmin, y_center),
+                xytext=(-5, 0),
+                textcoords="offset points",
+                fontsize=ylabel_fontsize,
+                rotation="vertical",
+                ha="right",
+                va="center",
+            )
             # ax.text(xmin, y_center, ylabel, fontsize=ylabel_fontsize, rotation='vertical', ha='right', va='center')
             # remove the normal axis lines
-            ax.set_xlabel('', fontsize=0)
-            ax.set_ylabel('', fontsize=0)
-            for s in ['left', 'right', 'top', 'bottom']:
+            ax.set_xlabel("", fontsize=0)
+            ax.set_ylabel("", fontsize=0)
+            for s in ["left", "right", "top", "bottom"]:
                 ax.spines[s].set_visible(False)
         # hide the ticks
         ax.set_xticks([])
@@ -1346,25 +1354,27 @@ def umap(
             # configure the legend font outline
             if legend_fontoutline is not None:
                 path_effect = [
-                    mpl.patheffects.withStroke(linewidth=legend_fontoutline, foreground='w')
+                    mpl.patheffects.withStroke(
+                        linewidth=legend_fontoutline, foreground="w"
+                    )
                 ]
             else:
                 path_effect = None
             # add the on-data legend
             for h in df[hue].unique():
                 _df = df[df[hue] == h]
-                hue_x = _df['x'].median()
-                hue_y = _df['y'].median()
+                hue_x = _df["x"].median()
+                hue_y = _df["y"].median()
                 ax.text(
-                    hue_x, 
-                    hue_y, 
-                    h, 
-                    c='k', 
+                    hue_x,
+                    hue_y,
+                    h,
+                    c="k",
                     weight=legend_fontweight,
-                    verticalalignment='center',
-                    horizontalalignment='center',
+                    verticalalignment="center",
+                    horizontalalignment="center",
                     fontsize=legend_fontsize,
-                    path_effects=path_effect
+                    path_effects=path_effect,
                 )
 
     # save, show or return the ax
@@ -1376,9 +1386,6 @@ def umap(
         plt.show()
     else:
         return ax
-
-
-
 
 
 # def feature_scatter(
@@ -1423,133 +1430,133 @@ def umap(
 
 #     Parameters
 #     ----------
-#     data : anndata.AnnData or pandas.DataFrame  
+#     data : anndata.AnnData or pandas.DataFrame
 #         An ``AnnData`` object or a ``DataFrame`` containing the input data. Required.
 
 #     x : str
 #         Name of the column in `data` containing the feature to be plotted on the x-axis. Required.
 
-#     y : str  
+#     y : str
 #         Name of the column in `data` containing the feature to be plotted on the y-axis. Required.
 
-#     hue : str, optional  
+#     hue : str, optional
 #         Name of the column in `data` containing categories for hue values. If `hue` is categorical,
-#         each category will be plotted in a different color (using the `color` for the colors). If 
-#         `hue` is continuous, points will be colored using a colormap (using `cmap` if supplied). 
+#         each category will be plotted in a different color (using the `color` for the colors). If
+#         `hue` is continuous, points will be colored using a colormap (using `cmap` if supplied).
 
-#     hue_order : iterable object, optional  
+#     hue_order : iterable object, optional
 #         Iterable of hue categories, in the order they should be plotted and listed
 #         in the legend. If `hue_order` contains only a subset of the categories
 #         present in ``data[hue]`` or ``data.obs[hue]``, only the categories supplied in `hue_order`
 #         will be plotted.
 
-#     force_categorical_hue : bool, default=False  
-#         If ``True``, `hue` data will be treated as categorical, even if the data appear to 
-#         be continuous. This results in `color` being used to color the points rather than `cmap`.  
+#     force_categorical_hue : bool, default=False
+#         If ``True``, `hue` data will be treated as categorical, even if the data appear to
+#         be continuous. This results in `color` being used to color the points rather than `cmap`.
 
 #     color : iterable object, optinoal
-#         List of colors to be used for `hue` categories. If `colors` is shorter than the list 
-#         of hue categories, colors will be reused. Only used if `hue` contains categorical data 
-#         (`cmap` is used for continuous data). If not provided, the `default Seaborn color palette`_ 
-#         will be used. 
-        
-#     cmap : str or matplotlib.color.Colormap, default='flare'   
-#         Colormap to be used for continuous `hue` data.  
+#         List of colors to be used for `hue` categories. If `colors` is shorter than the list
+#         of hue categories, colors will be reused. Only used if `hue` contains categorical data
+#         (`cmap` is used for continuous data). If not provided, the `default Seaborn color palette`_
+#         will be used.
 
-#     cbar_width : int, default=35  
-#         Width of the colorbar. Only used for continuous `hue` types.  
+#     cmap : str or matplotlib.color.Colormap, default='flare'
+#         Colormap to be used for continuous `hue` data.
 
-#     cbar_height : int, default=5  
-#         Height of the colorbar. Only used for continuous `hue` types.  
+#     cbar_width : int, default=35
+#         Width of the colorbar. Only used for continuous `hue` types.
 
-#     cbar_loc : str or iterable object, default='lower right'  
+#     cbar_height : int, default=5
+#         Height of the colorbar. Only used for continuous `hue` types.
+
+#     cbar_loc : str or iterable object, default='lower right'
 #         Location of the colorbar. Accepts `any valid inset_axes() location`_.
 
-#     cbar_orientation : str, default='horizontal'  
+#     cbar_orientation : str, default='horizontal'
 #         Orientation of the colorbar. Options are ``'horizontal'`` and ``'vertical'``.
 
 #     cbar_bbox_to_anchor : list or tuple, optional
-#         bbox_to_anchor for the colorbar. Used in combination with `cbar_loc` to provide 
+#         bbox_to_anchor for the colorbar. Used in combination with `cbar_loc` to provide
 #         fine-grained positioning of the colorbar.
 
-#     cbar_flip_ticks : bool, default=False  
-#         Flips the position of colorbar ticks. Ticks default to the bottom if `cbar_orientation` 
-#         is  ``'horizontal'`` and the left if  `cbar_orientation` is ``'vertical'``.  
+#     cbar_flip_ticks : bool, default=False
+#         Flips the position of colorbar ticks. Ticks default to the bottom if `cbar_orientation`
+#         is  ``'horizontal'`` and the left if  `cbar_orientation` is ``'vertical'``.
 
-#     cbar_title : str, optional  
-#         Colorbar title. If not provided, `hue` is used.  
+#     cbar_title : str, optional
+#         Colorbar title. If not provided, `hue` is used.
 
-#     cbar_title_fontsize : int or float, default=12  
-#         Fontsize for the colorbar title.  
-        
-#     marker : str, default='o'  
-#         Marker style for the scatter plot. Accepts any `matplotlib marker`_.  
+#     cbar_title_fontsize : int or float, default=12
+#         Fontsize for the colorbar title.
 
-#     size : int or float, default=20  
-#         Size of the scatter points.  
+#     marker : str, default='o'
+#         Marker style for the scatter plot. Accepts any `matplotlib marker`_.
 
-#     alpha : float, default=0.6  
-#         Alpha of the scatter points.  
+#     size : int or float, default=20
+#         Size of the scatter points.
 
-#     highlight_index : iterable object, optional  
-#         An iterable of index names (present in `data`) of points to be highlighted on 
+#     alpha : float, default=0.6
+#         Alpha of the scatter points.
+
+#     highlight_index : iterable object, optional
+#         An iterable of index names (present in `data`) of points to be highlighted on
 #         the KDE plot. If provided, `highlight_x` and `highlight_y` are ignored.
 
-#     highlight_x : iterable object, optional  
+#     highlight_x : iterable object, optional
 #         An iterable of x-values for highlighted points. Also requires `highlight_y`.
-        
-#     highlight_y : iterable object, optional  
-#         An iterable of y-values for highlighted points. Also requires `highlight_x`.
-        
-#     highlight_marker : str, default='x'  
-#         Marker style to be used for highlight points. Accepts any `matplotlib marker`_. 
 
-#     highlight_size : int, default=90  
+#     highlight_y : iterable object, optional
+#         An iterable of y-values for highlighted points. Also requires `highlight_x`.
+
+#     highlight_marker : str, default='x'
+#         Marker style to be used for highlight points. Accepts any `matplotlib marker`_.
+
+#     highlight_size : int, default=90
 #         Size of the highlight marker.
 
 #     highlight_color : string or list of color values, default='k'
 #         Color of the highlight points.
 
-#     highlight_name : str, optional  
+#     highlight_name : str, optional
 #         Name of the highlights, to be used in the plot legend. If not supplied,
 #         highlight points will not be included in the legend.
-        
-#     highlight_alpha : float, default=0.9  
+
+#     highlight_alpha : float, default=0.9
 #         Alpha of the highlight points.
 
-#     xlabel : str, optional  
+#     xlabel : str, optional
 #         Label for the x-axis. By default, the value for `x` is used.
 
-#     ylabel : str, optional  
+#     ylabel : str, optional
 #         Label for the y-axis. By default, the value for `y` is used.
 
 #     equal_axes : bool, default=True
 #         If ```True```, the the limits of the x- and y-axis will be equal.
-        
-#     legend_kwargs : dict, optional  
+
+#     legend_kwargs : dict, optional
 #         Dictionary of legend keyword arguments, which will be passed to ``ax.legend()``.
 
-#     return_ax : bool, default=False  
+#     return_ax : bool, default=False
 #         If ``True``, return the plot's ``ax`` object. Will not show or save the plot.
 
-#     figsize : list, default=[6, 6]  
+#     figsize : list, default=[6, 6]
 #         A list containg the dimensions of the plot, in inches.
 
-#     figfile : str, optional  
-#         Path to which the figure will be saved. If not provided, the figure will be 
-#         shown but not saved to file.  
+#     figfile : str, optional
+#         Path to which the figure will be saved. If not provided, the figure will be
+#         shown but not saved to file.
 
 #     kwargs
-#         All other keyword arguments are passed to ``matplotlib.pyplot.scatter()``.  
+#         All other keyword arguments are passed to ``matplotlib.pyplot.scatter()``.
 
 
-#     .. _default Seaborn color palette: 
-#         https://seaborn.pydata.org/generated/seaborn.color_palette.html  
+#     .. _default Seaborn color palette:
+#         https://seaborn.pydata.org/generated/seaborn.color_palette.html
 
-#     .. _matplotlib marker: 
-#         https://matplotlib.org/stable/api/markers_api.html  
+#     .. _matplotlib marker:
+#         https://matplotlib.org/stable/api/markers_api.html
 
-#     .. _any valid inset_axes() location: 
+#     .. _any valid inset_axes() location:
 #         https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
 
 #     """
@@ -1965,7 +1972,6 @@ def feature_ridge(
         plt.show()
 
 
-
 # ===========================
 
 #          GENERAL
@@ -1974,25 +1980,25 @@ def feature_ridge(
 
 
 def bar(
-    adata, 
+    adata,
     *,
     x=None,
     y=None,
-    hue=None, 
-    order=None, 
-    hue_order=None, 
+    hue=None,
+    order=None,
+    hue_order=None,
     palette=None,
     color=None,
-    alt_color='#D3D3D3',
-    normalize=False, 
-    highlight=None, 
-    highlight_color=None,  
-    receptor='bcr',
-    chain='heavy', 
+    alt_color="#D3D3D3",
+    normalize=False,
+    highlight=None,
+    highlight_color=None,
+    receptor="bcr",
+    chain="heavy",
     x_chain=None,
     y_chain=None,
     hue_chain=None,
-    orientation='vertical',
+    orientation="vertical",
     plot_kwargs=None,
     legend_kwargs=None,
     hide_legend=False,
@@ -2005,9 +2011,10 @@ def bar(
     xtick_labelrotation=0,
     ytick_labelrotation=0,
     show=False,
-    figsize=[6,4],
-    figfile=None,):
-    '''
+    figsize=[6, 4],
+    figfile=None,
+):
+    """
     Produces a bar plot of categorical data. For data with distinct batches, a stacked 
     bar plot will be constructed.
 
@@ -2123,52 +2130,49 @@ def bar(
     figfile : str, optional  
         Path at which to save the figure file. If not provided, the figure is not saved
         and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.  
-    '''
+    """
 
     # get x, y and hue data
     d = {}
     if x is not None:
-        d['x'] = get_adata_values(
-            adata,
-            x, 
-            receptor=receptor, 
-            chain=x_chain if x_chain is not None else chain)
+        d["x"] = get_adata_values(
+            adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
+        )
         if xlabel is None:
             xlabel = x
-        x = 'x'
+        x = "x"
     if y is not None:
-        d['y'] = get_adata_values(
-            adata,
-            y, 
-            receptor=receptor, 
-            chain=y_chain if y_chain is not None else chain)
+        d["y"] = get_adata_values(
+            adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
+        )
         if ylabel is None:
             ylabel = y
-        y = 'y'
+        y = "y"
     if hue is not None:
         d[hue] = get_adata_values(
             adata,
-            hue, 
-            receptor=receptor, 
-            chain=hue_chain if hue_chain is not None else chain)
+            hue,
+            receptor=receptor,
+            chain=hue_chain if hue_chain is not None else chain,
+        )
     df = pd.DataFrame(d)
 
-    df = df.dropna(subset=['x'])
+    df = df.dropna(subset=["x"])
 
     # make the plot
     ax = abutils.pl.bar(
         data=df,
         x=x,
-        y=y, 
-        hue=hue, 
-        order=order, 
-        hue_order=hue_order, 
+        y=y,
+        hue=hue,
+        order=order,
+        hue_order=hue_order,
         palette=palette,
         color=color,
         alt_color=alt_color,
-        normalize=normalize, 
-        highlight=highlight, 
-        highlight_color=highlight_color,  
+        normalize=normalize,
+        highlight=highlight,
+        highlight_color=highlight_color,
         orientation=orientation,
         plot_kwargs=plot_kwargs,
         legend_kwargs=legend_kwargs,
@@ -2184,7 +2188,7 @@ def bar(
         show=False,
         figsize=figsize,
         figfile=None,
-        )
+    )
 
     # save, show or return the ax
     if figfile is not None:
@@ -2196,24 +2200,20 @@ def bar(
         return ax
 
 
-
-
-
-
 # def bar(
-#     adata, 
-#     x, 
-#     hue=None, 
-#     order=None, 
-#     hue_order=None, 
+#     adata,
+#     x,
+#     hue=None,
+#     order=None,
+#     hue_order=None,
 #     palette=None,
 #     color=None,
 #     alt_color='#D3D3D3',
-#     normalize=False, 
-#     highlight=None, 
-#     highlight_color=None,  
+#     normalize=False,
+#     highlight=None,
+#     highlight_color=None,
 #     receptor='bcr',
-#     chain='heavy', 
+#     chain='heavy',
 #     # orientation='vertical',
 #     plot_kwargs=None,
 #     legend_kwargs=None,
@@ -2230,124 +2230,124 @@ def bar(
 #     figsize=[6,4],
 #     figfile=None,):
 #     '''
-#     Produces a bar plot of categorical data. For data with distinct batches, a stacked 
+#     Produces a bar plot of categorical data. For data with distinct batches, a stacked
 #     bar plot will be constructed.
 
 #     Parameters
 #     ----------
-#     adata : anndata.AnnData  
-#         An ``AnnData`` object containing the input data. `adata` must have ``adata.obs.bcr`` 
+#     adata : anndata.AnnData
+#         An ``AnnData`` object containing the input data. `adata` must have ``adata.obs.bcr``
 #         or ``adata.obs.tcr`` populated with annotated BCR/TCR information. Required
-        
+
 #     x : str
-#         Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be plotted on the 
-#         x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain`. 
+#         Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be plotted on the
+#         x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain`.
 #         Required.
 
-#     hue : str, optional  
-#         Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be used to 
-#         group data into stacked bars. If not provided, an un-stacked bar plot is created.  
-        
-#     order : iterable object, optional  
-#         List of `x` categories in the order they should be plotted. If `order` contains a 
-#         subset of all categories found in `x`, only the supplied categories will be plotted.  
+#     hue : str, optional
+#         Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be used to
+#         group data into stacked bars. If not provided, an un-stacked bar plot is created.
+
+#     order : iterable object, optional
+#         List of `x` categories in the order they should be plotted. If `order` contains a
+#         subset of all categories found in `x`, only the supplied categories will be plotted.
 #         If not provided, categories will be plotted in ``natsort.natsorted()`` order.
-        
-#     hue_order : iterable object, optional  
-#         List of `hue` categories in the order they should be plotted. If `hue_order` contains a 
-#         subset of all categories found in `hue`, only the supplied categories will be plotted.  
+
+#     hue_order : iterable object, optional
+#         List of `hue` categories in the order they should be plotted. If `hue_order` contains a
+#         subset of all categories found in `hue`, only the supplied categories will be plotted.
 #         If not provided, `hue` categories will be plotted in ``natsort.natsorted()`` order.
-        
-#     palette : dict, optional  
-#         Dictionary mapping `hue` or `x` names to colors. If both are provided, `hue` categories 
-#         take priority. If neither `palette` nor `color` are provided, bars are colored using 
-#         `color` (if `hue` is ``None``) or a palette is generated automatically using 
-#         ``sns.hls_palette()``.   
 
-#     color : str or iterable, optional  
-#         Single color to be used for the bar plot. If not provided, the first color in the 
-#         default ``Seaborn`` color palette will be used. If `highlight` is provided but 
-#         `highlight_color` is not, `color` will be used to color highlighted bars.  
-        
-#     alt_color : str or iterable, default='#D3D3D3'  
-#         Alternate color for the bar plot. Used to color categories not provided in `palette` 
-#         or to color categories not present in `highlight`.  
-        
-#     normalize : bool, default=False  
+#     palette : dict, optional
+#         Dictionary mapping `hue` or `x` names to colors. If both are provided, `hue` categories
+#         take priority. If neither `palette` nor `color` are provided, bars are colored using
+#         `color` (if `hue` is ``None``) or a palette is generated automatically using
+#         ``sns.hls_palette()``.
+
+#     color : str or iterable, optional
+#         Single color to be used for the bar plot. If not provided, the first color in the
+#         default ``Seaborn`` color palette will be used. If `highlight` is provided but
+#         `highlight_color` is not, `color` will be used to color highlighted bars.
+
+#     alt_color : str or iterable, default='#D3D3D3'
+#         Alternate color for the bar plot. Used to color categories not provided in `palette`
+#         or to color categories not present in `highlight`.
+
+#     normalize : bool, default=False
 #         If ``True``, normalized frequencies are plotted instead of raw counts. If multiple `hue`
-#         categories are present, each `x` category will be separately normalized such that all 
-#         bars extend from [0,1] and each stacked bar is sized according to its fraction of the 
-#         `x` category. If `hue` is not provided or there is only one `hue` category, the entire 
+#         categories are present, each `x` category will be separately normalized such that all
+#         bars extend from [0,1] and each stacked bar is sized according to its fraction of the
+#         `x` category. If `hue` is not provided or there is only one `hue` category, the entire
 #         dataset is normalized.
-        
+
 #     highlight : iterable, optional
-#         List of `x` or `hue` categories to be highlighted. If `highlight_color` is provided, 
-#         categories in `highlight` will use `highlight_color` and all others will use `alt_color`. 
-#         If `highlight_color` is not provided, `palette` will be used. If both `highlight_color` 
-#         and `palette` are not provided, `color` will be used. 
-        
-#     highlight_color : str or iterable, optional  
-#         Color to be used for categories in `highlight`. If  
+#         List of `x` or `hue` categories to be highlighted. If `highlight_color` is provided,
+#         categories in `highlight` will use `highlight_color` and all others will use `alt_color`.
+#         If `highlight_color` is not provided, `palette` will be used. If both `highlight_color`
+#         and `palette` are not provided, `color` will be used.
 
-#     receptor : str, default='bcr'  
-#         Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.  
+#     highlight_color : str or iterable, optional
+#         Color to be used for categories in `highlight`. If
 
-#     chain : str, default='heavy'  
-#         If `x` is a BCR/TCR annotation field, chain for which annotation will be retrieved. 
-#         Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``, 
-#         ``'beta'``, ``'delta'`` or ``'gamma'``.  
+#     receptor : str, default='bcr'
+#         Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.
 
-#     plot_kwargs : dict, optional  
+#     chain : str, default='heavy'
+#         If `x` is a BCR/TCR annotation field, chain for which annotation will be retrieved.
+#         Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``,
+#         ``'beta'``, ``'delta'`` or ``'gamma'``.
+
+#     plot_kwargs : dict, optional
 #         Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
 
-#     legend_kwargs : dict, optional  
+#     legend_kwargs : dict, optional
 #         Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
 
-#     hide_legend : bool, default=False  
-#         By default, a plot legend will be shown if multiple batches are plotted. If ``True``, 
-#         the legend will not be shown.  
-        
-#     xlabel : str, optional  
-#         Text for the X-axis label. 
+#     hide_legend : bool, default=False
+#         By default, a plot legend will be shown if multiple batches are plotted. If ``True``,
+#         the legend will not be shown.
 
-#     ylabel : str, optional  
-#         Text for the Y-axis label.  
-        
-#     xlabel_fontsize : int or float, default=16  
+#     xlabel : str, optional
+#         Text for the X-axis label.
+
+#     ylabel : str, optional
+#         Text for the Y-axis label.
+
+#     xlabel_fontsize : int or float, default=16
 #         Fontsize for the X-axis label text.
 
-#     ylabel_fontsize : int or float, default=16  
+#     ylabel_fontsize : int or float, default=16
 #         Fontsize for the Y-axis label text.
 
-#     xtick_labelsize : int or float, default=14  
-#         Fontsize for the X-axis tick labels.  
+#     xtick_labelsize : int or float, default=14
+#         Fontsize for the X-axis tick labels.
 
-#     ytick_labelsize : int or float, default=14  
-#         Fontsize for the Y-axis tick labels.  
+#     ytick_labelsize : int or float, default=14
+#         Fontsize for the Y-axis tick labels.
 
-#     xtick_labelrotation : int or float, default=0  
-#         Rotation of the X-axis tick labels.  
-    
-#     ytick_labelrotation : int or float, default=0  
-#         Rotation of the Y-axis tick labels. 
+#     xtick_labelrotation : int or float, default=0
+#         Rotation of the X-axis tick labels.
 
-#     show :bool, default=False  
+#     ytick_labelrotation : int or float, default=0
+#         Rotation of the Y-axis tick labels.
+
+#     show :bool, default=False
 #         If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
 #         is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
 
-#     figsize : iterable object, default=[6, 4]  
-#         List containing the figure size (as ``[x-dimension, y-dimension]``) in inches. 
+#     figsize : iterable object, default=[6, 4]
+#         List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
 
-#     figfile : str, optional  
+#     figfile : str, optional
 #         Path at which to save the figure file. If not provided, the figure is not saved
-#         and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.  
+#         and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.
 #     '''
 #     # process input data
 #     if order is None:
 #         x_vals = natsorted(set(get_adata_values(adata, x, receptor=receptor, chain=chain)))
 #     else:
 #         x_vals = order
-    
+
 #     # process hue, if provided
 #     if hue is not None:
 #         hue_vals = get_adata_values(adata, hue, receptor=receptor, chain=chain)
@@ -2364,7 +2364,7 @@ def bar(
 #         hue_batches = [
 #             adata,
 #         ]
-        
+
 #     # process batches
 #     batch_data = []
 #     for batch in hue_batches:
@@ -2383,7 +2383,7 @@ def bar(
 #                 for xval in x_vals:
 #                     yval = y_dict.get(xval, 0)
 #                     y_dict[xval] = yval / tot
-        
+
 #     # colors
 #     if palette is None:
 #         if len(hue_batches) > 1:
@@ -2408,7 +2408,7 @@ def bar(
 #             else:
 #                 _colors.append(palette.get(_hue, palette.get(_x, alt_color)))
 #         colors.append(_colors)
-            
+
 #     # plot kwargs
 #     default_plot_kwargs = {"width": 0.8, "linewidth": 1.5, "edgecolor": "w"}
 #     if plot_kwargs is not None:
@@ -2420,7 +2420,7 @@ def bar(
 #     if legend_kwargs is not None:
 #         default_legend_kwargs.update(legend_kwargs)
 #     legend_kwargs = default_legend_kwargs
-    
+
 #     # make the plot
 #     plt.figure(figsize=figsize)
 #     bottom = np.zeros(len(x_vals))
@@ -2428,7 +2428,7 @@ def bar(
 #         y_vals = np.asarray([d.get(_x, 0) for _x in x_vals])
 #         plt.bar(x_vals, y_vals, bottom=bottom, color=c, label=h, **plot_kwargs)
 #         bottom += y_vals
-        
+
 #     # style the plot
 #     ax = plt.gca()
 #     if ylabel is None:
@@ -2457,12 +2457,6 @@ def bar(
 #         plt.show()
 #     else:
 #         return ax
-
-
-
-
-
-
 
 
 # ===========================
@@ -3246,13 +3240,12 @@ def lineage_donut(
 def _get_monochrome_colors(monochrome_color, n_col):
     cmap = get_cmap(from_color=monochrome_color)
     # this is a bit convoluted, but what's happening is we're getting different colormap
-    # values -- which range from 1 (darkest) to 0 (lightest). Calling cmap(i) returns an 
-    # rgba tuple, but we just need the rbg, so we drop the a. To make sure that one of 
-    # the colors isn't pure white, we ask np.linspace() for one more value than we need 
+    # values -- which range from 1 (darkest) to 0 (lightest). Calling cmap(i) returns an
+    # rgba tuple, but we just need the rbg, so we drop the a. To make sure that one of
+    # the colors isn't pure white, we ask np.linspace() for one more value than we need
     # and drop the lightest value
     RGB_tuples = [cmap(i)[:-1] for i in np.linspace(1, 0, n_col + 1)][:-1]
     return RGB_tuples
-
 
 
 def get_loupe_cmap():
@@ -3260,11 +3253,8 @@ def get_loupe_cmap():
     cropped_ylorbr = ylorbr(np.linspace(0.1, 1, 255))
     loupe_colors = [np.array([0.9, 0.9, 0.9, 1.0])] + list(cropped_ylorbr)
 
-    return mpl.colors.LinearSegmentedColormap.from_list('loupe', loupe_colors)
+    return mpl.colors.LinearSegmentedColormap.from_list("loupe", loupe_colors)
+
 
 loupe_cmap = get_loupe_cmap()
-
-
-
-
 

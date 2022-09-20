@@ -72,7 +72,7 @@ def read_10x_mtx(
     cellhash_regex: str = "cell ?hash",
     ignore_cellhash_case: bool = True,
     agbcs: Optional[Iterable] = None,
-    agbc_regex: str= "agbc",
+    agbc_regex: str = "agbc",
     ignore_agbc_case: bool = True,
     log_transform_cellhashes: bool = True,
     ignore_zero_quantile_cellhashes: bool = True,
@@ -267,7 +267,7 @@ def read_10x_mtx(
     # process BCR data:
     if bcr_file is not None:
         if bcr_format == "delimited":
-            delim_renames = {'\t': 'tab', ',': 'comma'}
+            delim_renames = {"\t": "tab", ",": "comma"}
             if verbose:
                 d = delim_renames.get(bcr_delimiter, f"'{bcr_delimiter}'")
                 print(f"reading {d}-delimited BCR data...")
@@ -290,9 +290,9 @@ def read_10x_mtx(
             if verbose:
                 print("annotating BCR sequences with abstar...")
             sequences = abstar.run(
-                raw_seqs, 
-                output_type=abstar_output_format, 
-                germ_db=abstar_germ_db, 
+                raw_seqs,
+                output_type=abstar_output_format,
+                germ_db=abstar_germ_db,
                 verbose=verbose,
             )
         pairs = assign_pairs(
@@ -309,7 +309,7 @@ def read_10x_mtx(
     # process TCR data:
     if tcr_file is not None:
         if tcr_format == "delimited":
-            delim_renames = {'\t': 'tab', ',': 'comma'}
+            delim_renames = {"\t": "tab", ",": "comma"}
             if verbose:
                 d = delim_renames.get(tcr_delimiter, f"'{tcr_delimiter}'")
                 print(f"reading {d}-delimited BCR data...")
@@ -534,22 +534,21 @@ def save(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
     write(adata, h5ad_file)
 
 
-
 def concat(
     adatas: Union[Collection[AnnData], "typing.Mapping[str, AnnData]"],
     *,
     axis: Literal[0, 1] = 0,
     join: Literal["inner", "outer"] = "inner",
     merge: Union[StrategiesLiteral, Callable, None] = None,
-    uns_merge: Union[StrategiesLiteral, Callable, None] = 'unique',
+    uns_merge: Union[StrategiesLiteral, Callable, None] = "unique",
     label: Optional[str] = None,
     keys: Optional[Collection] = None,
     index_unique: Optional[str] = None,
     fill_value: Optional[Any] = None,
-    pairwise: bool = False, 
-    obs_names_make_unique: bool = True
+    pairwise: bool = False,
+    obs_names_make_unique: bool = True,
 ) -> AnnData:
-    '''Concatenates AnnData objects using ``anndata.concat()``. 
+    """Concatenates AnnData objects using ``anndata.concat()``. 
     Documentation was copied almost verbatim from the ``anndata.concat()`` `docstring`_.
     
     The only major difference is that the default for `uns_merge` has been changed from 
@@ -734,7 +733,7 @@ def concat(
 
     .. _docstring
         https://github.com/scverse/anndata/blob/master/anndata/_core/merge.py#L628
-    '''
+    """
     adata = anndata.concat(
         adatas,
         axis=axis,
@@ -751,6 +750,4 @@ def concat(
     if obs_names_make_unique:
         adata.obs_names_make_unique()
     return adata
-
-
 

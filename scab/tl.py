@@ -117,12 +117,16 @@ def dimensionality_reduction(
         print("performing PCA...")
     if ignore_ig:
         _adata = adata.copy()
-        _adata.var['highly_variable'] = _adata.var['highly_variable'] & ~(_adata.var['ig'])
+        _adata.var["highly_variable"] = _adata.var["highly_variable"] & ~(
+            _adata.var["ig"]
+        )
         sc.tl.pca(_adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
-        adata.obsm['X_pca'] = _adata.obsm['X_pca']
-        adata.varm['PCs'] = _adata.varm['PCs']
-        adata.uns['pca'] = {'variance_ratio': _adata.uns['pca']['variance_ratio'],
-                            'variance': _adata.uns['pca']['variance']}
+        adata.obsm["X_pca"] = _adata.obsm["X_pca"]
+        adata.varm["PCs"] = _adata.varm["PCs"]
+        adata.uns["pca"] = {
+            "variance_ratio": _adata.uns["pca"]["variance_ratio"],
+            "variance": _adata.uns["pca"]["variance"],
+        }
     else:
         sc.tl.pca(adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
     if verbose:
@@ -511,11 +515,11 @@ def classify_specificity(
             adata.obs[g] = group_data
             adata.obs[f"is_{g}"] = classifications[g]
             if uns_batch is not None:
-                adata.uns['agbc_thresholds'] = {uns_batch: uns_thresholds}
-                adata.uns['agbc_percentiles'] = {uns_batch: uns_percentiles}
+                adata.uns["agbc_thresholds"] = {uns_batch: uns_thresholds}
+                adata.uns["agbc_percentiles"] = {uns_batch: uns_percentiles}
             else:
-                adata.uns['agbc_thresholds'] = uns_thresholds
-                adata.uns['agbc_percentiles'] = uns_percentiles
+                adata.uns["agbc_thresholds"] = uns_thresholds
+                adata.uns["agbc_percentiles"] = uns_percentiles
         return adata
     else:
         return pd.DataFrame(classifications, index=adata.obs_names)
