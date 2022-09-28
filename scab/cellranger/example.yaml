@@ -70,6 +70,26 @@ cli_options:
     sample1: '--expect-cells=5000 --no-bam=true'
 
 
+# COMPRESS
+# --------
+# following all cellranger activities, the resulting data can 
+# be compressed using the configureation settings in this block
+# 
+# if the block is empty, output data is not compressed
+# 
+# by default, the entire project directory is compressed into its 
+# parent directory (unless otherwise specificied using the 
+# destination option)
+# 
+# also by default, the run_data folder will be excluded
+# if the run_data folder should be included, set the 
+# exclude_run_data option to False
+
+compress:
+  exclude_run_data: True
+  destination: 
+
+
 # MISCELLENEOUS
 # -------------
 uiport: 40909  # port for the cellranger UI

@@ -39,7 +39,7 @@ from mnemonic import Mnemonic
 
 import dnachisel as dc
 
-from natsort import natsorted
+from natsort import natsorted, natsort_keygen
 
 from abutils.core.sequence import Sequence
 from abutils.utils.cluster import cluster

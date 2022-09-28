@@ -512,7 +512,7 @@ class Run:
         ## for some regex ideas of how to spot the flowcell ID.
         fastq_path = os.path.join(fastq_dir, f"{self.name}/outs/fastq_path")
         flowcell_pattern = re.compile(
-            "[[CH][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$]"
+            "[[CHA][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$]"
         )  # first part of the pattern matches all flowcells except MiSeq, second part matches MiSeq
         for root, subdirs, files in os.walk(fastq_path):
             for subdir in subdirs:
