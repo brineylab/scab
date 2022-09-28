@@ -940,6 +940,7 @@ def umap(
     legend_fontweight="bold",
     legend_fontoutline=None,
     legend_marker_alpha=0.8,
+    legend_label_position_offsets=None,
     legend_kwargs=None,
     hide_legend=False,
     xlabel="UMAP1",
@@ -1351,6 +1352,13 @@ def umap(
         ax.set_yticks([])
 
         if legend_on_data and not continuous_hue:
+            # set up label offsets
+            if legend_label_position_offsets is None:
+                legend_label_position_offsets = {}
+            _xlim = ax.get_xlim()
+            _ylim = ax.get_ylim()
+            _xrange = _xlim[1] - _xlim[0]
+            _yrange = _ylim[1] - _ylim[0]
             # configure the legend font outline
             if legend_fontoutline is not None:
                 path_effect = [
@@ -1363,8 +1371,9 @@ def umap(
             # add the on-data legend
             for h in df[hue].unique():
                 _df = df[df[hue] == h]
-                hue_x = _df["x"].median()
-                hue_y = _df["y"].median()
+                xoffset, yoffset = legend_label_position_offsets.get(h, (0, 0))
+                hue_x = _df["x"].median() + (xoffset * _xrange)
+                hue_y = _df["y"].median() + (yoffset * _yrange)
                 ax.text(
                     hue_x,
                     hue_y,
