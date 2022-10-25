@@ -214,7 +214,7 @@ class Config:
         Parses the user-provided YAML configuration file.
         """
         with open(self.config_file) as f:
-            config = yaml.safe_load(f)
+            config = yaml.load(f, Loader=yaml.BaseLoader)
         # runs
         if "sequencing_runs" in config:
             self.runs = [
