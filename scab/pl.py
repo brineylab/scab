@@ -23,6 +23,11 @@
 #
 
 
+from .plots.qc import qc_metrics
+from .plots.scatter import scatter
+from .plots.umap import umap
+
+
 from collections import Counter
 import itertools
 import os
@@ -60,173 +65,173 @@ from .ut import get_adata_values
 # ===========================
 
 
-def qc_metrics(
-    adata,
-    ngenes_cutoff=2500,
-    mito_cutoff=10,
-    ig_cutoff=100,
-    read_count_bounds=[0, 5000],
-    gene_count_bounds=[0, 500],
-    fig_dir=None,
-    fig_prefix=None,
-):
-    if "ig" not in adata.var:
-        pattern = re.compile("IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]")
-        adata.var["ig"] = [
-            False if re.match(pattern, a) is None else True for a in adata.var.index
-        ]
-    if "mt" not in adata.var:
-        adata.var["mt"] = adata.var_names.str.startswith("MT-")
-    sc.pp.calculate_qc_metrics(
-        adata, qc_vars=["ig", "mt"], percent_top=None, log1p=False, inplace=True
-    )
+# def qc_metrics(
+#     adata,
+#     ngenes_cutoff=2500,
+#     mito_cutoff=10,
+#     ig_cutoff=100,
+#     read_count_bounds=[0, 5000],
+#     gene_count_bounds=[0, 500],
+#     fig_dir=None,
+#     fig_prefix=None,
+# ):
+#     if "ig" not in adata.var:
+#         pattern = re.compile("IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]")
+#         adata.var["ig"] = [
+#             False if re.match(pattern, a) is None else True for a in adata.var.index
+#         ]
+#     if "mt" not in adata.var:
+#         adata.var["mt"] = adata.var_names.str.startswith("MT-")
+#     sc.pp.calculate_qc_metrics(
+#         adata, qc_vars=["ig", "mt"], percent_top=None, log1p=False, inplace=True
+#     )
 
-    palette = {"include": "#202020", "exclude": "#C0C0C0"}
-    hue_order = ["include", "exclude"]
+#     palette = {"include": "#202020", "exclude": "#C0C0C0"}
+#     hue_order = ["include", "exclude"]
 
-    # plot Ig
-    ig_hue = [
-        "include" if i < ig_cutoff else "exclude" for i in adata.obs.pct_counts_ig
-    ]
-    ig_counter = Counter(ig_hue)
-    g = sns.JointGrid(data=adata.obs, x="total_counts", y="pct_counts_ig")
-    g.plot_joint(
-        sns.scatterplot,
-        s=10,
-        linewidth=0,
-        hue=ig_hue,
-        hue_order=hue_order,
-        palette=palette,
-    )
-    g.plot_marginals(sns.kdeplot, shade=True, color="#404040")
-    g.ax_joint.set_xlabel("total counts", fontsize=16)
-    g.ax_joint.set_ylabel("immunoglobulin counts (%)", fontsize=16)
-    g.ax_joint.tick_params(axis="both", labelsize=13)
-    handles, labels = g.ax_joint.get_legend_handles_labels()
-    labels = [f"{l} ({ig_counter[l]})" for l in labels]
-    g.ax_joint.legend(
-        handles, labels, title="ig filter", title_fontsize=14, fontsize=13
-    )
-    if fig_dir is not None:
-        plt.tight_layout()
-        if fig_prefix is not None:
-            fig_name = f"{fig_prefix}_pct-counts-ig.pdf"
-        else:
-            fig_name = "pct_counts_ig.pdf"
-        plt.savefig(os.path.join(fig_dir, fig_name))
-    else:
-        plt.show()
+#     # plot Ig
+#     ig_hue = [
+#         "include" if i < ig_cutoff else "exclude" for i in adata.obs.pct_counts_ig
+#     ]
+#     ig_counter = Counter(ig_hue)
+#     g = sns.JointGrid(data=adata.obs, x="total_counts", y="pct_counts_ig")
+#     g.plot_joint(
+#         sns.scatterplot,
+#         s=10,
+#         linewidth=0,
+#         hue=ig_hue,
+#         hue_order=hue_order,
+#         palette=palette,
+#     )
+#     g.plot_marginals(sns.kdeplot, shade=True, color="#404040")
+#     g.ax_joint.set_xlabel("total counts", fontsize=16)
+#     g.ax_joint.set_ylabel("immunoglobulin counts (%)", fontsize=16)
+#     g.ax_joint.tick_params(axis="both", labelsize=13)
+#     handles, labels = g.ax_joint.get_legend_handles_labels()
+#     labels = [f"{l} ({ig_counter[l]})" for l in labels]
+#     g.ax_joint.legend(
+#         handles, labels, title="ig filter", title_fontsize=14, fontsize=13
+#     )
+#     if fig_dir is not None:
+#         plt.tight_layout()
+#         if fig_prefix is not None:
+#             fig_name = f"{fig_prefix}_pct-counts-ig.pdf"
+#         else:
+#             fig_name = "pct_counts_ig.pdf"
+#         plt.savefig(os.path.join(fig_dir, fig_name))
+#     else:
+#         plt.show()
 
-    # plot mito
-    mito_hue = [
-        "include" if i < mito_cutoff else "exclude" for i in adata.obs.pct_counts_mt
-    ]
-    mito_counter = Counter(mito_hue)
-    g = sns.JointGrid(data=adata.obs, x="total_counts", y="pct_counts_mt")
-    g.plot_joint(
-        sns.scatterplot,
-        s=10,
-        linewidth=0,
-        hue=mito_hue,
-        hue_order=hue_order,
-        palette=palette,
-    )
-    g.plot_marginals(sns.kdeplot, shade=True, color="#404040")
-    g.ax_joint.set_xlabel("total counts", fontsize=16)
-    g.ax_joint.set_ylabel("mitochondrial counts (%)", fontsize=16)
-    g.ax_joint.tick_params(axis="both", labelsize=13)
-    handles, labels = g.ax_joint.get_legend_handles_labels()
-    labels = [f"{l} ({mito_counter[l]})" for l in labels]
-    g.ax_joint.legend(
-        handles, labels, title="mito filter", title_fontsize=14, fontsize=13
-    )
-    if fig_dir is not None:
-        plt.tight_layout()
-        if fig_prefix is not None:
-            fig_name = f"{fig_prefix}_pct-counts-mt.pdf"
-        else:
-            fig_name = "pct_counts_mt.pdf"
-        plt.savefig(os.path.join(fig_dir, fig_name))
-    else:
-        plt.show()
+#     # plot mito
+#     mito_hue = [
+#         "include" if i < mito_cutoff else "exclude" for i in adata.obs.pct_counts_mt
+#     ]
+#     mito_counter = Counter(mito_hue)
+#     g = sns.JointGrid(data=adata.obs, x="total_counts", y="pct_counts_mt")
+#     g.plot_joint(
+#         sns.scatterplot,
+#         s=10,
+#         linewidth=0,
+#         hue=mito_hue,
+#         hue_order=hue_order,
+#         palette=palette,
+#     )
+#     g.plot_marginals(sns.kdeplot, shade=True, color="#404040")
+#     g.ax_joint.set_xlabel("total counts", fontsize=16)
+#     g.ax_joint.set_ylabel("mitochondrial counts (%)", fontsize=16)
+#     g.ax_joint.tick_params(axis="both", labelsize=13)
+#     handles, labels = g.ax_joint.get_legend_handles_labels()
+#     labels = [f"{l} ({mito_counter[l]})" for l in labels]
+#     g.ax_joint.legend(
+#         handles, labels, title="mito filter", title_fontsize=14, fontsize=13
+#     )
+#     if fig_dir is not None:
+#         plt.tight_layout()
+#         if fig_prefix is not None:
+#             fig_name = f"{fig_prefix}_pct-counts-mt.pdf"
+#         else:
+#             fig_name = "pct_counts_mt.pdf"
+#         plt.savefig(os.path.join(fig_dir, fig_name))
+#     else:
+#         plt.show()
 
-    # plot N genes by counts
-    ngenes_hue = [
-        "include" if i < ngenes_cutoff else "exclude"
-        for i in adata.obs.n_genes_by_counts
-    ]
-    ngenes_counter = Counter(ngenes_hue)
-    g = sns.JointGrid(data=adata.obs, x="total_counts", y="n_genes_by_counts")
-    g.plot_joint(
-        sns.scatterplot,
-        s=10,
-        linewidth=0,
-        hue=ngenes_hue,
-        hue_order=hue_order,
-        palette=palette,
-    )
-    g.plot_marginals(sns.kdeplot, shade=True, color="#404040")
-    g.ax_joint.set_xlabel("total counts", fontsize=16)
-    g.ax_joint.set_ylabel("number of genes", fontsize=16)
-    g.ax_joint.tick_params(axis="both", labelsize=13)
-    handles, labels = g.ax_joint.get_legend_handles_labels()
-    labels = [f"{l} ({ngenes_counter[l]})" for l in labels]
-    g.ax_joint.legend(
-        handles, labels, title="genes filter", title_fontsize=14, fontsize=13
-    )
-    if fig_dir is not None:
-        plt.tight_layout()
-        if fig_prefix is not None:
-            fig_name = f"{fig_prefix}_n-genes-by-counts.pdf"
-        else:
-            fig_name = "n_genes_by_counts.pdf"
-        plt.savefig(os.path.join(fig_dir, fig_name))
-    else:
-        plt.show()
+#     # plot N genes by counts
+#     ngenes_hue = [
+#         "include" if i < ngenes_cutoff else "exclude"
+#         for i in adata.obs.n_genes_by_counts
+#     ]
+#     ngenes_counter = Counter(ngenes_hue)
+#     g = sns.JointGrid(data=adata.obs, x="total_counts", y="n_genes_by_counts")
+#     g.plot_joint(
+#         sns.scatterplot,
+#         s=10,
+#         linewidth=0,
+#         hue=ngenes_hue,
+#         hue_order=hue_order,
+#         palette=palette,
+#     )
+#     g.plot_marginals(sns.kdeplot, shade=True, color="#404040")
+#     g.ax_joint.set_xlabel("total counts", fontsize=16)
+#     g.ax_joint.set_ylabel("number of genes", fontsize=16)
+#     g.ax_joint.tick_params(axis="both", labelsize=13)
+#     handles, labels = g.ax_joint.get_legend_handles_labels()
+#     labels = [f"{l} ({ngenes_counter[l]})" for l in labels]
+#     g.ax_joint.legend(
+#         handles, labels, title="genes filter", title_fontsize=14, fontsize=13
+#     )
+#     if fig_dir is not None:
+#         plt.tight_layout()
+#         if fig_prefix is not None:
+#             fig_name = f"{fig_prefix}_n-genes-by-counts.pdf"
+#         else:
+#             fig_name = "n_genes_by_counts.pdf"
+#         plt.savefig(os.path.join(fig_dir, fig_name))
+#     else:
+#         plt.show()
 
-    # histogram of read counts
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[12, 4])
-    sns.histplot(data=adata.obs, x="total_counts", binwidth=500, ax=ax1)
-    sns.histplot(data=adata.obs, x="total_counts", binwidth=100, ax=ax2)
-    ax2.set_xlim(read_count_bounds)
+#     # histogram of read counts
+#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[12, 4])
+#     sns.histplot(data=adata.obs, x="total_counts", binwidth=500, ax=ax1)
+#     sns.histplot(data=adata.obs, x="total_counts", binwidth=100, ax=ax2)
+#     ax2.set_xlim(read_count_bounds)
 
-    for ax in [ax1, ax2]:
-        ax.set_xlabel("read count", fontsize=16)
-        ax.set_ylabel("# of cells", fontsize=16)
-        ax.tick_params(axis="both", labelsize=12)
-        for s in ["left", "right", "top"]:
-            ax.spines[s].set_visible(False)
-    if fig_dir is not None:
-        plt.tight_layout()
-        if fig_prefix is not None:
-            fig_name = f"{fig_prefix}_read-counts.pdf"
-        else:
-            fig_name = "read-counts.pdf"
-        plt.savefig(os.path.join(fig_dir, fig_name))
-    else:
-        plt.show()
+#     for ax in [ax1, ax2]:
+#         ax.set_xlabel("read count", fontsize=16)
+#         ax.set_ylabel("# of cells", fontsize=16)
+#         ax.tick_params(axis="both", labelsize=12)
+#         for s in ["left", "right", "top"]:
+#             ax.spines[s].set_visible(False)
+#     if fig_dir is not None:
+#         plt.tight_layout()
+#         if fig_prefix is not None:
+#             fig_name = f"{fig_prefix}_read-counts.pdf"
+#         else:
+#             fig_name = "read-counts.pdf"
+#         plt.savefig(os.path.join(fig_dir, fig_name))
+#     else:
+#         plt.show()
 
-    # histogram of gene counts
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[12, 4])
-    sns.histplot(data=adata.obs, x="n_genes_by_counts", binwidth=100, ax=ax1)
-    sns.histplot(data=adata.obs, x="n_genes_by_counts", binwidth=10, ax=ax2)
-    ax2.set_xlim(gene_count_bounds)
+#     # histogram of gene counts
+#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[12, 4])
+#     sns.histplot(data=adata.obs, x="n_genes_by_counts", binwidth=100, ax=ax1)
+#     sns.histplot(data=adata.obs, x="n_genes_by_counts", binwidth=10, ax=ax2)
+#     ax2.set_xlim(gene_count_bounds)
 
-    for ax in [ax1, ax2]:
-        ax.set_xlabel("gene count", fontsize=16)
-        ax.set_ylabel("# of cells", fontsize=16)
-        ax.tick_params(axis="both", labelsize=12)
-        for s in ["left", "right", "top"]:
-            ax.spines[s].set_visible(False)
-    if fig_dir is not None:
-        plt.tight_layout()
-        if fig_prefix is not None:
-            fig_name = f"{fig_prefix}_gene-counts.pdf"
-        else:
-            fig_name = "gene-counts.pdf"
-        plt.savefig(os.path.join(fig_dir, fig_name))
-    else:
-        plt.show()
+#     for ax in [ax1, ax2]:
+#         ax.set_xlabel("gene count", fontsize=16)
+#         ax.set_ylabel("# of cells", fontsize=16)
+#         ax.tick_params(axis="both", labelsize=12)
+#         for s in ["left", "right", "top"]:
+#             ax.spines[s].set_visible(False)
+#     if fig_dir is not None:
+#         plt.tight_layout()
+#         if fig_prefix is not None:
+#             fig_name = f"{fig_prefix}_gene-counts.pdf"
+#         else:
+#             fig_name = "gene-counts.pdf"
+#         plt.savefig(os.path.join(fig_dir, fig_name))
+#     else:
+#         plt.show()
 
 
 # ===========================
@@ -560,841 +565,841 @@ def feature_kde(
         plt.show()
 
 
-def scatter(
-    adata,
-    x,
-    y,
-    hue=None,
-    marker="o",
-    hue_order=None,
-    force_categorical_hue=False,
-    palette=None,
-    color=None,
-    cmap=None,
-    size=20,
-    alpha=0.6,
-    receptor="bcr",
-    chain="heavy",
-    x_chain=None,
-    y_chain=None,
-    hue_chain=None,
-    highlight_index=None,
-    highlight_x=None,
-    highlight_y=None,
-    highlight_marker="x",
-    highlight_size=90,
-    highlight_color="k",
-    highlight_name=None,
-    highlight_alpha=0.9,
-    plot_kwargs=None,
-    legend_kwargs=None,
-    hide_legend=False,
-    xlabel=None,
-    ylabel=None,
-    title=None,
-    title_fontsize=20,
-    title_fontweight="normal",
-    title_loc="center",
-    title_pad=None,
-    show_title=False,
-    xlabel_fontsize=16,
-    ylabel_fontsize=16,
-    xtick_labelsize=14,
-    ytick_labelsize=14,
-    xtick_labelrotation=0,
-    ytick_labelrotation=0,
-    cbar_width=0.35,
-    cbar_height=0.05,
-    cbar_loc="lower right",
-    cbar_orientation="horizontal",
-    cbar_bbox_to_anchor=None,
-    cbar_flip_ticks=False,
-    cbar_title=None,
-    cbar_title_fontsize=12,
-    hide_cbar=False,
-    equal_axes=True,
-    ax=None,
-    show=False,
-    figsize=None,
-    figfile=None,
-):
-    """
-    Produces a scatter plot.
-
-    Parameters
-    ----------
-
-    adata : pandas.DataFrame  
-        A ``anndata.AnnData`` object containing the input data.  
-
-    x : str
-        Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the 
-        x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
-        if data from different chains is being analyzed, using `x_chain`. BCR/TCR annotation 
-        fields must contain numerical data. Required.   
-
-    y : str
-        Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the 
-        y-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
-        if data from different chains is being analyzed, using `y_chain`. BCR/TCR annotation 
-        fields must contain numerical data. Required.  
-
-    hue : str, optional  
-        Name of a column in `adata.obs` or a BCR/TCR annotation field containing hue values. 
-        BCR/TCR annotations can be further specified using `receptor` and `chain` or, if data 
-        from different chains is being analyzed, using `hue_chain`. BCR/TCR annotation 
-        fields must contain numerical data.   
-        
-    marker : str, dict or iterable object, optional  
-        Marker style for the scatter plot. Accepts any of the following:
-          * a `matplotlib marker`_ string
-          * a ``dict`` mapping `hue` categories to a `matplotlib marker`_ string
-          * a ``list`` of `matplotlib marker`_ strings, which should be the same 
-              length as `x` and `y`. 
-        
-    hue_order : iterable object, optional  
-        List of `hue` categories in the order they should be plotted. If `hue_order` contains a 
-        subset of all categories found in `hue`, only the supplied categories will be plotted.  
-        If not provided, `hue` categories will be plotted in ``natsort.natsorted()`` order.  
-        
-    force_categorical_hue : bool, default=False  
-        If ``True``, `hue` data will be treated as categorical, even if the data appear to 
-        be continuous. This results in `color` being used to color the points rather than `cmap`.   
-        
-    palette : dict, optional  
-        Dictionary mapping `hue`, `x` or `y` names to colors. If if keys in `palette` match 
-        more than one category, `hue` categories take priority. If `palette` is not provided, 
-        bars are colored using `color` (if `hue` is ``None``) or a palette is generated 
-        automatically using ``sns.hls_palette()``.  
-
-    color : str or iterable object, optional. 
-        Color for the plot markers. Can be any of the following:
-          * a ``list`` or ``tuple`` containing RGB or RGBA values
-          * a color string, either from `Matplotlib's set of named colors`_ or a hex color value
-          * the name of a column in `data` that contains color values
-          * a ``list`` of colors (either as strings or RGB tuples) to be used for `hue` categories. 
-            If `colors` is shorter than the list of hue categories, colors will be reused.  
-        
-        .. tip::
-            If a single RGB or RGBA ``list`` or ``tuple`` is provided and `hue` is also supplied, 
-            there may be unexpected results as ``scatter()`` will attempt to map each of the 
-            individual RGB(A) values to a hue category.   
-        
-        Only used if `hue` contains categorical data (`cmap` is used for continuous data). If not 
-        provided, the `default Seaborn color palette`_ will be used. 
-        
-    cmap : str or matplotlib.color.Colormap, default='flare'   
-        Colormap to be used for continuous `hue` data.  
-        
-    size : str or float or iterable object, default=20  
-        Size of the scatter points. Either a   
-
-    alpha : float, default=0.6  
-        Alpha of the scatter points.  
-
-    receptor : str, default='bcr'  
-        Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.  
-
-    chain : str, default='heavy'  
-        If `x`, `y` and/or `hue` are BCR/TCR annotation fields, chain for which annotation will be 
-        retrieved. Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``, 
-        ``'beta'``, ``'delta'`` or ``'gamma'``.  
-
-    x_chain : str
-        `chain` to be used for the x-axis. If not supplied, `chain` will be used. Only necessary 
-        when visualizing data from different chains on the same plot.  
-
-    y_chain : str
-        `chain` to be used for the y-axis. If not supplied, `chain` will be used. Only necessary 
-        when visualizing data from different chains on the same plot.  
-
-    hue_chain : str
-        `chain` to be used for the hue. If not supplied, `chain` will be used. Only necessary 
-        when visualizing data from different chains on the same plot.  
-        
-    highlight_index : iterable object, optional  
-        An iterable of index names (present in `data.index`) of points to be highlighted on 
-        the plot. If provided, `highlight_x` and `highlight_y` are ignored.
-
-    highlight_x : iterable object, optional  
-        An iterable of x-values for highlighted points. Also requires `highlight_y`.
-        
-    highlight_y : iterable object, optional  
-        An iterable of y-values for highlighted points. Also requires `highlight_x`.
-        
-    highlight_marker : str, default='x'  
-        Marker style to be used for highlight points. Accepts any `matplotlib marker`_. 
-
-    highlight_size : int, default=90  
-        Size of the highlight marker.
-
-    highlight_color : string or list of color values, default='k'
-        Color of the highlight points.
-
-    highlight_name : str, optional  
-        Name of the highlights, to be used in the plot legend. If not supplied,
-        highlight points will not be included in the legend.
-        
-    highlight_alpha : float, default=0.9  
-        Alpha of the highlight points. 
-
-    plot_kwargs : dict, optional  
-        Dictionary containing keyword arguments that will be passed to ``pyplot.scatter()``.
-
-    legend_kwargs : dict, optional  
-        Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
-
-    hide_legend : bool, default=False  
-        By default, a plot legend will be shown if multiple batches are plotted. If ``True``, 
-        the legend will not be shown.  
-        
-    xlabel : str, optional  
-        Text for the X-axis label. 
-
-    ylabel : str, optional  
-        Text for the Y-axis label.  
-        
-    xlabel_fontsize : int or float, default=16  
-        Fontsize for the X-axis label text.
-
-    ylabel_fontsize : int or float, default=16  
-        Fontsize for the Y-axis label text.
-
-    xtick_labelsize : int or float, default=14  
-        Fontsize for the X-axis tick labels.  
-
-    ytick_labelsize : int or float, default=14  
-        Fontsize for the Y-axis tick labels.  
-
-    xtick_labelrotation : int or float, default=0  
-        Rotation of the X-axis tick labels.  
-    
-    ytick_labelrotation : int or float, default=0  
-        Rotation of the Y-axis tick labels. 
-
-    cbar_width : int, default=35  
-        Width of the colorbar. Only used for continuous `hue` types.  
-
-    cbar_height : int, default=5  
-        Height of the colorbar. Only used for continuous `hue` types.  
-
-    cbar_loc : str or iterable object, default='lower right'  
-        Location of the colorbar. Accepts `any valid inset_axes() location`_.
-
-    cbar_orientation : str, default='horizontal'  
-        Orientation of the colorbar. Options are ``'horizontal'`` and ``'vertical'``.
-
-    cbar_bbox_to_anchor : list or tuple, optional
-        bbox_to_anchor for the colorbar. Used in combination with `cbar_loc` to provide 
-        fine-grained positioning of the colorbar.
-
-    cbar_flip_ticks : bool, default=False  
-        Flips the position of colorbar ticks. Ticks default to the bottom if `cbar_orientation` 
-        is  ``'horizontal'`` and the left if  `cbar_orientation` is ``'vertical'``.  
-
-    cbar_title : str, optional  
-        Colorbar title. If not provided, `hue` is used.  
-
-    cbar_title_fontsize : int or float, default=12  
-        Fontsize for the colorbar title.  
-        
-    hide_cbar : bool, default=False. 
-        If ``True``, the color bar will be hidden on plots with continuous `hue` values.  
-        
-    equal_axes : bool, default=True
-        If ```True```, the the limits of the x- and y-axis will be equal.
-
-    show :bool, default=False  
-        If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
-        is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
-
-    figsize : iterable object, default=[6, 4]  
-        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches. 
-
-    figfile : str, optional  
-        Path at which to save the figure file. If not provided, the figure is not saved
-        and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.  
-        
-        
-    .. _matplotlib marker: 
-        https://matplotlib.org/stable/api/markers_api.html  
-
-    .. _Matplotlib's set of named colors:
-        https://matplotlib.org/stable/gallery/color/named_colors.html
-        
-    .. _default Seaborn color palette: 
-        https://seaborn.pydata.org/generated/seaborn.color_palette.html  
-
-    .. _any valid inset_axes() location: 
-        https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
-        
-    """
-
-    # get x, y and hue data
-    d = {}
-    d["x"] = get_adata_values(
-        adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
-    )
-    d["y"] = get_adata_values(
-        adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
-    )
-    if hue is not None:
-        d[hue] = get_adata_values(
-            adata,
-            hue,
-            receptor=receptor,
-            chain=hue_chain if hue_chain is not None else chain,
-        )
-    df = pd.DataFrame(d, index=adata.obs.index)
-
-    ax = abutils.pl.scatter(
-        data=df,
-        x="x",
-        y="y",
-        hue=hue,
-        marker=marker,
-        hue_order=hue_order,
-        force_categorical_hue=force_categorical_hue,
-        palette=palette,
-        color=color,
-        cmap=cmap,
-        size=size,
-        alpha=alpha,
-        highlight_index=highlight_index,
-        highlight_x=highlight_x,
-        highlight_y=highlight_y,
-        highlight_marker=highlight_marker,
-        highlight_size=highlight_size,
-        highlight_color=highlight_color,
-        highlight_name=highlight_name,
-        highlight_alpha=highlight_alpha,
-        plot_kwargs=plot_kwargs,
-        legend_kwargs=legend_kwargs,
-        hide_legend=hide_legend,
-        xlabel=xlabel if xlabel is not None else x,
-        ylabel=ylabel if ylabel is not None else y,
-        title=title,
-        title_fontsize=title_fontsize,
-        title_fontweight=title_fontweight,
-        title_loc=title_loc,
-        title_pad=title_pad,
-        show_title=show_title,
-        xlabel_fontsize=xlabel_fontsize,
-        ylabel_fontsize=ylabel_fontsize,
-        xtick_labelsize=xtick_labelsize,
-        ytick_labelsize=ytick_labelsize,
-        xtick_labelrotation=xtick_labelrotation,
-        ytick_labelrotation=ytick_labelrotation,
-        cbar_width=cbar_width,
-        cbar_height=cbar_height,
-        cbar_loc=cbar_loc,
-        cbar_orientation=cbar_orientation,
-        cbar_bbox_to_anchor=cbar_bbox_to_anchor,
-        cbar_flip_ticks=cbar_flip_ticks,
-        cbar_title=cbar_title,
-        cbar_title_fontsize=cbar_title_fontsize,
-        hide_cbar=hide_cbar,
-        equal_axes=equal_axes,
-        ax=ax,
-        show=False,
-        figsize=figsize,
-        figfile=None,
-    )
-
-    # save, show or return the ax
-    if figfile is not None:
-        plt.tight_layout()
-        plt.savefig(figfile)
-    elif show:
-        plt.show()
-    else:
-        return ax
-
-
-def umap(
-    adata,
-    hue=None,
-    marker="o",
-    hue_order=None,
-    force_categorical_hue=False,
-    palette=None,
-    color=None,
-    cmap=None,
-    size=10,
-    alpha=0.6,
-    n_col=2,
-    receptor="bcr",
-    chain="heavy",
-    hue_chain=None,
-    highlight_index=None,
-    highlight_x=None,
-    highlight_y=None,
-    highlight_marker="x",
-    highlight_size=90,
-    highlight_color="k",
-    highlight_name=None,
-    highlight_alpha=0.9,
-    plot_kwargs=None,
-    legend_on_data=False,
-    legend_fontsize=12,
-    legend_fontweight="bold",
-    legend_fontoutline=None,
-    legend_marker_alpha=0.8,
-    legend_label_position_offsets=None,
-    legend_kwargs=None,
-    hide_legend=False,
-    xlabel="UMAP1",
-    ylabel="UMAP2",
-    title=None,
-    title_fontsize=20,
-    title_fontweight="normal",
-    title_loc="center",
-    title_pad=None,
-    show_title=False,
-    xlabel_fontsize=16,
-    ylabel_fontsize=16,
-    xtick_labelsize=14,
-    ytick_labelsize=14,
-    xtick_labelrotation=0,
-    ytick_labelrotation=0,
-    tiny_axis=True,
-    tiny_axis_xoffset=None,
-    tiny_axis_yoffset=None,
-    cbar_width=0.35,
-    cbar_height=0.05,
-    cbar_loc="lower right",
-    cbar_orientation="horizontal",
-    cbar_bbox_to_anchor=None,
-    cbar_flip_ticks=False,
-    cbar_title=None,
-    cbar_title_fontsize=12,
-    hide_cbar=False,
-    equal_axes=True,
-    ax=None,
-    show=False,
-    figsize=None,
-    figfile=None,
-):
-    """
-    Produces a scatter plot.
-
-    Parameters
-    ----------
-
-    adata : pandas.DataFrame  
-        A ``anndata.AnnData`` object containing the input data.  
-
-    x : str
-        Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the 
-        x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
-        if data from different chains is being analyzed, using `x_chain`. BCR/TCR annotation 
-        fields must contain numerical data. Required.   
-
-    y : str
-        Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the 
-        y-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
-        if data from different chains is being analyzed, using `y_chain`. BCR/TCR annotation 
-        fields must contain numerical data. Required.  
-
-    hue : str, optional  
-        Name of a column in `adata.obs` or a BCR/TCR annotation field containing hue values. 
-        BCR/TCR annotations can be further specified using `receptor` and `chain` or, if data 
-        from different chains is being analyzed, using `hue_chain`. BCR/TCR annotation 
-        fields must contain numerical data.   
-        
-    marker : str, dict or iterable object, optional  
-        Marker style for the scatter plot. Accepts any of the following:
-          * a `matplotlib marker`_ string
-          * a ``dict`` mapping `hue` categories to a `matplotlib marker`_ string
-          * a ``list`` of `matplotlib marker`_ strings, which should be the same 
-              length as `x` and `y`. 
-        
-    hue_order : iterable object, optional  
-        List of `hue` categories in the order they should be plotted. If `hue_order` contains a 
-        subset of all categories found in `hue`, only the supplied categories will be plotted.  
-        If not provided, `hue` categories will be plotted in ``natsort.natsorted()`` order.  
-        
-    force_categorical_hue : bool, default=False  
-        If ``True``, `hue` data will be treated as categorical, even if the data appear to 
-        be continuous. This results in `color` being used to color the points rather than `cmap`.   
-        
-    palette : dict, optional  
-        Dictionary mapping `hue`, `x` or `y` names to colors. If if keys in `palette` match 
-        more than one category, `hue` categories take priority. If `palette` is not provided, 
-        bars are colored using `color` (if `hue` is ``None``) or a palette is generated 
-        automatically using ``sns.hls_palette()``.  
-
-    color : str or iterable object, optional. 
-        Color for the plot markers. Can be any of the following:
-          * a ``list`` or ``tuple`` containing RGB or RGBA values
-          * a color string, either from `Matplotlib's set of named colors`_ or a hex color value
-          * the name of a column in `data` that contains color values
-          * a ``list`` of colors (either as strings or RGB tuples) to be used for `hue` categories. 
-            If `colors` is shorter than the list of hue categories, colors will be reused.  
-        
-        .. tip::
-            If a single RGB or RGBA ``list`` or ``tuple`` is provided and `hue` is also supplied, 
-            there may be unexpected results as ``scatter()`` will attempt to map each of the 
-            individual RGB(A) values to a hue category.   
-        
-        Only used if `hue` contains categorical data (`cmap` is used for continuous data). If not 
-        provided, the `default Seaborn color palette`_ will be used. 
-        
-    cmap : str or matplotlib.color.Colormap, default='flare'   
-        Colormap to be used for continuous `hue` data.  
-        
-    size : str or float or iterable object, default=20  
-        Size of the scatter points. Either a   
-
-    alpha : float, default=0.6  
-        Alpha of the scatter points.  
-
-    receptor : str, default='bcr'  
-        Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.  
-
-    chain : str, default='heavy'  
-        If `x`, `y` and/or `hue` are BCR/TCR annotation fields, chain for which annotation will be 
-        retrieved. Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``, 
-        ``'beta'``, ``'delta'`` or ``'gamma'``.  
-
-    x_chain : str
-        `chain` to be used for the x-axis. If not supplied, `chain` will be used. Only necessary 
-        when visualizing data from different chains on the same plot.  
-
-    y_chain : str
-        `chain` to be used for the y-axis. If not supplied, `chain` will be used. Only necessary 
-        when visualizing data from different chains on the same plot.  
-
-    hue_chain : str
-        `chain` to be used for the hue. If not supplied, `chain` will be used. Only necessary 
-        when visualizing data from different chains on the same plot.  
-        
-    highlight_index : iterable object, optional  
-        An iterable of index names (present in `data.index`) of points to be highlighted on 
-        the plot. If provided, `highlight_x` and `highlight_y` are ignored.
-
-    highlight_x : iterable object, optional  
-        An iterable of x-values for highlighted points. Also requires `highlight_y`.
-        
-    highlight_y : iterable object, optional  
-        An iterable of y-values for highlighted points. Also requires `highlight_x`.
-        
-    highlight_marker : str, default='x'  
-        Marker style to be used for highlight points. Accepts any `matplotlib marker`_. 
-
-    highlight_size : int, default=90  
-        Size of the highlight marker.
-
-    highlight_color : string or list of color values, default='k'
-        Color of the highlight points.
-
-    highlight_name : str, optional  
-        Name of the highlights, to be used in the plot legend. If not supplied,
-        highlight points will not be included in the legend.
-        
-    highlight_alpha : float, default=0.9  
-        Alpha of the highlight points. 
-
-    plot_kwargs : dict, optional  
-        Dictionary containing keyword arguments that will be passed to ``pyplot.scatter()``.
-
-    legend_kwargs : dict, optional  
-        Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
-
-    hide_legend : bool, default=False  
-        By default, a plot legend will be shown if multiple batches are plotted. If ``True``, 
-        the legend will not be shown.  
-        
-    xlabel : str, optional  
-        Text for the X-axis label. 
-
-    ylabel : str, optional  
-        Text for the Y-axis label.  
-        
-    xlabel_fontsize : int or float, default=16  
-        Fontsize for the X-axis label text.
-
-    ylabel_fontsize : int or float, default=16  
-        Fontsize for the Y-axis label text.
-
-    xtick_labelsize : int or float, default=14  
-        Fontsize for the X-axis tick labels.  
-
-    ytick_labelsize : int or float, default=14  
-        Fontsize for the Y-axis tick labels.  
-
-    xtick_labelrotation : int or float, default=0  
-        Rotation of the X-axis tick labels.  
-    
-    ytick_labelrotation : int or float, default=0  
-        Rotation of the Y-axis tick labels. 
-
-    cbar_width : float, default=0.35  
-        Width of the colorbar. Only used for continuous `hue` types.  
-
-    cbar_height : float, default=0.05  
-        Height of the colorbar. Only used for continuous `hue` types.  
-
-    cbar_loc : str or iterable object, default='lower right'  
-        Location of the colorbar. Accepts `any valid inset_axes() location`_.
-
-    cbar_orientation : str, default='horizontal'  
-        Orientation of the colorbar. Options are ``'horizontal'`` and ``'vertical'``.
-
-    cbar_bbox_to_anchor : list or tuple, optional
-        bbox_to_anchor for the colorbar. Used in combination with `cbar_loc` to provide 
-        fine-grained positioning of the colorbar.
-
-    cbar_flip_ticks : bool, default=False  
-        Flips the position of colorbar ticks. Ticks default to the bottom if `cbar_orientation` 
-        is  ``'horizontal'`` and the left if  `cbar_orientation` is ``'vertical'``.  
-
-    cbar_title : str, optional  
-        Colorbar title. If not provided, `hue` is used.  
-
-    cbar_title_fontsize : int or float, default=12  
-        Fontsize for the colorbar title.  
-        
-    hide_cbar : bool, default=False. 
-        If ``True``, the color bar will be hidden on plots with continuous `hue` values.  
-        
-    equal_axes : bool, default=True
-        If ```True```, the the limits of the x- and y-axis will be equal.
-
-    show :bool, default=False  
-        If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
-        is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
-
-    figsize : iterable object, default=[6, 4]  
-        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches. 
-
-    figfile : str, optional  
-        Path at which to save the figure file. If not provided, the figure is not saved
-        and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.  
-        
-        
-    .. _matplotlib marker: 
-        https://matplotlib.org/stable/api/markers_api.html  
-
-    .. _Matplotlib's set of named colors:
-        https://matplotlib.org/stable/gallery/color/named_colors.html
-        
-    .. _default Seaborn color palette: 
-        https://seaborn.pydata.org/generated/seaborn.color_palette.html  
-
-    .. _any valid inset_axes() location: 
-        https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
-        
-    """
-    # check that the UMAP data exists
-    if "X_umap" not in adata.obsm:
-        from .tl import dimensionality_reduction
-
-        adata = dimensionality_reduction(adata)
-
-    # parse hues (if provided)
-    if hue is not None:
-        if isinstance(hue, str):
-            hues = [
-                hue,
-            ]
-        else:
-            hues = hue
-    else:
-        hues = [
-            None,
-        ]
-
-    # set some UMAP-specific defaults
-    figsize = figsize if figsize is not None else [7, 7]
-    if legend_fontsize is not None:
-        if legend_kwargs is None:
-            legend_kwargs = {"fontsize": legend_fontsize}
-        else:
-            legend_kwargs["fontsize"] = legend_fontsize
-
-    if len(hues) > 1:
-        n_row = int(np.ceil(len(hues) / n_col))
-        gridsize = [figsize[0] * n_col, figsize[1] * n_row]
-        fig, axes = plt.subplots(n_row, n_col, figsize=gridsize)
-        axes = axes.flatten()
-    else:
-        axes = [
-            ax,
-        ]
-
-    # make plots
-    for ax, hue in zip(axes, hues):
-        # get X/Y data
-        d = {}
-        x, y = zip(*adata.obsm["X_umap"])
-        d["x"] = x
-        d["y"] = y
-        if hue is not None:
-            d[hue] = get_adata_values(
-                adata,
-                hue,
-                receptor=receptor,
-                chain=hue_chain if hue_chain is not None else chain,
-            )
-            continuous_hue = (
-                all([isinstance(h, float) for h in d[hue]])
-                and not force_categorical_hue
-            )
-        df = pd.DataFrame(d, index=adata.obs.index)
-
-        # make the plot
-        # ax = scatter(
-        ax = abutils.pl.scatter(
-            data=df,
-            x="x",
-            y="y",
-            hue=hue,
-            marker=marker,
-            hue_order=hue_order,
-            force_categorical_hue=force_categorical_hue,
-            palette=palette,
-            color=color,
-            cmap=cmap if cmap is not None else loupe_cmap,
-            size=size,
-            alpha=alpha,
-            highlight_index=highlight_index,
-            highlight_x=highlight_x,
-            highlight_y=highlight_y,
-            highlight_marker=highlight_marker,
-            highlight_size=highlight_size,
-            highlight_color=highlight_color,
-            highlight_name=highlight_name,
-            highlight_alpha=highlight_alpha,
-            plot_kwargs=plot_kwargs,
-            legend_kwargs=legend_kwargs,
-            hide_legend=True if legend_on_data else hide_legend,
-            xlabel=xlabel if xlabel is not None else x,
-            ylabel=ylabel if ylabel is not None else y,
-            title=title if title is not None else hue,
-            title_fontsize=title_fontsize,
-            title_fontweight=title_fontweight,
-            title_loc=title_loc,
-            title_pad=title_pad,
-            show_title=show_title,
-            xlabel_fontsize=xlabel_fontsize,
-            ylabel_fontsize=ylabel_fontsize,
-            xtick_labelsize=xtick_labelsize,
-            ytick_labelsize=ytick_labelsize,
-            xtick_labelrotation=xtick_labelrotation,
-            ytick_labelrotation=ytick_labelrotation,
-            cbar_width=cbar_width,
-            cbar_height=cbar_height,
-            cbar_loc=cbar_loc,
-            cbar_orientation=cbar_orientation,
-            cbar_bbox_to_anchor=cbar_bbox_to_anchor,
-            cbar_flip_ticks=cbar_flip_ticks,
-            cbar_title=cbar_title,
-            cbar_title_fontsize=cbar_title_fontsize,
-            hide_cbar=hide_cbar,
-            equal_axes=equal_axes,
-            ax=ax,
-            show=False,
-            figsize=figsize,
-            figfile=None,
-        )
-
-        if tiny_axis:
-            # get coords for the UMAP-specific axes
-            if tiny_axis_xoffset is None:
-                tiny_axis_xoffset = 0
-            if tiny_axis_yoffset is None:
-                tiny_axis_yoffset = 0
-            xmin = df["x"].min()
-            xmax = df["x"].max()
-            ymin = df["y"].min()
-            ymax = df["y"].max()
-            x_range = abs(xmax - xmin)
-            y_range = abs(ymax - ymin)
-            x_offset = x_range * tiny_axis_xoffset
-            y_offset = y_range * tiny_axis_yoffset
-            x_start = xmin + x_offset
-            y_start = ymin + x_offset
-            x_end = xmin + (x_range / 5) + x_offset
-            x_center = x_start + ((x_end - x_start) / 2)
-            y_end = ymin + (y_range / 5) + y_offset
-            y_center = y_start + ((y_end - y_start) / 2)
-            # draw the new "mini" axis lines
-            ax.hlines(y_start, x_start, x_end, "k", lw=2)
-            ax.vlines(x_start, y_start, y_end, "k", lw=2)
-            ax.annotate(
-                xlabel,
-                xy=(x_center, ymin),
-                xytext=(0, -5),
-                textcoords="offset points",
-                fontsize=xlabel_fontsize,
-                ha="center",
-                va="top",
-            )
-            ax.annotate(
-                ylabel,
-                xy=(xmin, y_center),
-                xytext=(-5, 0),
-                textcoords="offset points",
-                fontsize=ylabel_fontsize,
-                rotation="vertical",
-                ha="right",
-                va="center",
-            )
-            # ax.text(xmin, y_center, ylabel, fontsize=ylabel_fontsize, rotation='vertical', ha='right', va='center')
-            # remove the normal axis lines
-            ax.set_xlabel("", fontsize=0)
-            ax.set_ylabel("", fontsize=0)
-            for s in ["left", "right", "top", "bottom"]:
-                ax.spines[s].set_visible(False)
-        # hide the ticks
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-        if legend_on_data and not continuous_hue:
-            # set up label offsets
-            if legend_label_position_offsets is None:
-                legend_label_position_offsets = {}
-            _xlim = ax.get_xlim()
-            _ylim = ax.get_ylim()
-            _xrange = _xlim[1] - _xlim[0]
-            _yrange = _ylim[1] - _ylim[0]
-            # configure the legend font outline
-            if legend_fontoutline is not None:
-                path_effect = [
-                    mpl.patheffects.withStroke(
-                        linewidth=legend_fontoutline, foreground="w"
-                    )
-                ]
-            else:
-                path_effect = None
-            # add the on-data legend
-            for h in df[hue].unique():
-                _df = df[df[hue] == h]
-                xoffset, yoffset = legend_label_position_offsets.get(h, (0, 0))
-                hue_x = _df["x"].median() + (xoffset * _xrange)
-                hue_y = _df["y"].median() + (yoffset * _yrange)
-                ax.text(
-                    hue_x,
-                    hue_y,
-                    h,
-                    c="k",
-                    weight=legend_fontweight,
-                    verticalalignment="center",
-                    horizontalalignment="center",
-                    fontsize=legend_fontsize,
-                    path_effects=path_effect,
-                )
-
-    # save, show or return the ax
-    if figfile is not None:
-        plt.tight_layout()
-        plt.savefig(figfile)
-    elif show:
-        plt.tight_layout()
-        plt.show()
-    else:
-        return ax
+# def scatter(
+#     adata,
+#     x,
+#     y,
+#     hue=None,
+#     marker="o",
+#     hue_order=None,
+#     force_categorical_hue=False,
+#     palette=None,
+#     color=None,
+#     cmap=None,
+#     size=20,
+#     alpha=0.6,
+#     receptor="bcr",
+#     chain="heavy",
+#     x_chain=None,
+#     y_chain=None,
+#     hue_chain=None,
+#     highlight_index=None,
+#     highlight_x=None,
+#     highlight_y=None,
+#     highlight_marker="x",
+#     highlight_size=90,
+#     highlight_color="k",
+#     highlight_name=None,
+#     highlight_alpha=0.9,
+#     plot_kwargs=None,
+#     legend_kwargs=None,
+#     hide_legend=False,
+#     xlabel=None,
+#     ylabel=None,
+#     title=None,
+#     title_fontsize=20,
+#     title_fontweight="normal",
+#     title_loc="center",
+#     title_pad=None,
+#     show_title=False,
+#     xlabel_fontsize=16,
+#     ylabel_fontsize=16,
+#     xtick_labelsize=14,
+#     ytick_labelsize=14,
+#     xtick_labelrotation=0,
+#     ytick_labelrotation=0,
+#     cbar_width=0.35,
+#     cbar_height=0.05,
+#     cbar_loc="lower right",
+#     cbar_orientation="horizontal",
+#     cbar_bbox_to_anchor=None,
+#     cbar_flip_ticks=False,
+#     cbar_title=None,
+#     cbar_title_fontsize=12,
+#     hide_cbar=False,
+#     equal_axes=True,
+#     ax=None,
+#     show=False,
+#     figsize=None,
+#     figfile=None,
+# ):
+#     """
+#     Produces a scatter plot.
+
+#     Parameters
+#     ----------
+
+#     adata : pandas.DataFrame
+#         A ``anndata.AnnData`` object containing the input data.
+
+#     x : str
+#         Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the
+#         x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
+#         if data from different chains is being analyzed, using `x_chain`. BCR/TCR annotation
+#         fields must contain numerical data. Required.
+
+#     y : str
+#         Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the
+#         y-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
+#         if data from different chains is being analyzed, using `y_chain`. BCR/TCR annotation
+#         fields must contain numerical data. Required.
+
+#     hue : str, optional
+#         Name of a column in `adata.obs` or a BCR/TCR annotation field containing hue values.
+#         BCR/TCR annotations can be further specified using `receptor` and `chain` or, if data
+#         from different chains is being analyzed, using `hue_chain`. BCR/TCR annotation
+#         fields must contain numerical data.
+
+#     marker : str, dict or iterable object, optional
+#         Marker style for the scatter plot. Accepts any of the following:
+#           * a `matplotlib marker`_ string
+#           * a ``dict`` mapping `hue` categories to a `matplotlib marker`_ string
+#           * a ``list`` of `matplotlib marker`_ strings, which should be the same
+#               length as `x` and `y`.
+
+#     hue_order : iterable object, optional
+#         List of `hue` categories in the order they should be plotted. If `hue_order` contains a
+#         subset of all categories found in `hue`, only the supplied categories will be plotted.
+#         If not provided, `hue` categories will be plotted in ``natsort.natsorted()`` order.
+
+#     force_categorical_hue : bool, default=False
+#         If ``True``, `hue` data will be treated as categorical, even if the data appear to
+#         be continuous. This results in `color` being used to color the points rather than `cmap`.
+
+#     palette : dict, optional
+#         Dictionary mapping `hue`, `x` or `y` names to colors. If if keys in `palette` match
+#         more than one category, `hue` categories take priority. If `palette` is not provided,
+#         bars are colored using `color` (if `hue` is ``None``) or a palette is generated
+#         automatically using ``sns.hls_palette()``.
+
+#     color : str or iterable object, optional.
+#         Color for the plot markers. Can be any of the following:
+#           * a ``list`` or ``tuple`` containing RGB or RGBA values
+#           * a color string, either from `Matplotlib's set of named colors`_ or a hex color value
+#           * the name of a column in `data` that contains color values
+#           * a ``list`` of colors (either as strings or RGB tuples) to be used for `hue` categories.
+#             If `colors` is shorter than the list of hue categories, colors will be reused.
+
+#         .. tip::
+#             If a single RGB or RGBA ``list`` or ``tuple`` is provided and `hue` is also supplied,
+#             there may be unexpected results as ``scatter()`` will attempt to map each of the
+#             individual RGB(A) values to a hue category.
+
+#         Only used if `hue` contains categorical data (`cmap` is used for continuous data). If not
+#         provided, the `default Seaborn color palette`_ will be used.
+
+#     cmap : str or matplotlib.color.Colormap, default='flare'
+#         Colormap to be used for continuous `hue` data.
+
+#     size : str or float or iterable object, default=20
+#         Size of the scatter points. Either a
+
+#     alpha : float, default=0.6
+#         Alpha of the scatter points.
+
+#     receptor : str, default='bcr'
+#         Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.
+
+#     chain : str, default='heavy'
+#         If `x`, `y` and/or `hue` are BCR/TCR annotation fields, chain for which annotation will be
+#         retrieved. Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``,
+#         ``'beta'``, ``'delta'`` or ``'gamma'``.
+
+#     x_chain : str
+#         `chain` to be used for the x-axis. If not supplied, `chain` will be used. Only necessary
+#         when visualizing data from different chains on the same plot.
+
+#     y_chain : str
+#         `chain` to be used for the y-axis. If not supplied, `chain` will be used. Only necessary
+#         when visualizing data from different chains on the same plot.
+
+#     hue_chain : str
+#         `chain` to be used for the hue. If not supplied, `chain` will be used. Only necessary
+#         when visualizing data from different chains on the same plot.
+
+#     highlight_index : iterable object, optional
+#         An iterable of index names (present in `data.index`) of points to be highlighted on
+#         the plot. If provided, `highlight_x` and `highlight_y` are ignored.
+
+#     highlight_x : iterable object, optional
+#         An iterable of x-values for highlighted points. Also requires `highlight_y`.
+
+#     highlight_y : iterable object, optional
+#         An iterable of y-values for highlighted points. Also requires `highlight_x`.
+
+#     highlight_marker : str, default='x'
+#         Marker style to be used for highlight points. Accepts any `matplotlib marker`_.
+
+#     highlight_size : int, default=90
+#         Size of the highlight marker.
+
+#     highlight_color : string or list of color values, default='k'
+#         Color of the highlight points.
+
+#     highlight_name : str, optional
+#         Name of the highlights, to be used in the plot legend. If not supplied,
+#         highlight points will not be included in the legend.
+
+#     highlight_alpha : float, default=0.9
+#         Alpha of the highlight points.
+
+#     plot_kwargs : dict, optional
+#         Dictionary containing keyword arguments that will be passed to ``pyplot.scatter()``.
+
+#     legend_kwargs : dict, optional
+#         Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
+
+#     hide_legend : bool, default=False
+#         By default, a plot legend will be shown if multiple batches are plotted. If ``True``,
+#         the legend will not be shown.
+
+#     xlabel : str, optional
+#         Text for the X-axis label.
+
+#     ylabel : str, optional
+#         Text for the Y-axis label.
+
+#     xlabel_fontsize : int or float, default=16
+#         Fontsize for the X-axis label text.
+
+#     ylabel_fontsize : int or float, default=16
+#         Fontsize for the Y-axis label text.
+
+#     xtick_labelsize : int or float, default=14
+#         Fontsize for the X-axis tick labels.
+
+#     ytick_labelsize : int or float, default=14
+#         Fontsize for the Y-axis tick labels.
+
+#     xtick_labelrotation : int or float, default=0
+#         Rotation of the X-axis tick labels.
+
+#     ytick_labelrotation : int or float, default=0
+#         Rotation of the Y-axis tick labels.
+
+#     cbar_width : int, default=35
+#         Width of the colorbar. Only used for continuous `hue` types.
+
+#     cbar_height : int, default=5
+#         Height of the colorbar. Only used for continuous `hue` types.
+
+#     cbar_loc : str or iterable object, default='lower right'
+#         Location of the colorbar. Accepts `any valid inset_axes() location`_.
+
+#     cbar_orientation : str, default='horizontal'
+#         Orientation of the colorbar. Options are ``'horizontal'`` and ``'vertical'``.
+
+#     cbar_bbox_to_anchor : list or tuple, optional
+#         bbox_to_anchor for the colorbar. Used in combination with `cbar_loc` to provide
+#         fine-grained positioning of the colorbar.
+
+#     cbar_flip_ticks : bool, default=False
+#         Flips the position of colorbar ticks. Ticks default to the bottom if `cbar_orientation`
+#         is  ``'horizontal'`` and the left if  `cbar_orientation` is ``'vertical'``.
+
+#     cbar_title : str, optional
+#         Colorbar title. If not provided, `hue` is used.
+
+#     cbar_title_fontsize : int or float, default=12
+#         Fontsize for the colorbar title.
+
+#     hide_cbar : bool, default=False.
+#         If ``True``, the color bar will be hidden on plots with continuous `hue` values.
+
+#     equal_axes : bool, default=True
+#         If ```True```, the the limits of the x- and y-axis will be equal.
+
+#     show :bool, default=False
+#         If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
+#         is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
+
+#     figsize : iterable object, default=[6, 4]
+#         List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
+
+#     figfile : str, optional
+#         Path at which to save the figure file. If not provided, the figure is not saved
+#         and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.
+
+
+#     .. _matplotlib marker:
+#         https://matplotlib.org/stable/api/markers_api.html
+
+#     .. _Matplotlib's set of named colors:
+#         https://matplotlib.org/stable/gallery/color/named_colors.html
+
+#     .. _default Seaborn color palette:
+#         https://seaborn.pydata.org/generated/seaborn.color_palette.html
+
+#     .. _any valid inset_axes() location:
+#         https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
+
+#     """
+
+#     # get x, y and hue data
+#     d = {}
+#     d["x"] = get_adata_values(
+#         adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
+#     )
+#     d["y"] = get_adata_values(
+#         adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
+#     )
+#     if hue is not None:
+#         d[hue] = get_adata_values(
+#             adata,
+#             hue,
+#             receptor=receptor,
+#             chain=hue_chain if hue_chain is not None else chain,
+#         )
+#     df = pd.DataFrame(d, index=adata.obs.index)
+
+#     ax = abutils.pl.scatter(
+#         data=df,
+#         x="x",
+#         y="y",
+#         hue=hue,
+#         marker=marker,
+#         hue_order=hue_order,
+#         force_categorical_hue=force_categorical_hue,
+#         palette=palette,
+#         color=color,
+#         cmap=cmap,
+#         size=size,
+#         alpha=alpha,
+#         highlight_index=highlight_index,
+#         highlight_x=highlight_x,
+#         highlight_y=highlight_y,
+#         highlight_marker=highlight_marker,
+#         highlight_size=highlight_size,
+#         highlight_color=highlight_color,
+#         highlight_name=highlight_name,
+#         highlight_alpha=highlight_alpha,
+#         plot_kwargs=plot_kwargs,
+#         legend_kwargs=legend_kwargs,
+#         hide_legend=hide_legend,
+#         xlabel=xlabel if xlabel is not None else x,
+#         ylabel=ylabel if ylabel is not None else y,
+#         title=title,
+#         title_fontsize=title_fontsize,
+#         title_fontweight=title_fontweight,
+#         title_loc=title_loc,
+#         title_pad=title_pad,
+#         show_title=show_title,
+#         xlabel_fontsize=xlabel_fontsize,
+#         ylabel_fontsize=ylabel_fontsize,
+#         xtick_labelsize=xtick_labelsize,
+#         ytick_labelsize=ytick_labelsize,
+#         xtick_labelrotation=xtick_labelrotation,
+#         ytick_labelrotation=ytick_labelrotation,
+#         cbar_width=cbar_width,
+#         cbar_height=cbar_height,
+#         cbar_loc=cbar_loc,
+#         cbar_orientation=cbar_orientation,
+#         cbar_bbox_to_anchor=cbar_bbox_to_anchor,
+#         cbar_flip_ticks=cbar_flip_ticks,
+#         cbar_title=cbar_title,
+#         cbar_title_fontsize=cbar_title_fontsize,
+#         hide_cbar=hide_cbar,
+#         equal_axes=equal_axes,
+#         ax=ax,
+#         show=False,
+#         figsize=figsize,
+#         figfile=None,
+#     )
+
+#     # save, show or return the ax
+#     if figfile is not None:
+#         plt.tight_layout()
+#         plt.savefig(figfile)
+#     elif show:
+#         plt.show()
+#     else:
+#         return ax
+
+
+# def umap(
+#     adata,
+#     hue=None,
+#     marker="o",
+#     hue_order=None,
+#     force_categorical_hue=False,
+#     palette=None,
+#     color=None,
+#     cmap=None,
+#     size=10,
+#     alpha=0.6,
+#     n_col=2,
+#     receptor="bcr",
+#     chain="heavy",
+#     hue_chain=None,
+#     highlight_index=None,
+#     highlight_x=None,
+#     highlight_y=None,
+#     highlight_marker="x",
+#     highlight_size=90,
+#     highlight_color="k",
+#     highlight_name=None,
+#     highlight_alpha=0.9,
+#     plot_kwargs=None,
+#     legend_on_data=False,
+#     legend_fontsize=12,
+#     legend_fontweight="bold",
+#     legend_fontoutline=None,
+#     legend_marker_alpha=0.8,
+#     legend_label_position_offsets=None,
+#     legend_kwargs=None,
+#     hide_legend=False,
+#     xlabel="UMAP1",
+#     ylabel="UMAP2",
+#     title=None,
+#     title_fontsize=20,
+#     title_fontweight="normal",
+#     title_loc="center",
+#     title_pad=None,
+#     show_title=True,
+#     xlabel_fontsize=16,
+#     ylabel_fontsize=16,
+#     xtick_labelsize=14,
+#     ytick_labelsize=14,
+#     xtick_labelrotation=0,
+#     ytick_labelrotation=0,
+#     tiny_axis=True,
+#     tiny_axis_xoffset=None,
+#     tiny_axis_yoffset=None,
+#     cbar_width=0.35,
+#     cbar_height=0.05,
+#     cbar_loc="lower right",
+#     cbar_orientation="horizontal",
+#     cbar_bbox_to_anchor=None,
+#     cbar_flip_ticks=False,
+#     cbar_title=None,
+#     cbar_title_fontsize=12,
+#     hide_cbar=False,
+#     equal_axes=True,
+#     ax=None,
+#     show=False,
+#     figsize=None,
+#     figfile=None,
+# ):
+#     """
+#     Produces a scatter plot.
+
+#     Parameters
+#     ----------
+
+#     adata : pandas.DataFrame
+#         A ``anndata.AnnData`` object containing the input data.
+
+#     x : str
+#         Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the
+#         x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
+#         if data from different chains is being analyzed, using `x_chain`. BCR/TCR annotation
+#         fields must contain numerical data. Required.
+
+#     y : str
+#         Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the
+#         y-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
+#         if data from different chains is being analyzed, using `y_chain`. BCR/TCR annotation
+#         fields must contain numerical data. Required.
+
+#     hue : str, optional
+#         Name of a column in `adata.obs` or a BCR/TCR annotation field containing hue values.
+#         BCR/TCR annotations can be further specified using `receptor` and `chain` or, if data
+#         from different chains is being analyzed, using `hue_chain`. BCR/TCR annotation
+#         fields must contain numerical data.
+
+#     marker : str, dict or iterable object, optional
+#         Marker style for the scatter plot. Accepts any of the following:
+#           * a `matplotlib marker`_ string
+#           * a ``dict`` mapping `hue` categories to a `matplotlib marker`_ string
+#           * a ``list`` of `matplotlib marker`_ strings, which should be the same
+#               length as `x` and `y`.
+
+#     hue_order : iterable object, optional
+#         List of `hue` categories in the order they should be plotted. If `hue_order` contains a
+#         subset of all categories found in `hue`, only the supplied categories will be plotted.
+#         If not provided, `hue` categories will be plotted in ``natsort.natsorted()`` order.
+
+#     force_categorical_hue : bool, default=False
+#         If ``True``, `hue` data will be treated as categorical, even if the data appear to
+#         be continuous. This results in `color` being used to color the points rather than `cmap`.
+
+#     palette : dict, optional
+#         Dictionary mapping `hue`, `x` or `y` names to colors. If if keys in `palette` match
+#         more than one category, `hue` categories take priority. If `palette` is not provided,
+#         bars are colored using `color` (if `hue` is ``None``) or a palette is generated
+#         automatically using ``sns.hls_palette()``.
+
+#     color : str or iterable object, optional.
+#         Color for the plot markers. Can be any of the following:
+#           * a ``list`` or ``tuple`` containing RGB or RGBA values
+#           * a color string, either from `Matplotlib's set of named colors`_ or a hex color value
+#           * the name of a column in `data` that contains color values
+#           * a ``list`` of colors (either as strings or RGB tuples) to be used for `hue` categories.
+#             If `colors` is shorter than the list of hue categories, colors will be reused.
+
+#         .. tip::
+#             If a single RGB or RGBA ``list`` or ``tuple`` is provided and `hue` is also supplied,
+#             there may be unexpected results as ``scatter()`` will attempt to map each of the
+#             individual RGB(A) values to a hue category.
+
+#         Only used if `hue` contains categorical data (`cmap` is used for continuous data). If not
+#         provided, the `default Seaborn color palette`_ will be used.
+
+#     cmap : str or matplotlib.color.Colormap, default='flare'
+#         Colormap to be used for continuous `hue` data.
+
+#     size : str or float or iterable object, default=20
+#         Size of the scatter points. Either a
+
+#     alpha : float, default=0.6
+#         Alpha of the scatter points.
+
+#     receptor : str, default='bcr'
+#         Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.
+
+#     chain : str, default='heavy'
+#         If `x`, `y` and/or `hue` are BCR/TCR annotation fields, chain for which annotation will be
+#         retrieved. Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``,
+#         ``'beta'``, ``'delta'`` or ``'gamma'``.
+
+#     x_chain : str
+#         `chain` to be used for the x-axis. If not supplied, `chain` will be used. Only necessary
+#         when visualizing data from different chains on the same plot.
+
+#     y_chain : str
+#         `chain` to be used for the y-axis. If not supplied, `chain` will be used. Only necessary
+#         when visualizing data from different chains on the same plot.
+
+#     hue_chain : str
+#         `chain` to be used for the hue. If not supplied, `chain` will be used. Only necessary
+#         when visualizing data from different chains on the same plot.
+
+#     highlight_index : iterable object, optional
+#         An iterable of index names (present in `data.index`) of points to be highlighted on
+#         the plot. If provided, `highlight_x` and `highlight_y` are ignored.
+
+#     highlight_x : iterable object, optional
+#         An iterable of x-values for highlighted points. Also requires `highlight_y`.
+
+#     highlight_y : iterable object, optional
+#         An iterable of y-values for highlighted points. Also requires `highlight_x`.
+
+#     highlight_marker : str, default='x'
+#         Marker style to be used for highlight points. Accepts any `matplotlib marker`_.
+
+#     highlight_size : int, default=90
+#         Size of the highlight marker.
+
+#     highlight_color : string or list of color values, default='k'
+#         Color of the highlight points.
+
+#     highlight_name : str, optional
+#         Name of the highlights, to be used in the plot legend. If not supplied,
+#         highlight points will not be included in the legend.
+
+#     highlight_alpha : float, default=0.9
+#         Alpha of the highlight points.
+
+#     plot_kwargs : dict, optional
+#         Dictionary containing keyword arguments that will be passed to ``pyplot.scatter()``.
+
+#     legend_kwargs : dict, optional
+#         Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
+
+#     hide_legend : bool, default=False
+#         By default, a plot legend will be shown if multiple batches are plotted. If ``True``,
+#         the legend will not be shown.
+
+#     xlabel : str, optional
+#         Text for the X-axis label.
+
+#     ylabel : str, optional
+#         Text for the Y-axis label.
+
+#     xlabel_fontsize : int or float, default=16
+#         Fontsize for the X-axis label text.
+
+#     ylabel_fontsize : int or float, default=16
+#         Fontsize for the Y-axis label text.
+
+#     xtick_labelsize : int or float, default=14
+#         Fontsize for the X-axis tick labels.
+
+#     ytick_labelsize : int or float, default=14
+#         Fontsize for the Y-axis tick labels.
+
+#     xtick_labelrotation : int or float, default=0
+#         Rotation of the X-axis tick labels.
+
+#     ytick_labelrotation : int or float, default=0
+#         Rotation of the Y-axis tick labels.
+
+#     cbar_width : float, default=0.35
+#         Width of the colorbar. Only used for continuous `hue` types.
+
+#     cbar_height : float, default=0.05
+#         Height of the colorbar. Only used for continuous `hue` types.
+
+#     cbar_loc : str or iterable object, default='lower right'
+#         Location of the colorbar. Accepts `any valid inset_axes() location`_.
+
+#     cbar_orientation : str, default='horizontal'
+#         Orientation of the colorbar. Options are ``'horizontal'`` and ``'vertical'``.
+
+#     cbar_bbox_to_anchor : list or tuple, optional
+#         bbox_to_anchor for the colorbar. Used in combination with `cbar_loc` to provide
+#         fine-grained positioning of the colorbar.
+
+#     cbar_flip_ticks : bool, default=False
+#         Flips the position of colorbar ticks. Ticks default to the bottom if `cbar_orientation`
+#         is  ``'horizontal'`` and the left if  `cbar_orientation` is ``'vertical'``.
+
+#     cbar_title : str, optional
+#         Colorbar title. If not provided, `hue` is used.
+
+#     cbar_title_fontsize : int or float, default=12
+#         Fontsize for the colorbar title.
+
+#     hide_cbar : bool, default=False.
+#         If ``True``, the color bar will be hidden on plots with continuous `hue` values.
+
+#     equal_axes : bool, default=True
+#         If ```True```, the the limits of the x- and y-axis will be equal.
+
+#     show :bool, default=False
+#         If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
+#         is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
+
+#     figsize : iterable object, default=[6, 4]
+#         List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
+
+#     figfile : str, optional
+#         Path at which to save the figure file. If not provided, the figure is not saved
+#         and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.
+
+
+#     .. _matplotlib marker:
+#         https://matplotlib.org/stable/api/markers_api.html
+
+#     .. _Matplotlib's set of named colors:
+#         https://matplotlib.org/stable/gallery/color/named_colors.html
+
+#     .. _default Seaborn color palette:
+#         https://seaborn.pydata.org/generated/seaborn.color_palette.html
+
+#     .. _any valid inset_axes() location:
+#         https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
+
+#     """
+#     # check that the UMAP data exists
+#     if "X_umap" not in adata.obsm:
+#         from .tl import dimensionality_reduction
+
+#         adata = dimensionality_reduction(adata)
+
+#     # parse hues (if provided)
+#     if hue is not None:
+#         if isinstance(hue, str):
+#             hues = [
+#                 hue,
+#             ]
+#         else:
+#             hues = hue
+#     else:
+#         hues = [
+#             None,
+#         ]
+
+#     # set some UMAP-specific defaults
+#     figsize = figsize if figsize is not None else [7, 7]
+#     if legend_fontsize is not None:
+#         if legend_kwargs is None:
+#             legend_kwargs = {"fontsize": legend_fontsize}
+#         else:
+#             legend_kwargs["fontsize"] = legend_fontsize
+
+#     if len(hues) > 1:
+#         n_row = int(np.ceil(len(hues) / n_col))
+#         gridsize = [figsize[0] * n_col, figsize[1] * n_row]
+#         fig, axes = plt.subplots(n_row, n_col, figsize=gridsize)
+#         axes = axes.flatten()
+#     else:
+#         axes = [
+#             ax,
+#         ]
+
+#     # make plots
+#     for ax, hue in zip(axes, hues):
+#         # get X/Y data
+#         d = {}
+#         x, y = zip(*adata.obsm["X_umap"])
+#         d["x"] = x
+#         d["y"] = y
+#         if hue is not None:
+#             d[hue] = get_adata_values(
+#                 adata,
+#                 hue,
+#                 receptor=receptor,
+#                 chain=hue_chain if hue_chain is not None else chain,
+#             )
+#             continuous_hue = (
+#                 all([isinstance(h, float) for h in d[hue]])
+#                 and not force_categorical_hue
+#             )
+#         df = pd.DataFrame(d, index=adata.obs.index)
+
+#         # make the plot
+#         # ax = scatter(
+#         ax = abutils.pl.scatter(
+#             data=df,
+#             x="x",
+#             y="y",
+#             hue=hue,
+#             marker=marker,
+#             hue_order=hue_order,
+#             force_categorical_hue=force_categorical_hue,
+#             palette=palette,
+#             color=color,
+#             cmap=cmap if cmap is not None else loupe_cmap,
+#             size=size,
+#             alpha=alpha,
+#             highlight_index=highlight_index,
+#             highlight_x=highlight_x,
+#             highlight_y=highlight_y,
+#             highlight_marker=highlight_marker,
+#             highlight_size=highlight_size,
+#             highlight_color=highlight_color,
+#             highlight_name=highlight_name,
+#             highlight_alpha=highlight_alpha,
+#             plot_kwargs=plot_kwargs,
+#             legend_kwargs=legend_kwargs,
+#             hide_legend=True if legend_on_data else hide_legend,
+#             xlabel=xlabel if xlabel is not None else x,
+#             ylabel=ylabel if ylabel is not None else y,
+#             title=title if title is not None else hue,
+#             title_fontsize=title_fontsize,
+#             title_fontweight=title_fontweight,
+#             title_loc=title_loc,
+#             title_pad=title_pad,
+#             show_title=show_title,
+#             xlabel_fontsize=xlabel_fontsize,
+#             ylabel_fontsize=ylabel_fontsize,
+#             xtick_labelsize=xtick_labelsize,
+#             ytick_labelsize=ytick_labelsize,
+#             xtick_labelrotation=xtick_labelrotation,
+#             ytick_labelrotation=ytick_labelrotation,
+#             cbar_width=cbar_width,
+#             cbar_height=cbar_height,
+#             cbar_loc=cbar_loc,
+#             cbar_orientation=cbar_orientation,
+#             cbar_bbox_to_anchor=cbar_bbox_to_anchor,
+#             cbar_flip_ticks=cbar_flip_ticks,
+#             cbar_title=cbar_title,
+#             cbar_title_fontsize=cbar_title_fontsize,
+#             hide_cbar=hide_cbar,
+#             equal_axes=equal_axes,
+#             ax=ax,
+#             show=False,
+#             figsize=figsize,
+#             figfile=None,
+#         )
+
+#         if tiny_axis:
+#             # get coords for the UMAP-specific axes
+#             if tiny_axis_xoffset is None:
+#                 tiny_axis_xoffset = 0
+#             if tiny_axis_yoffset is None:
+#                 tiny_axis_yoffset = 0
+#             xmin = df["x"].min()
+#             xmax = df["x"].max()
+#             ymin = df["y"].min()
+#             ymax = df["y"].max()
+#             x_range = abs(xmax - xmin)
+#             y_range = abs(ymax - ymin)
+#             x_offset = x_range * tiny_axis_xoffset
+#             y_offset = y_range * tiny_axis_yoffset
+#             x_start = xmin + x_offset
+#             y_start = ymin + x_offset
+#             x_end = xmin + (x_range / 5) + x_offset
+#             x_center = x_start + ((x_end - x_start) / 2)
+#             y_end = ymin + (y_range / 5) + y_offset
+#             y_center = y_start + ((y_end - y_start) / 2)
+#             # draw the new "mini" axis lines
+#             ax.hlines(y_start, x_start, x_end, "k", lw=2)
+#             ax.vlines(x_start, y_start, y_end, "k", lw=2)
+#             ax.annotate(
+#                 xlabel,
+#                 xy=(x_center, ymin),
+#                 xytext=(0, -5),
+#                 textcoords="offset points",
+#                 fontsize=xlabel_fontsize,
+#                 ha="center",
+#                 va="top",
+#             )
+#             ax.annotate(
+#                 ylabel,
+#                 xy=(xmin, y_center),
+#                 xytext=(-5, 0),
+#                 textcoords="offset points",
+#                 fontsize=ylabel_fontsize,
+#                 rotation="vertical",
+#                 ha="right",
+#                 va="center",
+#             )
+#             # ax.text(xmin, y_center, ylabel, fontsize=ylabel_fontsize, rotation='vertical', ha='right', va='center')
+#             # remove the normal axis lines
+#             ax.set_xlabel("", fontsize=0)
+#             ax.set_ylabel("", fontsize=0)
+#             for s in ["left", "right", "top", "bottom"]:
+#                 ax.spines[s].set_visible(False)
+#         # hide the ticks
+#         ax.set_xticks([])
+#         ax.set_yticks([])
+
+#         if legend_on_data and not continuous_hue:
+#             # set up label offsets
+#             if legend_label_position_offsets is None:
+#                 legend_label_position_offsets = {}
+#             _xlim = ax.get_xlim()
+#             _ylim = ax.get_ylim()
+#             _xrange = _xlim[1] - _xlim[0]
+#             _yrange = _ylim[1] - _ylim[0]
+#             # configure the legend font outline
+#             if legend_fontoutline is not None:
+#                 path_effect = [
+#                     mpl.patheffects.withStroke(
+#                         linewidth=legend_fontoutline, foreground="w"
+#                     )
+#                 ]
+#             else:
+#                 path_effect = None
+#             # add the on-data legend
+#             for h in df[hue].unique():
+#                 _df = df[df[hue] == h]
+#                 xoffset, yoffset = legend_label_position_offsets.get(h, (0, 0))
+#                 hue_x = _df["x"].median() + (xoffset * _xrange)
+#                 hue_y = _df["y"].median() + (yoffset * _yrange)
+#                 ax.text(
+#                     hue_x,
+#                     hue_y,
+#                     h,
+#                     c="k",
+#                     weight=legend_fontweight,
+#                     verticalalignment="center",
+#                     horizontalalignment="center",
+#                     fontsize=legend_fontsize,
+#                     path_effects=path_effect,
+#                 )
+
+#     # save, show or return the ax
+#     if figfile is not None:
+#         plt.tight_layout()
+#         plt.savefig(figfile)
+#     elif show:
+#         plt.tight_layout()
+#         plt.show()
+#     else:
+#         return ax
 
 
 # def feature_scatter(
