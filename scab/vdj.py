@@ -469,7 +469,7 @@ def bcr_summary_csv(
             d[rename.get(c, c)] = r[c]
         h = r["bcr"].heavy
         l = r["bcr"].light
-        for n, seq in [h, l]:
+        for n, seq in enumerate([h, l]):
             if seq is None:
                 continue
             for f in bcr_fields:
