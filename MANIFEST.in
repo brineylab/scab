@@ -6,3 +6,4 @@ include scab/*
 include scab/cellranger/*
 include scab/models/*
 include scab/plots/*
+include scab/tools/*

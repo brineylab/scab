@@ -40,9 +40,10 @@ from scipy.cluster.hierarchy import fcluster
 
 from mnemonic import Mnemonic
 
-from abutils.core.sequence import Sequence
-from abutils.utils.cluster import cluster
+import abutils
 from abutils.utils.utilities import nested_dict_lookup
+
+from ..models.lineage import LineageAssignment
 
 
 def clonify(
@@ -152,7 +153,7 @@ def clonify(
         # build new Sequence objects using just the data we need
         for i, h in enumerate(heavies):
             # h = p.heavy
-            s = Sequence(h.sequence, id=f"{p.name}__{i}")
+            s = abutils.Sequence(h.sequence, id=f"{p.name}__{i}")
             s["v_gene"] = nested_dict_lookup(h, vgene_key.split("."))
             s["j_gene"] = nested_dict_lookup(h, jgene_key.split("."))
             s["cdr3"] = nested_dict_lookup(h, cdr3_key.split("."))
@@ -186,13 +187,15 @@ def clonify(
         # preclustering
         if preclustering:
             seq_dict = {s.id: s for s in vj_group}
-            cluster_seqs = [Sequence(s[preclustering_field], id=s.id) for s in vj_group]
-            clusters = cluster(cluster_seqs, threshold=preclustering_threshold)
+            cluster_seqs = [
+                abutils.Sequence(s[preclustering_field], id=s.id) for s in vj_group
+            ]
+            clusters = abutils.tl.cluster(
+                cluster_seqs, threshold=preclustering_threshold
+            )
             groups = [[seq_dict[i] for i in c.seq_ids] for c in clusters]
         else:
-            groups = [
-                vj_group,
-            ]
+            groups = [vj_group]
         for group in groups:
             if len(group) == 1:
                 seq = group[0]
@@ -203,7 +206,7 @@ def clonify(
             # build a distance matrix
             dist_matrix = []
             for s1, s2 in itertools.combinations(group, 2):
-                d = _clonify_distance(
+                d = pairwise_distance(
                     s1, s2, shared_mutation_bonus, length_penalty_multiplier
                 )
                 dist_matrix.append(d)
@@ -228,22 +231,71 @@ def clonify(
     # return assignments
     if return_assignment_dict:
         return assignment_dict
-    lineage_assignments = [assignment_dict.get(n, np.nan) for n in adata.obs_names]
-    lineage_sizes = [lineage_size_dict.get(l, np.nan) for l in lineage_assignments]
+    pair_dict = {p.name: p for p in adata.obs.bcr}
+    results_dict = {}
+    for s, l in assignment_dict.values():
+        name = "__".join(s.split("__")[:-1])
+        if name not in results_dict:
+            results_dict[name] = {"pair": pair_dict[name], "assignment_dict": {}}
+        results_dict[name]["assignment_dict"][s] = l
+    lineage_assignments = []
+    for n in adata.obs_names:
+        r = results_dict.get(n, None)
+        if r is not None:
+            l = LineageAssignment(pair=r["pair"], assignment_dict=r["assignment_dict"])
+        else:
+            l = np.nan
+        lineage_assignments.append(l)
+
+    # lineage_assignments = [assignment_dict.get(n, np.nan) for n in adata.obs_names]
+    # lineage_sizes = [lineage_size_dict.get(l, np.nan) for l in lineage_assignments]
     adata.obs[lineage_field] = lineage_assignments
     adata.obs[lineage_size_field] = lineage_sizes
     return adata
 
 
-def _clonify_distance(s1, s2, shared_mutation_bonus, length_penalty_multiplier):
-    if len(s1["cdr3"]) == len(s2["cdr3"]):
-        dist = sum([i != j for i, j in zip(s1["cdr3"], s2["cdr3"])])
+def pairwise_distance(
+    s1: abutils.Sequence,
+    s2: abutils.Sequence,
+    shared_mutation_bonus: float = 0.65,
+    length_penalty_multiplier: Union[int, float] = 2,
+    cdr3_field: str = "cdr3",
+    mutations_field: str = "mutations",
+) -> float:
+    """Computes length and mutation adjusted Levenshtein distance for a pair of sequences.
+
+    Parameters
+    ----------
+    s1 : abutils.Sequence
+        input sequence
+    s2 : abutils.Sequence
+        input sequence
+    shared_mutation_bonus : float, optional
+        The bonus for each shared mutation, by default 0.65
+    length_penalty_multiplier : Union[int, float], optional
+        Used to compute the penalty for differences in CDR3 length. The length
+        difference is multiplied by `length_penalty_multiplier`, by default 2
+    cdr3_field : str, optional
+        Name of the field in `s1` and `s2` containing the CDR3 sequence,
+        by default "cdr3"
+    mutations_field : str, optional
+        Name of the field in `s1` and `s2` containing mutation information,
+        by default "mutations"
+
+    Returns
+    -------
+    float
+        distance
+    """
+    if len(s1[cdr3_field]) == len(s2[cdr3_field]):
+        dist = sum([i != j for i, j in zip(s1[cdr3_field], s2[cdr3_field])])
     else:
-        dist = distance(s1["cdr3"], s2["cdr3"])
-    length_penalty = abs(len(s1["cdr3"]) - len(s2["cdr3"])) * length_penalty_multiplier
-    length = min(len(s1["cdr3"]), len(s2["cdr3"]))
-    shared_mutations = list(set(s1["mutations"]) & set(s2["mutations"]))
+        dist = distance(s1[cdr3_field], s2[cdr3_field])
+    length_penalty = (
+        abs(len(s1[cdr3_field]) - len(s2[cdr3_field])) * length_penalty_multiplier
+    )
+    length = min(len(s1[cdr3_field]), len(s2[cdr3_field]))
+    shared_mutations = list(set(s1[mutations_field]) & set(s2[mutations_field]))
     mutation_bonus = len(shared_mutations) * shared_mutation_bonus
     score = (dist + length_penalty - mutation_bonus) / length
     return max(score, 0.001)  # distance values can't be negative
-
