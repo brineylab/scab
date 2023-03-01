@@ -207,6 +207,10 @@ def scanorama(
     """
     import scanorama
 
+    if verbose:
+        print("")
+        print("SCANORAMA")
+        print("---------")
     # make sure obs names are unique, since we'll need them to incorporate
     # Scanorama integrations into the original adata object
     adata.obs_names_make_unique()
@@ -224,7 +228,7 @@ def scanorama(
     scanorama.integrate_scanpy(adatas, dimred=n_dim)
     # add the Scanorama to the "complete" adata object
     obs_names = [ad.obs_names for ad in adatas]
-    integrations = [ad.obsm["X_Scanorama"] for ad in adatas]
+    integrations = [ad.obsm["X_scanorama"] for ad in adatas]
     integrate_dict = {}
     for names, integration in zip(obs_names, integrations):
         for n, i in zip(names, integration):
@@ -232,5 +236,7 @@ def scanorama(
     all_s = np.array([integrate_dict[o] for o in adata.obs_names])
     adata.obsm[scanorama_key] = all_s
     if post_correction_umap:
+        if verbose:
+            print("")
         adata = umap(adata, use_rep=scanorama_key, verbose=verbose)
     return adata
