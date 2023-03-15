@@ -26,6 +26,7 @@
 from collections import Counter
 import itertools
 import sys
+from typing import Optional, Literal, Union, Callable
 
 import pandas as pd
 import numpy as np
@@ -39,13 +40,316 @@ from mnemonic import Mnemonic
 
 import dnachisel as dc
 
+from anndata import AnnData
+
 from natsort import natsorted, natsort_keygen
 
-from abutils.core.sequence import Sequence
+import abstar
+from abutils.core.pair import Pair, assign_pairs
+from abutils.core.sequence import Sequence, read_csv, read_fasta, read_json
 from abutils.utils.cluster import cluster
 from abutils.utils.utilities import nested_dict_lookup
 
 from .models.lineage import Lineage
+
+
+def merge(
+    adata: AnnData,
+    vdj_file: Optional[str] = None,
+    vdj_annot: Optional[str] = None,
+    vdj_field: str = "bcr",
+    vdj_format: Literal["fasta", "delimited", "json"] = "fasta",
+    vdj_delimiter: str = "\t",
+    vdj_id_key: str = "sequence_id",
+    vdj_sequence_key: str = "sequence",
+    vdj_id_delimiter: str = "_",
+    vdj_id_delimiter_num: int = 1,
+    chain_selection_func: Optional[Callable] = None,
+    abstar_output_format: Literal["airr", "json"] = "airr",
+    abstar_germ_db: str = "human",
+    verbose: bool = False,
+) -> AnnData:
+    """_summary_
+
+    Parameters
+    ----------
+    adata : AnnData
+        _description_
+    vdj_file : Optional[str], optional
+        _description_, by default None
+    vdj_annot : Optional[str], optional
+        _description_, by default None
+    vdj_format : Literal[&quot;fasta&quot;, &quot;delimited&quot;, &quot;json&quot;], optional
+        _description_, by default "fasta"
+    vdj_delimiter : str, optional
+        _description_, by default "\t"
+    vdj_id_key : str, optional
+        _description_, by default "sequence_id"
+    vdj_sequence_key : str, optional
+        _description_, by default "sequence"
+    vdj_id_delimiter : str, optional
+        _description_, by default "_"
+    vdj_id_delimiter_num : int, optional
+        _description_, by default 1
+    chain_selection_func : Optional[Callable], optional
+        _description_, by default None
+    abstar_output_format : Literal[&quot;airr&quot;, &quot;json&quot;], optional
+        _description_, by default "airr"
+    abstar_germ_db : str, optional
+        _description_, by default "human"
+    """
+    if vdj_format == "delimited":
+        delim_renames = {"\t": "tab", ",": "comma"}
+        if verbose:
+            d = delim_renames.get(vdj_delimiter, f"'{vdj_delimiter}'")
+            print(f"reading {d}-delimited {vdj_field.upper()} data...")
+        sequences = read_csv(
+            vdj_file,
+            delimiter=vdj_delimiter,
+            id_key=vdj_id_key,
+            sequence_key=vdj_sequence_key,
+        )
+    elif vdj_format == "json":
+        if verbose:
+            print(f"reading JSON-formatted {vdj_field.upper()} data...")
+        sequences = read_json(
+            vdj_file, id_key=vdj_id_key, sequence_key=vdj_sequence_key
+        )
+    elif vdj_format == "fasta":
+        if verbose:
+            print(f"reading FASTA-formatted {vdj_field.upper()} data...")
+        raw_seqs = read_fasta(vdj_file)
+        if verbose:
+            print(f"annotating {vdj_field.upper()} sequences with abstar...")
+        sequences = abstar.run(
+            raw_seqs,
+            output_type=abstar_output_format,
+            germ_db=abstar_germ_db,
+            verbose=verbose,
+        )
+    pairs = assign_pairs(
+        sequences,
+        id_key=vdj_id_key,
+        delim=vdj_id_delimiter,
+        delim_occurance=vdj_id_delimiter_num,
+        chain_selection_func=chain_selection_func,
+        tenx_annot_file=vdj_annot,
+    )
+    pdict = {p.name: p for p in pairs}
+    adata.obs[vdj_field] = [pdict.get(o, Pair([])) for o in adata.obs_names]
+    return adata
+
+
+def merge_bcr(
+    adata: AnnData,
+    bcr_file: Optional[str] = None,
+    bcr_annot: Optional[str] = None,
+    bcr_format: Literal["fasta", "delimited", "json"] = "fasta",
+    bcr_delimiter: str = "\t",
+    bcr_id_key: str = "sequence_id",
+    bcr_sequence_key: str = "sequence",
+    bcr_id_delimiter: str = "_",
+    bcr_id_delimiter_num: int = 1,
+    chain_selection_func: Optional[Callable] = None,
+    abstar_output_format: Literal["airr", "json"] = "airr",
+    abstar_germ_db: str = "human",
+    verbose: bool = True,
+) -> AnnData:
+    """
+    Merge BCR sequences into an ``AnnData`` object.
+
+    Parameters
+    ----------
+    adata : AnnData
+        ``AnnData`` object, typically obtained by first running ``scab.io.read_10x_mtx()``.
+        Required
+
+    bcr_file : str, optional
+        Path to a file containing BCR data. The file can be in one of several formats:
+
+                - FASTA-formatted file, as output by CellRanger
+
+                - delimited text file, containing annotated BCR sequences
+
+                - JSON-formatted file, containing annotated BCR sequences
+
+    bcr_annot : str, optional
+        Path to the CSV-formatted BCR annotations file produced by CellRanger. Matching the
+        annotation file to `bcr_file` is preferred -- if ``'all_contig.fasta'`` is the supplied
+        `bcr_file`, then ``'all_contig_annotations.csv'`` is the appropriate annotation file.
+
+    bcr_format : str, default='fasta'
+        Format of the input `bcr_file`. Options are: ``'fasta'``, ``'delimited'``, and
+        ``'json'``. If `bcr_format` is ``'fasta'``, `abstar`_
+        will be run on the input data to obtain annotated BCR data. By default, abstar will
+        produce `AIRR-formatted`_  (tab-delimited) annotations.
+
+    bcr_delimiter : str, default='\t'
+        Delimiter used in `bcr_file`. Only used if `bcr_format` is ``'delimited'``.
+        Default is ``'\t'``, which conforms to AIRR-C data standards.
+
+    bcr_id_key : str, default='sequence_id'
+        Name of the column or field in `bcr_file` that corresponds to the sequence ID.
+
+    bcr_sequence_key : str, default='sequence'
+        Name of the column or field in `bcr_file` that corresponds to the VDJ sequence.
+
+    bcr_id_delimiter : str, default='_'
+        The delimiter used to separate the droplet and contig components of the sequence ID.
+        For example, default CellRanger names are formatted as: ``'AAACCTGAGAACTGTA-1_contig_1'``, where
+        ``'AAACCTGAGAACTGTA-1'`` is the droplet identifier and ``'contig_1'`` is the contig identifier.
+
+    bcr_id_delimiter_num : str, default=1
+        The occurance (1-based numbering) of the `bcr_id_delimiter`.
+
+    abstar_output_format : str, default='airr'
+        Format for abstar annotations. Only used if `bcr_format` is ``'fasta'``.
+        Options are ``'airr'``, ``'json'`` and ``'tabular'``.
+
+    abstar_germ_db : str, default='human'
+        Germline database to be used for annotation of BCR data. Built-in abstar options
+        include: ``'human'``, ``'macaque'``, ``'mouse'`` and ``'humouse'``. Only used if
+        one or both of `bcr_format` is ``'fasta'``.
+
+    verbose : bool, default=True
+        Print progress updates.
+
+    Returns
+    -------
+    adata : AnnData
+        An ``AnnData`` object containing gene expression data, with BCR information located
+        at ``adata.obs.bcr``.
+
+
+    .. _abstar:
+        https://github.com/briney/abstar
+
+    .. _AIRR-formatted:
+        https://docs.airr-community.org/en/stable/datarep/rearrangements.html
+
+    """
+    return merge(
+        adata=adata,
+        vdj_file=bcr_file,
+        vdj_annot=bcr_annot,
+        vdj_field="bcr",
+        vdj_format=bcr_format,
+        vdj_delimiter=bcr_delimiter,
+        vdj_id_key=bcr_id_key,
+        vdj_sequence_key=bcr_sequence_key,
+        vdj_id_delimiter=bcr_id_delimiter,
+        vdj_id_delimiter_num=bcr_id_delimiter_num,
+        chain_selection_func=chain_selection_func,
+        abstar_output_format=abstar_output_format,
+        abstar_germ_db=abstar_germ_db,
+        verbose=verbose,
+    )
+
+
+def merge_tcr(
+    adata: AnnData,
+    tcr_file: Optional[str] = None,
+    tcr_annot: Optional[str] = None,
+    tcr_format: Literal["fasta", "delimited", "json"] = "fasta",
+    tcr_delimiter: str = "\t",
+    tcr_id_key: str = "sequence_id",
+    tcr_sequence_key: str = "sequence",
+    tcr_id_delimiter: str = "_",
+    tcr_id_delimiter_num: int = 1,
+    chain_selection_func: Optional[Callable] = None,
+    abstar_output_format: Literal["airr", "json"] = "airr",
+    abstar_germ_db: str = "human",
+    verbose: bool = True,
+) -> AnnData:
+    """
+    Merge TCR sequences into an ``AnnData`` object.
+
+    Parameters
+    ----------
+    adata : AnnData
+        ``AnnData`` object, typically obtained by first running ``scab.io.read_10x_mtx()``.
+        Required
+
+    tcr_file : str, optional
+        Path to a file containing TCR data. The file can be in one of several formats:
+
+                - FASTA-formatted file, as output by CellRanger
+
+                - delimited text file, containing annotated TCR sequences
+
+                - JSON-formatted file, containing annotated TCR sequences
+
+    tcr_annot : str, optional
+        Path to the CSV-formatted TCR annotations file produced by CellRanger. Matching the
+        annotation file to `tcr_file` is preferred -- if ``'all_contig.fasta'`` is the supplied
+        `tcr_file`, then ``'all_contig_annotations.csv'`` is the appropriate annotation file.
+
+    tcr_format : str, default='fasta'
+        Format of the input `tcr_file`. Options are: ``'fasta'``, ``'delimited'``, and
+        ``'json'``. If `tcr_format` is ``'fasta'``, `abstar`_
+        will be run on the input data to obtain annotated TCR data. By default, abstar will
+        produce `AIRR-formatted`_  (tab-delimited) annotations.
+
+    tcr_delimiter : str, default='\t'
+        Delimiter used in `tcr_file`. Only used if `tcr_format` is ``'delimited'``.
+        Default is ``'\t'``, which conforms to AIRR-C data standards.
+
+    tcr_id_key : str, default='sequence_id'
+        Name of the column or field in `tcr_file` that corresponds to the sequence ID.
+
+    tcr_sequence_key : str, default='sequence'
+        Name of the column or field in `tcr_file` that corresponds to the VDJ sequence.
+
+    tcr_id_delimiter : str, default='_'
+        The delimiter used to separate the droplet and contig components of the sequence ID.
+        For example, default CellRanger names are formatted as: ``'AAACCTGAGAACTGTA-1_contig_1'``, where
+        ``'AAACCTGAGAACTGTA-1'`` is the droplet identifier and ``'contig_1'`` is the contig identifier.
+
+    tcr_id_delimiter_num : str, default=1
+        The occurance (1-based numbering) of the `tcr_id_delimiter`.
+
+    abstar_output_format : str, default='airr'
+        Format for abstar annotations. Only used if `tcr_format` is ``'fasta'``.
+        Options are ``'airr'``, ``'json'`` and ``'tabular'``.
+
+    abstar_germ_db : str, default='human'
+        Germline database to be used for annotation of TCR data. Built-in abstar options
+        include: ``'human'``, ``'macaque'``, ``'mouse'`` and ``'humouse'``. Only used if
+        one or both of `tcr_format` is ``'fasta'``.
+
+    verbose : bool, default=True
+        Print progress updates.
+
+    Returns
+    -------
+    adata : AnnData
+        An ``AnnData`` object containing gene expression data, with TCR information located
+        at ``adata.obs.bcr``.
+
+
+    .. _abstar:
+        https://github.com/briney/abstar
+
+    .. _AIRR-formatted:
+        https://docs.airr-community.org/en/stable/datarep/rearrangements.html
+
+    """
+    return merge(
+        adata=adata,
+        vdj_file=tcr_file,
+        vdj_annot=tcr_annot,
+        vdj_field="tcr",
+        vdj_format=tcr_format,
+        vdj_delimiter=tcr_delimiter,
+        vdj_id_key=tcr_id_key,
+        vdj_sequence_key=tcr_sequence_key,
+        vdj_id_delimiter=tcr_id_delimiter,
+        vdj_id_delimiter_num=tcr_id_delimiter_num,
+        chain_selection_func=chain_selection_func,
+        abstar_output_format=abstar_output_format,
+        abstar_germ_db=abstar_germ_db,
+        verbose=verbose,
+    )
 
 
 def clonify(
@@ -255,25 +559,25 @@ def build_synthesis_constructs(
     sort=True,
 ):
     """
-    Builds codon-optimized synthesis constructs, including Gibson overhangs suitable 
-    for cloning IGH, IGK and IGL variable region constructs into antibody expression 
+    Builds codon-optimized synthesis constructs, including Gibson overhangs suitable
+    for cloning IGH, IGK and IGL variable region constructs into antibody expression
     vectors.
 
 
-    .. seealso:: 
-        | Thomas Tiller, Eric Meffre, Sergey Yurasov, Makoto Tsuiji, Michel C Nussenzweig, Hedda Wardemann 
+    .. seealso::
+        | Thomas Tiller, Eric Meffre, Sergey Yurasov, Makoto Tsuiji, Michel C Nussenzweig, Hedda Wardemann
         | Efficient generation of monoclonal antibodies from single human B cells by single cell RT-PCR and expression vector cloning
-        | *Journal of Immunological Methods* 2008, doi: 10.1016/j.jim.2007.09.017  
+        | *Journal of Immunological Methods* 2008, doi: 10.1016/j.jim.2007.09.017
 
 
     Parameters
     ----------
-    adata : anndata.AnnData  
+    adata : anndata.AnnData
         An ``anndata.AnnData`` object containing annotated BCR sequences.
 
-    overhang_5 : dict, optional  
+    overhang_5 : dict, optional
         A ``dict`` mapping the locus name to 5' Gibson overhangs. By default, Gibson
-        overhangs corresponding to the expression vectors in Tiller et al, 2008:  
+        overhangs corresponding to the expression vectors in Tiller et al, 2008:
 
             | **IGH:** ``catcctttttctagtagcaactgcaaccggtgtacac``
             | **IGK:** ``atcctttttctagtagcaactgcaaccggtgtacac``
@@ -281,9 +585,9 @@ def build_synthesis_constructs(
 
         To produce constructs without 5' Gibson overhangs, provide an empty dictionary.
 
-    overhang_3 : dict, optional  
+    overhang_3 : dict, optional
         A ``dict`` mapping the locus name to 3' Gibson overhangs. By default, Gibson
-        overhangs corresponding to the expression vectors in Tiller et al, 2008: 
+        overhangs corresponding to the expression vectors in Tiller et al, 2008:
 
             | **IGH:** ``gcgtcgaccaagggcccatcggtcttcc``
             | **IGK:** ``cgtacggtggctgcaccatctgtcttcatc``
@@ -291,37 +595,37 @@ def build_synthesis_constructs(
 
         To produce constructs without 3' Gibson overhangs, provide an empty dictionary.
 
-    sequence_key : str, default='sequence_aa'  
+    sequence_key : str, default='sequence_aa'
         Field containing the sequence to be codon optimized. Default is ``'sequence_aa'`` if
-        ``annotation_format == 'airr'`` or ``'vdj_aa'`` if ``annotation_format == 'json'``. 
+        ``annotation_format == 'airr'`` or ``'vdj_aa'`` if ``annotation_format == 'json'``.
         Either nucleotide or amino acid sequences are acceptable.
 
-    locus_key : str, default='locus'  
+    locus_key : str, default='locus'
         Field containing the sequence locus. Default is ``'locus'`` if ``annotation_key == 'airr'``,
         or ``'chain'`` if ``annotation_key == 'json'``. Note that values in ``locus_key`` should match
         the keys in ``overhang_5`` and ``overhang_3``.
 
-    name_key : str, optional  
+    name_key : str, optional
         Field (in ``adata.obs``) containing the name of the BCR pair. If not provided, the
         droplet barcode will be used.
 
-    bcr_key : str, default='bcr'  
-        Field (in ``adata.obs``) containing the annotated BCR pair.  
+    bcr_key : str, default='bcr'
+        Field (in ``adata.obs``) containing the annotated BCR pair.
 
-    sort : bool, default=True  
-        If ``True``, output will be sorted by sequence name.  
+    sort : bool, default=True
+        If ``True``, output will be sorted by sequence name.
 
 
     Returns
     -------
-    sequences : ``list`` of ``Sequence`` objects 
+    sequences : ``list`` of ``Sequence`` objects
         A ``list`` of ``abutils.Sequence`` objects. Each ``Sequence`` object has the following
-        descriptive properties:  
+        descriptive properties:
 
-            | *id*: The sequence ID, which includes the pair name and the locus.  
-            | *sequence*: The codon-optimized sequence, including Gibson overhangs.  
+            | *id*: The sequence ID, which includes the pair name and the locus.
+            | *sequence*: The codon-optimized sequence, including Gibson overhangs.
 
-        If ``sort == True``, the output ``list``  will be sorted by 
+        If ``sort == True``, the output ``list``  will be sorted by
         `name_key` using ``natsort.natsorted()``.
 
     """
