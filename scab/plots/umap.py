@@ -409,9 +409,9 @@ def umap(
                 and not force_categorical_hue
             )
         if show_title:
-            title = title if title is not None else hue
+            plot_title = title if title is not None else hue
         else:
-            title = None
+            plot_title = None
         df = pd.DataFrame(d, index=adata.obs.index)
 
         ax = abutils.pl.scatter(
@@ -451,7 +451,7 @@ def umap(
             hide_legend=hide_legend,
             xlabel=xlabel,
             ylabel=ylabel,
-            title=title,
+            title=plot_title,
             title_fontsize=title_fontsize,
             title_fontweight=title_fontweight,
             title_loc=title_loc,
@@ -489,6 +489,7 @@ def umap(
         plt.tight_layout()
         plt.savefig(figfile)
     elif show:
+        plt.tight_layout()
         plt.show()
     else:
         return ax

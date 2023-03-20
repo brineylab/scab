@@ -268,7 +268,7 @@ def read_10x_mtx(
     # process BCR data:
     if bcr_file is not None:
         gex = merge_bcr(
-            adata=adata,
+            adata=gex,
             bcr_file=bcr_file,
             bcr_annot=bcr_annot,
             bcr_format=bcr_format,
@@ -325,7 +325,7 @@ def read_10x_mtx(
     # process TCR data:
     if tcr_file is not None:
         gex = merge_tcr(
-            adata=adata,
+            adata=gex,
             tcr_file=tcr_file,
             tcr_annot=tcr_annot,
             tcr_format=tcr_format,
