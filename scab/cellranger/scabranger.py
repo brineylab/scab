@@ -606,6 +606,7 @@ class Run:
                 "the supplied run data path is a directory, not a compressed file. "
             )
             if self.copy_to_project:
+                print("copy to project: ", self.copy_to_project)
                 logger.info("copying to the project directory without decompressing...")
                 shutil.copytree(source, destination)
         else:
