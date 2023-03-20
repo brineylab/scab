@@ -120,8 +120,8 @@ class Config:
       - config_file: path to the configuration file, in YAML format.
       - runs: a list of ``Run`` objects
       - samples: a list of `Sample` objects.
-      - [gex|vdj|feature]_reference: dictionary mapping sample names to 
-            GEX, VDJ or Feature references. Each reference tuype must include 
+      - [gex|vdj|feature]_reference: dictionary mapping sample names to
+            GEX, VDJ or Feature references. Each reference tuype must include
             a ``default`` reference, which will be used for all samples not
             specifically named in the dictionary.
       - uiport: port for the cellranger UI. Default is 72647.
@@ -190,7 +190,7 @@ class Config:
     def get_ref(ref_dict: Mapping, key: str) -> Union[str, pathlib.Path, None]:
         """
         Looks for the reference that corresponds to `key`. If it doesn't exist,
-        looks for the `'default'` reference. If that doesn't exist either, 
+        looks for the `'default'` reference. If that doesn't exist either,
         return `None`.
         """
         if key in ref_dict:
@@ -288,7 +288,9 @@ class Run:
     """
 
     def __init__(
-        self, name: str, config: Union[str, pathlib.Path],
+        self,
+        name: str,
+        config: Union[str, pathlib.Path],
     ):
         self.name = name
         self.config = config
@@ -529,7 +531,8 @@ class Run:
         return destination
 
     def _copy_samplesheet(
-        self, d: Union[str, pathlib.Path],
+        self,
+        d: Union[str, pathlib.Path],
     ):
         """
         Copies the run's samplesheet to a different directory.
@@ -543,7 +546,8 @@ class Run:
         shutil.copy(self.samplesheet, dest)
 
     def _copy_simple_csv(
-        self, d: Union[str, pathlib.Path],
+        self,
+        d: Union[str, pathlib.Path],
     ):
         """
         Copies the run's simple CSV to a different directory.
@@ -601,8 +605,9 @@ class Run:
             logger.info(
                 "the supplied run data path is a directory, not a compressed file. "
             )
-            logger.info("copying to the project directory without decompressing...")
-            shutil.copytree(source, destination)
+            if self.copy_to_project:
+                logger.info("copying to the project directory without decompressing...")
+                shutil.copytree(source, destination)
         else:
             logger.info("decompressing run data....")
             make_dir(destination)
@@ -630,7 +635,7 @@ class Run:
                 make_dir(log_subdir)
                 write_log(self.name, log_subdir, stdout=o, stderr=e)
         run_dir = destination
-        for (root, subdirs, files) in os.walk(destination):
+        for root, subdirs, files in os.walk(destination):
             if "RTAComplete.txt" in files:
                 run_dir = os.path.join(destination, root)
                 break
@@ -743,7 +748,7 @@ class Sample:
 
     def make_config_csv(self, csv_dir: Union[str, pathlib.Path]) -> str:
         """
-        Makes a config CSV for cellranger multi. CSV will be named 
+        Makes a config CSV for cellranger multi. CSV will be named
         ``{sample.name}_config.csv`` and deposited into `csv_dir`.
         """
         if not os.path.isdir(csv_dir):
@@ -1306,4 +1311,3 @@ def main(args: Args):
 if __name__ == "__main__":
     args = parse_arguments()
     main(args)
-
