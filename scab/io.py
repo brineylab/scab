@@ -91,7 +91,7 @@ def read_10x_mtx(
     feature_quantile: Union[float, int] = 0.95,
     cache: bool = True,
     verbose: bool = True,
-):
+) -> AnnData:
     """
     Reads and integrates output files from 10x Genomics' CellRanger into a single ``AnnData`` object.
 
