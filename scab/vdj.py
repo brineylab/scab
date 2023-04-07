@@ -64,6 +64,7 @@ def merge(
     vdj_sequence_key: str = "sequence",
     vdj_id_delimiter: str = "_",
     vdj_id_delimiter_num: int = 1,
+    receptor: str = "bcr",
     chain_selection_func: Optional[Callable] = None,
     abstar_output_format: Literal["airr", "json"] = "airr",
     abstar_germ_db: str = "human",
@@ -126,6 +127,7 @@ def merge(
             output_type=abstar_output_format,
             germ_db=abstar_germ_db,
             verbose=verbose,
+            receptor=receptor,
         )
     pairs = assign_pairs(
         sequences,
@@ -239,6 +241,7 @@ def merge_bcr(
         vdj_sequence_key=bcr_sequence_key,
         vdj_id_delimiter=bcr_id_delimiter,
         vdj_id_delimiter_num=bcr_id_delimiter_num,
+        receptor="bcr",
         chain_selection_func=chain_selection_func,
         abstar_output_format=abstar_output_format,
         abstar_germ_db=abstar_germ_db,
@@ -345,6 +348,7 @@ def merge_tcr(
         vdj_sequence_key=tcr_sequence_key,
         vdj_id_delimiter=tcr_id_delimiter,
         vdj_id_delimiter_num=tcr_id_delimiter_num,
+        receptor="tcr",
         chain_selection_func=chain_selection_func,
         abstar_output_format=abstar_output_format,
         abstar_germ_db=abstar_germ_db,
