@@ -184,7 +184,7 @@ def ridge(
     df = pd.DataFrame(d)
     # make the plot
     g = abutils.pl.ridge(
-        df,
+        data=df,
         categories=categories,
         values=values,
         order=order,
