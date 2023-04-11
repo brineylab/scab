@@ -290,20 +290,20 @@ class Run:
     def __init__(
         self,
         name: str,
-        config: Union[str, pathlib.Path],
+        config: dict,
     ):
         self.name = name
         self.config = config
         self.url = config.get("url", None)
         self.path = os.path.abspath(config["path"]) if "path" in config else None
-        self.is_compressed = config.get("is_compressed", True)
         self.samplesheet = (
             os.path.abspath(config["samplesheet"]) if "samplesheet" in config else None
         )
         self.simple_csv = (
             os.path.abspath(config["simple_csv"]) if "simple_csv" in config else None
         )
-        self.copy_to_project = config.get("copy_to_project", False)
+        # self.is_compressed = config.get("is_compressed", True)
+        # self.copy_to_project = config.get("copy_to_project", False)
         self.get_start = None
         self.get_finish = None
         self.mkfastq_start = None
@@ -390,6 +390,38 @@ class Run:
                     lib = "_".join(item.split("_")[:-4])
                     lib_names.append(lib)
         return natsorted(set(lib_names))
+
+    @property
+    def copy_to_project(self) -> bool:
+        if "copy_to_project" in self.config:
+            ctp = self.config["copy_to_project"]
+            if isinstance(ctp, str):
+                if ctp.lower() == "true":
+                    return True
+                else:
+                    return False
+            else:
+                return ctp
+
+        else:
+            return True
+
+    @property
+    def is_compressed(self) -> bool:
+        if self.path is not None:
+            if os.path.isdir(self.path):
+                return False
+        elif "is_compressed" in self.config:
+            ic = self.config["is_compressed"]
+            if isinstance(ic, str):
+                if ic.lower() == "true":
+                    return True
+                else:
+                    return False
+            else:
+                return ic
+        else:
+            return True
 
     def print_splash(self):
         l = len(self.name)
@@ -606,8 +638,6 @@ class Run:
                 "the supplied run data path is a directory, not a compressed file. "
             )
             if self.copy_to_project:
-                print("copy to project: ", self.copy_to_project)
-                print(type(self.copy_to_project))
                 logger.info("copying to the project directory without decompressing...")
                 shutil.copytree(source, destination)
         else:
