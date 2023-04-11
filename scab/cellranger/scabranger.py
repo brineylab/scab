@@ -396,13 +396,12 @@ class Run:
         if "copy_to_project" in self.config:
             ctp = self.config["copy_to_project"]
             if isinstance(ctp, str):
-                if ctp.lower() == "true":
+                if ctp.strip().lower() == "true":
                     return True
                 else:
                     return False
             else:
                 return ctp
-
         else:
             return True
 
