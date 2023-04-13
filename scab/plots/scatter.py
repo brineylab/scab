@@ -49,6 +49,8 @@ def scatter(
     palette: Union[dict, Iterable, None] = None,
     color: Union[str, Iterable, None] = None,
     cmap: Union[str, mpl.colors.Colormap, None] = None,
+    hue_min: Optional[float] = None,
+    hue_max: Optional[float] = None,
     under_color: Union[str, Iterable, None] = "whitesmoke",
     size: Union[int, float] = 20,
     alpha: float = 0.6,
@@ -382,7 +384,12 @@ def scatter(
             chain=hue_chain if hue_chain is not None else chain,
         )
     df = pd.DataFrame(d, index=adata.obs.index)
-
+    # default x- and y-axis labels
+    if xlabel is None:
+        xlabel = f"{x} " + "($\mathregular{log_2}$ UMI counts)"
+    if ylabel is None:
+        ylabel = f"{y} " + "($\mathregular{log_2}$ UMI counts)"
+    # make the plot
     ax = abutils.pl.scatter(
         data=df,
         x="x",
