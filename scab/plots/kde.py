@@ -40,8 +40,8 @@ from ..ut import get_adata_values
 
 def kde(
     adata: AnnData,
-    x: Union[str, Iterable],
-    y: Union[str, Iterable, None] = None,
+    x: str,
+    y: Optional[str] = None,
     hue: Union[str, Iterable, None] = None,
     marker: str = "o",
     hue_order: Optional[Iterable] = None,
@@ -76,6 +76,7 @@ def kde(
     highlight_alpha: float = 0.9,
     kde_kwargs: Optional[dict] = None,
     scatter_kwargs: Optional[dict] = None,
+    legend_marker_alpha: Optional[float] = None,
     legend_fontsize: Union[int, float] = 12,
     legend_title: Optional[str] = None,
     legend_title_fontsize: int = 14,
@@ -118,16 +119,27 @@ def kde(
 
     Parameters
     ----------
-    x : str or iterable object
-        Name of a column in `data` or an iterable of values to be plotted on the
-        x-axis. Required.
+    adata : anndata.AnnData
+        A ``anndata.AnnData`` object containing the input data.
 
-    y : str or iterable object
-        Name of a column in `data` or an iterable of values to be plotted on the
-        y-axis.
+    x : str
+        Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the
+        x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
+        if data from different chains is being analyzed, using `x_chain`. BCR/TCR annotation
+        fields must contain numerical data. Required.
 
-    hue : str or iterable object, optional
-        Name of a column in `data` or an iterable of hue categories.
+    y : str, optional
+        Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the
+        y-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
+        if data from different chains is being analyzed, using `y_chain`. BCR/TCR annotation
+        fields must contain numerical data. If not provided, a 1-dimensional KDE plot
+        will be generated using `x` values only.
+
+    hue : str, optional
+        Name of a column in `adata.obs` or a BCR/TCR annotation field containing hue values.
+        BCR/TCR annotations can be further specified using `receptor` and `chain` or, if data
+        from different chains is being analyzed, using `hue_chain`. BCR/TCR annotation
+        fields must contain numerical data.
 
     marker : str, dict or iterable object, optional
         Marker style for the scatter plot. Accepts any of the following:
@@ -135,15 +147,6 @@ def kde(
           * a ``dict`` mapping `hue` categories to a `matplotlib marker`_ string
           * a ``list`` of `matplotlib marker`_ strings, which should be the same
               length as `x` and `y`.
-
-    data : pandas.DataFrame, optional
-        A ``DataFrame`` object containing the input data. If provided, `x`, `y` and/or `hue` should
-        be column names in `data`.
-
-    sequences : iterable of abutils.core.sequence.Sequence, optional
-        An iterable of ``Sequence`` objects. If provided, `x`, `y` and/or `hue` should be annotations
-        in the ``Sequence`` objects. Alternatively, `x`, `y` and/or `hue` can be an iterable of
-        values to be plotted, but must be the same length as `sequences`.
 
     hue_order : iterable object, optional
         List of `hue` categories in the order they should be plotted. If `hue_order` contains a
@@ -222,6 +225,7 @@ def kde(
         `chain` to be used for the hue. If not supplied, `chain` will be used. Only necessary
         when visualizing data from different chains on the same plot.
 
+
     show_scatter : bool, default=True
         If ``True``, a scatter plot will be added to the KDE plot.
 
@@ -269,8 +273,16 @@ def kde(
     highlight_alpha : float, default=0.9
         Alpha of the highlight points.
 
-    plot_kwargs : dict, optional
+    scatter_kwargs : dict, optional
         Dictionary containing keyword arguments that will be passed to ``pyplot.scatter()``.
+
+    kde_kwargs : dict, optional
+        Dictionary containing keyword arguments that will be passed to ``seaborn.kdeplot()``.
+
+    legend_marker_alpha : float, default=None
+        Opacity for legend markers (or legend labels if `legend_on_data` is ``True``).
+        By default, legend markers will use `alpha` and legend labels will be completely
+        opaque, equivalent to `legend_marker_alpha` of ``1.0``.
 
     legend_fontsize : int or float, default=12
         Fontsize for legend labels.
@@ -351,8 +363,10 @@ def kde(
         If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
         is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
 
-    figsize : iterable object, default=[6, 4]
-        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
+    figsize : iterable object, optional
+        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches. If
+        `y` is provided (a 2-dimensional KDE plot), the default is ``[6, 6]``. If `y` is
+        not provided (a 1-dimensional KDE plot), the default is ``[6, 4]``.
 
     figfile : str, optional
         Path at which to save the figure file. If not provided, the figure is not saved
@@ -382,14 +396,13 @@ def kde(
         https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.axes_grid1.inset_locator.inset_axes.html
 
     """
-
     # get x, y and hue data
     d = {}
     d["x"] = get_adata_values(
         adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
     )
     if y is not None:
-        d[y] = get_adata_values(
+        d["y"] = get_adata_values(
             adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
         )
     if hue is not None:
@@ -400,16 +413,25 @@ def kde(
             chain=hue_chain if hue_chain is not None else chain,
         )
     df = pd.DataFrame(d, index=adata.obs.index)
+    # figsize
+    if figsize is None:
+        if y is not None:
+            figsize = [6, 6]
+        else:
+            figsize = [6, 4]
     # default x- and y-axis labels
     if xlabel is None:
         xlabel = f"{x} " + "($\mathregular{log_2}$ UMI counts)"
     if ylabel is None:
-        ylabel = f"{y} " + "($\mathregular{log_2}$ UMI counts)"
+        if y is None:
+            ylabel = "Density"
+        else:
+            ylabel = f"{y} " + "($\mathregular{log_2}$ UMI counts)"
     # make the plot
     ax = abutils.pl.kde(
         data=df,
         x="x",
-        y=y,
+        y="y" if y is not None else y,
         hue=hue,
         marker=marker,
         hue_order=hue_order,
@@ -439,13 +461,14 @@ def kde(
         highlight_alpha=highlight_alpha,
         kde_kwargs=kde_kwargs,
         scatter_kwargs=scatter_kwargs,
-        legend_fontsize=legend_fontsize,
         legend_title=legend_title,
         legend_title_fontsize=legend_title_fontsize,
+        legend_marker_alpha=legend_marker_alpha,
+        legend_fontsize=legend_fontsize,
         legend_kwargs=legend_kwargs,
         hide_legend=hide_legend,
-        xlabel=xlabel,
-        ylabel=ylabel,
+        xlabel=xlabel if xlabel is not None else x,
+        ylabel=ylabel if ylabel is not None else y,
         title=title,
         title_fontsize=title_fontsize,
         title_fontweight=title_fontweight,

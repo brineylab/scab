@@ -23,6 +23,7 @@
 #
 
 
+from .plots.kde import kde
 from .plots.qc import qc_metrics
 from .plots.ridge import ridge
 from .plots.scatter import scatter
