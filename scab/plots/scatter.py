@@ -115,7 +115,7 @@ def scatter(
     Parameters
     ----------
 
-    adata : pandas.DataFrame
+    adata : anndata.AnnData
         A ``anndata.AnnData`` object containing the input data.
 
     x : str
@@ -402,6 +402,8 @@ def scatter(
         palette=palette,
         color=color,
         cmap=cmap,
+        hue_min=hue_min,
+        hue_max=hue_max,
         under_color=under_color,
         size=size,
         alpha=alpha,
