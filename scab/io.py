@@ -29,7 +29,7 @@ import pathlib
 import pickle
 import re
 import typing
-from typing import Any, Callable, Collection, Dict, Optional, Union
+from typing import Any, Callable, Collection, Dict, Literal, Optional, Union
 
 import numpy as np
 
@@ -37,7 +37,8 @@ import scanpy as sc
 
 import anndata
 from anndata import AnnData
-from anndata.compat import Literal
+
+# from anndata.compat import Literal
 from anndata._core.merge import StrategiesLiteral
 
 import abstar
