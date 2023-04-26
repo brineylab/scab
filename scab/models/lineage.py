@@ -25,6 +25,7 @@
 
 import copy
 from collections import Counter
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -124,18 +125,16 @@ class LineageAssignment:
     """
 
     def __init__(
-        self,
-        pair: abutils.Pair,
-        assignment_dict: dict,
+        self, pair: abutils.Pair, assignment_dict: dict,
     ):
         self.pair = pair
         self.assignment_dict = assignment_dict
         self.all_lineages = list(assignment_dict.values())
 
-    def __eq__(self, lineage_name):
+    def __eq__(self, lineage_name) -> bool:
         return lineage_name in self.all_lineages
 
-    def get(self, lineage_name):
+    def get(self, lineage_name) -> Optional[abutils.Pair]:
         """
         Gets the ``Pair`` that was assigned to a lineage. Note that if
         the original ``Pair`` object contained multiple heavy chains,
