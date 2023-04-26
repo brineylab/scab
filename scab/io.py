@@ -266,7 +266,7 @@ def read_10x_mtx(
     adata = sc.read_10x_mtx(mtx_path, gex_only=False, cache=cache)
     gex = adata[:, adata.var.feature_types == "Gene Expression"]
 
-    # process BCR data:
+    # process BCR/TCR data
     if bcr_file is not None:
         gex = merge_bcr(
             adata=gex,
@@ -283,47 +283,6 @@ def read_10x_mtx(
             abstar_germ_db=abstar_germ_db,
             verbose=verbose,
         )
-        # if bcr_format == "delimited":
-        #     delim_renames = {"\t": "tab", ",": "comma"}
-        #     if verbose:
-        #         d = delim_renames.get(bcr_delimiter, f"'{bcr_delimiter}'")
-        #         print(f"reading {d}-delimited BCR data...")
-        #     sequences = read_csv(
-        #         bcr_file,
-        #         delimiter=bcr_delimiter,
-        #         id_key=bcr_id_key,
-        #         sequence_key=bcr_sequence_key,
-        #     )
-        # elif bcr_format == "json":
-        #     if verbose:
-        #         print("reading JSON-formatted BCR data...")
-        #     sequences = read_json(
-        #         bcr_file, id_key=bcr_id_key, sequence_key=bcr_sequence_key
-        #     )
-        # elif bcr_format == "fasta":
-        #     if verbose:
-        #         print("reading FASTA-formatted BCR data...")
-        #     raw_seqs = read_fasta(bcr_file)
-        #     if verbose:
-        #         print("annotating BCR sequences with abstar...")
-        #     sequences = abstar.run(
-        #         raw_seqs,
-        #         output_type=abstar_output_format,
-        #         germ_db=abstar_germ_db,
-        #         verbose=verbose,
-        #     )
-        # pairs = assign_pairs(
-        #     sequences,
-        #     id_key=bcr_id_key,
-        #     delim=bcr_id_delimiter,
-        #     delim_occurance=bcr_id_delimiter_num,
-        #     chain_selection_func=chain_selection_func,
-        #     tenx_annot_file=bcr_annot,
-        # )
-        # pdict = {p.name: p for p in pairs}
-        # gex.obs["bcr"] = [pdict.get(o, Pair([])) for o in gex.obs_names]
-
-    # process TCR data:
     if tcr_file is not None:
         gex = merge_tcr(
             adata=gex,
@@ -340,46 +299,6 @@ def read_10x_mtx(
             abstar_germ_db=abstar_germ_db,
             verbose=verbose,
         )
-        # if tcr_format == "delimited":
-        #     delim_renames = {"\t": "tab", ",": "comma"}
-        #     if verbose:
-        #         d = delim_renames.get(tcr_delimiter, f"'{tcr_delimiter}'")
-        #         print(f"reading {d}-delimited BCR data...")
-        #     sequences = read_csv(
-        #         tcr_file,
-        #         delimiter=tcr_delimiter,
-        #         id_key=tcr_id_key,
-        #         sequence_key=tcr_sequence_key,
-        #     )
-        # elif tcr_format == "json":
-        #     if verbose:
-        #         print("reading JSON-formatted TCR data...")
-        #     sequences = read_json(
-        #         tcr_file, id_key=tcr_id_key, sequence_key=tcr_sequence_key
-        #     )
-        # elif tcr_format == "fasta":
-        #     if verbose:
-        #         print("reading FASTA-formatted TCR data...")
-        #     raw_seqs = read_fasta(tcr_file)
-        #     if verbose:
-        #         print("annotating TCR sequences with abstar...")
-        #     sequences = abstar.run(
-        #         raw_seqs,
-        #         receptor="tcr",
-        #         output_type=abstar_output_format,
-        #         germ_db=abstar_germ_db,
-        #         verbose=verbose,
-        #     )
-        # pairs = assign_pairs(
-        #     sequences,
-        #     id_key=tcr_id_key,
-        #     delim=tcr_id_delimiter,
-        #     delim_occurance=tcr_id_delimiter_num,
-        #     chain_selection_func=chain_selection_func,
-        #     tenx_annot_file=tcr_annot,
-        # )
-        # pdict = {p.name: p for p in pairs}
-        # gex.obs["tcr"] = [pdict.get(o, Pair([])) for o in gex.obs_names]
     if gex_only:
         return gex
 
