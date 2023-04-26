@@ -288,9 +288,7 @@ class Run:
     """
 
     def __init__(
-        self,
-        name: str,
-        config: dict,
+        self, name: str, config: dict,
     ):
         self.name = name
         self.config = config
@@ -562,8 +560,7 @@ class Run:
         return destination
 
     def _copy_samplesheet(
-        self,
-        d: Union[str, pathlib.Path],
+        self, d: Union[str, pathlib.Path],
     ):
         """
         Copies the run's samplesheet to a different directory.
@@ -577,8 +574,7 @@ class Run:
         shutil.copy(self.samplesheet, dest)
 
     def _copy_simple_csv(
-        self,
-        d: Union[str, pathlib.Path],
+        self, d: Union[str, pathlib.Path],
     ):
         """
         Copies the run's simple CSV to a different directory.
@@ -694,25 +690,19 @@ class Run:
         ss = SampleSheet(self.samplesheet)
         libraries = [s.Sample_Name for s in ss.samples]
         return libraries
-        # samples = []
-        # for s in ss.samples:
-        #     samples.append(Sample(s.Sample_ID, name=s.Sample_Name, index=s.index))
-        # return samples
 
     def _parse_simple_csv(self):
         """
         docstring for _parse_simple_csv()
         """
-        # samples = []
         libraries = []
         with open(self.simple_csv) as csvfile:
             reader = csv.DictReader(csvfile)
             for r in reader:
                 rlower = {k.lower(): v for k, v in r.items()}
-                libraries.append(rlower["sample"])
+                if sample := rlower["sample"].strip():
+                    libraries.append(sample)
         return libraries
-        # samples.append(Sample(r['Sample'], index=r['Index']))
-        # return samples
 
 
 class Sample:
