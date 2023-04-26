@@ -26,7 +26,7 @@
 from collections import Counter
 import itertools
 import sys
-from typing import Optional, Literal, Union, Callable
+from typing import Optional, Literal, Iterable, Union, Callable
 
 import pandas as pd
 import numpy as np
@@ -70,35 +70,81 @@ def merge(
     abstar_germ_db: str = "human",
     verbose: bool = False,
 ) -> AnnData:
-    """_summary_
-
+    """
+    Merge VDJ (either BCR or TCR) sequences into an ``AnnData`` object.
+    
     Parameters
     ----------
     adata : AnnData
-        _description_
-    vdj_file : Optional[str], optional
-        _description_, by default None
-    vdj_annot : Optional[str], optional
-        _description_, by default None
-    vdj_format : Literal[&quot;fasta&quot;, &quot;delimited&quot;, &quot;json&quot;], optional
-        _description_, by default "fasta"
-    vdj_delimiter : str, optional
-        _description_, by default "\t"
-    vdj_id_key : str, optional
-        _description_, by default "sequence_id"
-    vdj_sequence_key : str, optional
-        _description_, by default "sequence"
-    vdj_id_delimiter : str, optional
-        _description_, by default "_"
-    vdj_id_delimiter_num : int, optional
-        _description_, by default 1
-    chain_selection_func : Optional[Callable], optional
-        _description_, by default None
-    abstar_output_format : Literal[&quot;airr&quot;, &quot;json&quot;], optional
-        _description_, by default "airr"
-    abstar_germ_db : str, optional
-        _description_, by default "human"
+        ``AnnData`` object, typically obtained by first running ``scab.io.read_10x_mtx()``.
+        Required
+
+    vdj_file : str, optional
+        Path to a file containing BCR data. The file can be in one of several formats:
+
+                - FASTA-formatted file, as output by CellRanger
+
+                - delimited text file, containing annotated BCR sequences
+
+                - JSON-formatted file, containing annotated BCR sequences
+
+    vdj_annot : str, optional
+        Path to the CSV-formatted BCR annotations file produced by CellRanger. Matching the
+        annotation file to `vdj_file` is preferred -- if ``'all_contig.fasta'`` is the supplied
+        `vdj_file`, then ``'all_contig_annotations.csv'`` is the appropriate annotation file.
+
+    vdj_format : str, default='fasta'
+        Format of the input `vdj_file`. Options are: ``'fasta'``, ``'delimited'``, and
+        ``'json'``. If `vdj_format` is ``'fasta'``, `abstar`_
+        will be run on the input data to obtain annotated BCR data. By default, abstar will
+        produce `AIRR-formatted`_  (tab-delimited) annotations.
+
+    vdj_delimiter : str, default='\t'
+        Delimiter used in `vdj_file`. Only used if `vdj_format` is ``'delimited'``.
+        Default is ``'\t'``, which conforms to AIRR-C data standards.
+
+    vdj_id_key : str, default='sequence_id'
+        Name of the column or field in `vdj_file` that corresponds to the sequence ID.
+
+    vdj_sequence_key : str, default='sequence'
+        Name of the column or field in `vdj_file` that corresponds to the VDJ sequence.
+
+    vdj_id_delimiter : str, default='_'
+        The delimiter used to separate the droplet and contig components of the sequence ID.
+        For example, default CellRanger names are formatted as: ``'AAACCTGAGAACTGTA-1_contig_1'``, where
+        ``'AAACCTGAGAACTGTA-1'`` is the droplet identifier and ``'contig_1'`` is the contig identifier.
+
+    vdj_id_delimiter_num : str, default=1
+        The occurance (1-based numbering) of the `vdj_id_delimiter`.
+
+    abstar_output_format : str, default='airr'
+        Format for abstar annotations. Only used if `bcr_format` is ``'fasta'``.
+        Options are ``'airr'``, ``'json'`` and ``'tabular'``.
+
+    abstar_germ_db : str, default='human'
+        Germline database to be used for annotation of BCR data. Built-in abstar options
+        include: ``'human'``, ``'macaque'``, ``'mouse'`` and ``'humouse'``. Only used if
+        one or both of `bcr_format` is ``'fasta'``.
+
+    verbose : bool, default=True
+        Print progress updates.
+
+    Returns
+    -------
+    adata : AnnData
+        An ``AnnData`` object containing gene expression data, with VDJ information located
+        at ``adata.obs.{vdj_field}``.
+
+
+    .. _abstar:
+        https://github.com/briney/abstar
+
+    .. _AIRR-formatted:
+        https://docs.airr-community.org/en/stable/datarep/rearrangements.html
+    
     """
+    vdj_format = vdj_format.lower()
+    receptor = receptor.lower()
     if vdj_format == "delimited":
         delim_renames = {"\t": "tab", ",": "comma"}
         if verbose:
@@ -139,6 +185,13 @@ def merge(
     )
     pdict = {p.name: p for p in pairs}
     adata.obs[vdj_field] = [pdict.get(o, Pair([])) for o in adata.obs_names]
+
+    # pairing information
+    adata.obs[f"{vdj_field}_pairing"] = get_pairing_info(
+        adata.obs[vdj_field], receptor=receptor,
+    )
+    adata.obs[f"is_{vdj_field}_pair"] = [p.is_pair for p in adata.obs[vdj_field]]
+
     return adata
 
 
@@ -354,6 +407,94 @@ def merge_tcr(
         abstar_germ_db=abstar_germ_db,
         verbose=verbose,
     )
+
+
+def get_pairing_info(pairs: Iterable[Pair], receptor: str) -> Iterable:
+    """
+    Get pairing information for a list of ``Pair`` objects.
+
+    Parameters
+    ----------
+    pairs : Iterable[Pair]
+        List of ``Pair`` objects.
+
+    receptor : str
+        Receptor type. Options are ``'bcr'`` and ``'tcr'``.
+
+    Returns
+    -------
+    pair_status : Iterable
+    
+    """
+    pair_status = []
+    if receptor.lower() == "bcr":
+        for pair in pairs:
+            n_heavies = len(pair.heavies)
+            n_lights = len(pair.lights)
+            if n_heavies == 1 and n_lights == 1:
+                pair_status.append("single pair")
+            elif n_heavies == 1 and n_lights == 0:
+                pair_status.append("orphan heavy")
+            elif n_heavies == 0 and n_lights == 1:
+                pair_status.append("orphan light")
+            elif n_heavies >= 2 and n_lights == 0:
+                pair_status.append("multiple heavy")
+            elif n_heavies == 0 and n_lights >= 2:
+                pair_status.append("multiple light")
+            elif n_heavies >= 2 and n_lights >= 2:
+                pair_status.append("multichain")
+            elif n_heavies == 1 and n_lights >= 2:
+                pair_status.append("extra light")
+            elif n_heavies >= 2 and n_lights == 1:
+                pair_status.append("extra heavy")
+            else:
+                pair_status.append("no data")
+    else:
+        for pair in pairs:
+            n_alphas = len(pair.alphas)
+            n_betas = len(pair.betas)
+            n_deltas = len(pair.deltas)
+            n_gammas = len(pair.gammas)
+            # mismatched chains (alpha/beta and delta/gamma)
+            if any([n_alphas >= 1, n_betas >= 1]) and any(
+                [n_deltas >= 1, n_gammas >= 1]
+            ):
+                pair_status.append("ambiguous")
+            elif n_alphas == 1 and n_betas == 1:
+                pair_status.append("single pair")
+            elif n_deltas == 1 and n_gammas == 1:
+                pair_status.append("single pair")
+            elif n_alphas == 1 and n_betas == 0:
+                pair_status.append("orphan alpha")
+            elif n_alphas == 0 and n_betas == 1:
+                pair_status.append("orphan beta")
+            elif n_deltas == 1 and n_gammas == 1:
+                pair_status.append("orphan delta")
+            elif n_deltas == 0 and n_gammas == 1:
+                pair_status.append("orphan gamma")
+            elif n_alphas >= 2 and n_betas == 0:
+                pair_status.append("multiple alpha")
+            elif n_alphas == 0 and n_betas >= 2:
+                pair_status.append("multiple beta")
+            elif n_deltas >= 2 and n_gammas == 0:
+                pair_status.append("multiple delta")
+            elif n_deltas == 0 and n_gammas >= 2:
+                pair_status.append("multiple gamma")
+            elif n_alphas >= 2 and n_betas >= 2:
+                pair_status.append("multichain")
+            elif n_deltas >= 2 and n_gammas >= 2:
+                pair_status.append("multichain")
+            elif n_alphas == 1 and n_betas >= 2:
+                pair_status.append("extra beta")
+            elif n_alphas >= 2 and n_betas == 1:
+                pair_status.append("extra alpha")
+            elif n_deltas == 1 and n_gammas >= 2:
+                pair_status.append("extra gamma")
+            elif n_deltas >= 2 and n_gammas == 1:
+                pair_status.append("extra delta")
+            else:
+                pair_status.append("no data")
+    return pair_status
 
 
 def clonify(
