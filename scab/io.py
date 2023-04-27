@@ -299,14 +299,14 @@ def read_10x_mtx(
             abstar_germ_db=abstar_germ_db,
             verbose=verbose,
         )
+
     if gex_only:
         return gex
-
-    # TODO: need to check that non_gex is not empty
-    # because I think it's causing errors downstream
-    #
-    # parse out features and cellhashes
     non_gex = adata[:, adata.var.feature_types != "Gene Expression"]
+    if non_gex.shape[1] == 0:
+        return gex
+
+    # parse out features and cellhashes
     if ignore_cellhash_case:
         cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
     else:
