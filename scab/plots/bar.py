@@ -40,7 +40,7 @@ from ..ut import get_adata_values
 
 def bar(
     adata: AnnData,
-    x: str,
+    x: Optional[str] = None,
     y: Optional[str] = None,
     hue: Union[str, Iterable, None] = None,
     order: Optional[Iterable] = None,
@@ -84,8 +84,15 @@ def bar(
     
     x : str
         Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the
-        x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain`.
-        The data must be categorical. Required.
+        x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
+        if data from different chains is being analyzed, using `x_chain`. BCR/TCR annotation
+        fields must contain numerical data. At least one of `x` and `y` is required.
+
+    y : str
+        Name of a column in `adata.obs` or a BCR/TCR annotation field to be plotted on the
+        y-axis. BCR/TCR annotations can be further specified using `receptor` and `chain` or,
+        if data from different chains is being analyzed, using `y_chain`. BCR/TCR annotation
+        fields must contain numerical data. At least one of `x` and `y` is required.
 
     hue : str, optional
         Name of a column in `adata.obs` or an iterable of hue categories to be used to
@@ -212,12 +219,16 @@ def bar(
     """
     # get x and hue data
     d = {}
-    d["x"] = get_adata_values(
-        adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
-    )
-    d["y"] = get_adata_values(
-        adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
-    )
+    if x is not None:
+        d["x"] = get_adata_values(
+            adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
+        )
+        x = "x"
+    if y is not None:
+        d["y"] = get_adata_values(
+            adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
+        )
+        y = "y"
     if hue is not None:
         d[hue] = get_adata_values(
             adata,
@@ -230,8 +241,9 @@ def bar(
     # make the plot
     ax = abutils.pl.bar(
         data=df,
-        x="x",
-        hue="hue",
+        x=x,
+        y=y,
+        hue=hue,
         order=order,
         hue_order=hue_order,
         palette=palette,
