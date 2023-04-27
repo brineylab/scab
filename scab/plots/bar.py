@@ -223,11 +223,15 @@ def bar(
         d["x"] = get_adata_values(
             adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
         )
+        if xlabel is None:
+            xlabel = x
         x = "x"
     if y is not None:
         d["y"] = get_adata_values(
             adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
         )
+        if ylabel is None:
+            ylabel = y
         y = "y"
     if hue is not None:
         d[hue] = get_adata_values(
@@ -237,6 +241,9 @@ def bar(
             chain=hue_chain if hue_chain is not None else chain,
         )
     df = pd.DataFrame(d, index=adata.obs.index)
+
+    # drop all of the rows with missing `x` data
+    df = df.dropna(subset=["x"])
 
     # make the plot
     ax = abutils.pl.bar(
