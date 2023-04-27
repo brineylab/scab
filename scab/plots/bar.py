@@ -41,6 +41,7 @@ from ..ut import get_adata_values
 def bar(
     adata: AnnData,
     x: str,
+    y: Optional[str] = None,
     hue: Union[str, Iterable, None] = None,
     order: Optional[Iterable] = None,
     hue_order: Optional[Iterable] = None,
@@ -49,6 +50,8 @@ def bar(
     alt_color: Union[str, Iterable] = "#D3D3D3",
     receptor: str = "bcr",
     chain: str = "heavy",
+    x_chain: Optional[str] = None,
+    y_chain: Optional[str] = None,
     hue_chain: Optional[str] = None,
     normalize: bool = False,
     highlight: Union[str, Iterable, None] = None,
@@ -130,6 +133,14 @@ def bar(
         retrieved. Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``,
         ``'beta'``, ``'delta'`` or ``'gamma'``.
 
+    x_chain : str
+        `chain` to be used for the x-axis. If not supplied, `chain` will be used. Only necessary
+        when visualizing data from different chains on the same plot.
+
+    y_chain : str
+        `chain` to be used for the y-axis. If not supplied, `chain` will be used. Only necessary
+        when visualizing data from different chains on the same plot.
+
     hue_chain : str
         `chain` to be used for the hue. If not supplied, `chain` will be used. Only necessary
         when visualizing data from different chains on the same plot.
@@ -201,7 +212,12 @@ def bar(
     """
     # get x and hue data
     d = {}
-    d["x"] = get_adata_values(adata, x, receptor=receptor, chain=chain)
+    d["x"] = get_adata_values(
+        adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
+    )
+    d["y"] = get_adata_values(
+        adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
+    )
     if hue is not None:
         d[hue] = get_adata_values(
             adata,
