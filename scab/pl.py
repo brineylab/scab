@@ -23,6 +23,7 @@
 #
 
 
+from .plots.bar import bar
 from .plots.kde import kde
 from .plots.qc import qc_metrics
 from .plots.ridge import ridge
@@ -1995,225 +1996,225 @@ def feature_ridge(
 # ===========================
 
 
-def bar(
-    adata,
-    *,
-    x=None,
-    y=None,
-    hue=None,
-    order=None,
-    hue_order=None,
-    palette=None,
-    color=None,
-    alt_color="#D3D3D3",
-    normalize=False,
-    highlight=None,
-    highlight_color=None,
-    receptor="bcr",
-    chain="heavy",
-    x_chain=None,
-    y_chain=None,
-    hue_chain=None,
-    orientation="vertical",
-    plot_kwargs=None,
-    legend_kwargs=None,
-    hide_legend=False,
-    xlabel=None,
-    ylabel=None,
-    xlabel_fontsize=16,
-    ylabel_fontsize=16,
-    xtick_labelsize=14,
-    ytick_labelsize=14,
-    xtick_labelrotation=0,
-    ytick_labelrotation=0,
-    show=False,
-    figsize=[6, 4],
-    figfile=None,
-):
-    """
-    Produces a bar plot of categorical data. For data with distinct batches, a stacked
-    bar plot will be constructed.
+# def bar(
+#     adata,
+#     *,
+#     x=None,
+#     y=None,
+#     hue=None,
+#     order=None,
+#     hue_order=None,
+#     palette=None,
+#     color=None,
+#     alt_color="#D3D3D3",
+#     normalize=False,
+#     highlight=None,
+#     highlight_color=None,
+#     receptor="bcr",
+#     chain="heavy",
+#     x_chain=None,
+#     y_chain=None,
+#     hue_chain=None,
+#     orientation="vertical",
+#     plot_kwargs=None,
+#     legend_kwargs=None,
+#     hide_legend=False,
+#     xlabel=None,
+#     ylabel=None,
+#     xlabel_fontsize=16,
+#     ylabel_fontsize=16,
+#     xtick_labelsize=14,
+#     ytick_labelsize=14,
+#     xtick_labelrotation=0,
+#     ytick_labelrotation=0,
+#     show=False,
+#     figsize=[6, 4],
+#     figfile=None,
+# ):
+#     """
+#     Produces a bar plot of categorical data. For data with distinct batches, a stacked
+#     bar plot will be constructed.
 
-    Parameters
-    ----------
-    adata : anndata.AnnData
-        An ``AnnData`` object containing the input data. `adata` must have ``adata.obs.bcr``
-        or ``adata.obs.tcr`` populated with annotated BCR/TCR information. Required
+#     Parameters
+#     ----------
+#     adata : anndata.AnnData
+#         An ``AnnData`` object containing the input data. `adata` must have ``adata.obs.bcr``
+#         or ``adata.obs.tcr`` populated with annotated BCR/TCR information. Required
 
-    x : str
-        Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be plotted on the
-        x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain`.
-        Required.
+#     x : str
+#         Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be plotted on the
+#         x-axis. BCR/TCR annotations can be further specified using `receptor` and `chain`.
+#         Required.
 
-    hue : str, optional
-        Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be used to
-        group data into stacked bars. If not provided, an un-stacked bar plot is created.
+#     hue : str, optional
+#         Name of a column in ``adata.obs`` or a BCR/TCR annotation field to be used to
+#         group data into stacked bars. If not provided, an un-stacked bar plot is created.
 
-    order : iterable object, optional
-        List of `x` categories in the order they should be plotted. If `order` contains a
-        subset of all categories found in `x`, only the supplied categories will be plotted.
-        If not provided, categories will be plotted in ``natsort.natsorted()`` order.
+#     order : iterable object, optional
+#         List of `x` categories in the order they should be plotted. If `order` contains a
+#         subset of all categories found in `x`, only the supplied categories will be plotted.
+#         If not provided, categories will be plotted in ``natsort.natsorted()`` order.
 
-    hue_order : iterable object, optional
-        List of `hue` categories in the order they should be plotted. If `hue_order` contains a
-        subset of all categories found in `hue`, only the supplied categories will be plotted.
-        If not provided, `hue` categories will be plotted in ``natsort.natsorted()`` order.
+#     hue_order : iterable object, optional
+#         List of `hue` categories in the order they should be plotted. If `hue_order` contains a
+#         subset of all categories found in `hue`, only the supplied categories will be plotted.
+#         If not provided, `hue` categories will be plotted in ``natsort.natsorted()`` order.
 
-    palette : dict, optional
-        Dictionary mapping `hue` or `x` names to colors. If both are provided, `hue` categories
-        take priority. If neither `palette` nor `color` are provided, bars are colored using
-        `color` (if `hue` is ``None``) or a palette is generated automatically using
-        ``sns.hls_palette()``.
+#     palette : dict, optional
+#         Dictionary mapping `hue` or `x` names to colors. If both are provided, `hue` categories
+#         take priority. If neither `palette` nor `color` are provided, bars are colored using
+#         `color` (if `hue` is ``None``) or a palette is generated automatically using
+#         ``sns.hls_palette()``.
 
-    color : str or iterable, optional
-        Single color to be used for the bar plot. If not provided, the first color in the
-        default ``Seaborn`` color palette will be used. If `highlight` is provided but
-        `highlight_color` is not, `color` will be used to color highlighted bars.
+#     color : str or iterable, optional
+#         Single color to be used for the bar plot. If not provided, the first color in the
+#         default ``Seaborn`` color palette will be used. If `highlight` is provided but
+#         `highlight_color` is not, `color` will be used to color highlighted bars.
 
-    alt_color : str or iterable, default='#D3D3D3'
-        Alternate color for the bar plot. Used to color categories not provided in `palette`
-        or to color categories not present in `highlight`.
+#     alt_color : str or iterable, default='#D3D3D3'
+#         Alternate color for the bar plot. Used to color categories not provided in `palette`
+#         or to color categories not present in `highlight`.
 
-    orientation : str, optional
-        Orientation of the plot. Options are ``'vertical'`` or ``'horizontal'``. Default is
-        ``'vertical'``.
+#     orientation : str, optional
+#         Orientation of the plot. Options are ``'vertical'`` or ``'horizontal'``. Default is
+#         ``'vertical'``.
 
-    normalize : bool, default=False
-        If ``True``, normalized frequencies are plotted instead of raw counts. If multiple `hue`
-        categories are present, each `x` category will be separately normalized such that all
-        bars extend from [0,1] and each stacked bar is sized according to its fraction of the
-        `x` category. If `hue` is not provided or there is only one `hue` category, the entire
-        dataset is normalized.
+#     normalize : bool, default=False
+#         If ``True``, normalized frequencies are plotted instead of raw counts. If multiple `hue`
+#         categories are present, each `x` category will be separately normalized such that all
+#         bars extend from [0,1] and each stacked bar is sized according to its fraction of the
+#         `x` category. If `hue` is not provided or there is only one `hue` category, the entire
+#         dataset is normalized.
 
-    highlight : iterable, optional
-        List of `x` or `hue` categories to be highlighted. If `highlight_color` is provided,
-        categories in `highlight` will use `highlight_color` and all others will use `alt_color`.
-        If `highlight_color` is not provided, `palette` will be used. If both `highlight_color`
-        and `palette` are not provided, `color` will be used.
+#     highlight : iterable, optional
+#         List of `x` or `hue` categories to be highlighted. If `highlight_color` is provided,
+#         categories in `highlight` will use `highlight_color` and all others will use `alt_color`.
+#         If `highlight_color` is not provided, `palette` will be used. If both `highlight_color`
+#         and `palette` are not provided, `color` will be used.
 
-    highlight_color : str or iterable, optional
-        Color to be used for categories in `highlight`. If
+#     highlight_color : str or iterable, optional
+#         Color to be used for categories in `highlight`. If
 
-    receptor : str, default='bcr'
-        Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.
+#     receptor : str, default='bcr'
+#         Receptor for which data should be plotted. Options are ``'bcr'`` and ``'tcr'``.
 
-    chain : str, default='heavy'
-        If `x` is a BCR/TCR annotation field, chain for which annotation will be retrieved.
-        Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``,
-        ``'beta'``, ``'delta'`` or ``'gamma'``.
+#     chain : str, default='heavy'
+#         If `x` is a BCR/TCR annotation field, chain for which annotation will be retrieved.
+#         Options are ``'heavy'``, ``'light'``, ``'kappa'``, ``'lambda'``, ``'alpha'``,
+#         ``'beta'``, ``'delta'`` or ``'gamma'``.
 
-    plot_kwargs : dict, optional
-        Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
+#     plot_kwargs : dict, optional
+#         Dictionary containing keyword arguments that will be passed to ``pyplot.bar()``.
 
-    legend_kwargs : dict, optional
-        Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
+#     legend_kwargs : dict, optional
+#         Dictionary containing keyword arguments that will be passed to ``ax.legend()``.
 
-    hide_legend : bool, default=False
-        By default, a plot legend will be shown if multiple batches are plotted. If ``True``,
-        the legend will not be shown.
+#     hide_legend : bool, default=False
+#         By default, a plot legend will be shown if multiple batches are plotted. If ``True``,
+#         the legend will not be shown.
 
-    xlabel : str, optional
-        Text for the X-axis label.
+#     xlabel : str, optional
+#         Text for the X-axis label.
 
-    ylabel : str, optional
-        Text for the Y-axis label.
+#     ylabel : str, optional
+#         Text for the Y-axis label.
 
-    xlabel_fontsize : int or float, default=16
-        Fontsize for the X-axis label text.
+#     xlabel_fontsize : int or float, default=16
+#         Fontsize for the X-axis label text.
 
-    ylabel_fontsize : int or float, default=16
-        Fontsize for the Y-axis label text.
+#     ylabel_fontsize : int or float, default=16
+#         Fontsize for the Y-axis label text.
 
-    xtick_labelsize : int or float, default=14
-        Fontsize for the X-axis tick labels.
+#     xtick_labelsize : int or float, default=14
+#         Fontsize for the X-axis tick labels.
 
-    ytick_labelsize : int or float, default=14
-        Fontsize for the Y-axis tick labels.
+#     ytick_labelsize : int or float, default=14
+#         Fontsize for the Y-axis tick labels.
 
-    xtick_labelrotation : int or float, default=0
-        Rotation of the X-axis tick labels.
+#     xtick_labelrotation : int or float, default=0
+#         Rotation of the X-axis tick labels.
 
-    ytick_labelrotation : int or float, default=0
-        Rotation of the Y-axis tick labels.
+#     ytick_labelrotation : int or float, default=0
+#         Rotation of the Y-axis tick labels.
 
-    show :bool, default=False
-        If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
-        is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
+#     show :bool, default=False
+#         If ``True``, plot is shown and the plot ``Axes`` object is not returned. Default
+#         is ``False``, which does not call ``pyplot.show()`` and returns the ``Axes`` object.
 
-    figsize : iterable object, default=[6, 4]
-        List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
+#     figsize : iterable object, default=[6, 4]
+#         List containing the figure size (as ``[x-dimension, y-dimension]``) in inches.
 
-    figfile : str, optional
-        Path at which to save the figure file. If not provided, the figure is not saved
-        and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.
-    """
+#     figfile : str, optional
+#         Path at which to save the figure file. If not provided, the figure is not saved
+#         and is either shown (if `show` is ``True``) or the ``Axes`` object is returned.
+#     """
 
-    # get x, y and hue data
-    d = {}
-    if x is not None:
-        d["x"] = get_adata_values(
-            adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
-        )
-        if xlabel is None:
-            xlabel = x
-        x = "x"
-    if y is not None:
-        d["y"] = get_adata_values(
-            adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
-        )
-        if ylabel is None:
-            ylabel = y
-        y = "y"
-    if hue is not None:
-        d[hue] = get_adata_values(
-            adata,
-            hue,
-            receptor=receptor,
-            chain=hue_chain if hue_chain is not None else chain,
-        )
-    df = pd.DataFrame(d)
+#     # get x, y and hue data
+#     d = {}
+#     if x is not None:
+#         d["x"] = get_adata_values(
+#             adata, x, receptor=receptor, chain=x_chain if x_chain is not None else chain
+#         )
+#         if xlabel is None:
+#             xlabel = x
+#         x = "x"
+#     if y is not None:
+#         d["y"] = get_adata_values(
+#             adata, y, receptor=receptor, chain=y_chain if y_chain is not None else chain
+#         )
+#         if ylabel is None:
+#             ylabel = y
+#         y = "y"
+#     if hue is not None:
+#         d[hue] = get_adata_values(
+#             adata,
+#             hue,
+#             receptor=receptor,
+#             chain=hue_chain if hue_chain is not None else chain,
+#         )
+#     df = pd.DataFrame(d)
 
-    df = df.dropna(subset=["x"])
+#     df = df.dropna(subset=["x"])
 
-    # make the plot
-    ax = abutils.pl.bar(
-        data=df,
-        x=x,
-        y=y,
-        hue=hue,
-        order=order,
-        hue_order=hue_order,
-        palette=palette,
-        color=color,
-        alt_color=alt_color,
-        normalize=normalize,
-        highlight=highlight,
-        highlight_color=highlight_color,
-        orientation=orientation,
-        plot_kwargs=plot_kwargs,
-        legend_kwargs=legend_kwargs,
-        hide_legend=hide_legend,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        xlabel_fontsize=xlabel_fontsize,
-        ylabel_fontsize=ylabel_fontsize,
-        xtick_labelsize=xtick_labelsize,
-        ytick_labelsize=ytick_labelsize,
-        xtick_labelrotation=xtick_labelrotation,
-        ytick_labelrotation=ytick_labelrotation,
-        show=False,
-        figsize=figsize,
-        figfile=None,
-    )
+#     # make the plot
+#     ax = abutils.pl.bar(
+#         data=df,
+#         x=x,
+#         y=y,
+#         hue=hue,
+#         order=order,
+#         hue_order=hue_order,
+#         palette=palette,
+#         color=color,
+#         alt_color=alt_color,
+#         normalize=normalize,
+#         highlight=highlight,
+#         highlight_color=highlight_color,
+#         orientation=orientation,
+#         plot_kwargs=plot_kwargs,
+#         legend_kwargs=legend_kwargs,
+#         hide_legend=hide_legend,
+#         xlabel=xlabel,
+#         ylabel=ylabel,
+#         xlabel_fontsize=xlabel_fontsize,
+#         ylabel_fontsize=ylabel_fontsize,
+#         xtick_labelsize=xtick_labelsize,
+#         ytick_labelsize=ytick_labelsize,
+#         xtick_labelrotation=xtick_labelrotation,
+#         ytick_labelrotation=ytick_labelrotation,
+#         show=False,
+#         figsize=figsize,
+#         figfile=None,
+#     )
 
-    # save, show or return the ax
-    if figfile is not None:
-        plt.tight_layout()
-        plt.savefig(figfile)
-    elif show:
-        plt.show()
-    else:
-        return ax
+#     # save, show or return the ax
+#     if figfile is not None:
+#         plt.tight_layout()
+#         plt.savefig(figfile)
+#     elif show:
+#         plt.show()
+#     else:
+#         return ax
 
 
 # def bar(
