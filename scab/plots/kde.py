@@ -108,7 +108,7 @@ def kde(
     cbar_title_loc: Optional[str] = None,
     cbar_title_labelpad: float = 8.0,
     hide_cbar: bool = False,
-    equal_axes: bool = False,
+    equal_axes: bool = True,
     ax: Optional[mpl.axes.Axes] = None,
     show: bool = False,
     figsize: Optional[Iterable] = None,
