@@ -23,7 +23,9 @@
 #
 
 
+import copy
 from collections import Counter
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -38,8 +40,7 @@ from abstar.utils.regions import (
     IMGT_REGION_END_POSITIONS_AA,
 )
 
-from abutils import Sequence
-from abutils.utils.alignment import muscle
+import abutils
 
 
 class Lineage:
@@ -116,6 +117,52 @@ class Lineage:
             pairs_only=pairs_only,
             padding_width=padding_width,
         )
+
+
+class LineageAssignment:
+    """
+    docstring for LineageAssignment
+    """
+
+    def __init__(
+        self, pair: abutils.Pair, assignment_dict: dict,
+    ):
+        self.pair = pair
+        self.assignment_dict = assignment_dict
+        self.all_lineages = list(assignment_dict.values())
+
+    def __eq__(self, lineage_name) -> bool:
+        return lineage_name in self.all_lineages
+
+    def get(self, lineage_name) -> Optional[abutils.Pair]:
+        """
+        Gets the ``Pair`` that was assigned to a lineage. Note that if
+        the original ``Pair`` object contained multiple heavy chains,
+        a modified ``Pair`` is returned containing all light chains from the
+        original ``Pair`` but only the heavy chain assigned to the lineage.
+
+        Parameters
+        ----------
+        lineage_name : str
+            Lineage name. Required
+
+        Returns
+        -------
+        abutils.Pair
+            A ``Pair`` that was assigned to the specified lineage. Note that if
+            the original ``Pair`` object contained multiple heavy chains,
+            a modified ``Pair`` is returned containing all light chains from the
+            original ``Pair`` but only the heavy chain assigned to the lineage.
+        """
+        if lineage_name not in self.all_lineages:
+            return None
+        lookup = {v: k for k, v in self.assignment_dict.items()}
+        identifier = lookup[lineage_name]
+        i = int(identifier.split("__")[-1])
+        p = copy.deepcopy(self.pair)
+        p.heavy = p.heavies[i]
+        p.heavies = [p.heavy]
+        return p
 
 
 class LineageSummary:
@@ -428,9 +475,9 @@ class LineageSummary:
         # junction_end = IMGT_REGION_START_POSITIONS_AA['FR4']
         # get data for germline line
         d = {"name": "germ", "order": 0}
-        dbname = Counter([s["germline_database"] for s in notnone_sequences]).most_common(1)[0][
-            0
-        ]
+        dbname = Counter(
+            [s["germline_database"] for s in notnone_sequences]
+        ).most_common(1)[0][0]
         v_gene = Counter([s["v_call"] for s in notnone_sequences]).most_common(1)[0][0]
         j_gene = Counter([s["j_call"] for s in notnone_sequences]).most_common(1)[0][0]
         v_germ = get_imgt_germlines(dbname, "V", gene=v_gene)
@@ -456,13 +503,13 @@ class LineageSummary:
         # do the alignments
         names = df["name"]
         for region in ["cdr1", "cdr2", "junction"]:
-            aln_seqs = [Sequence(s, id=n) for s, n in zip(df[region], names)]
-            aln = muscle(aln_seqs)
+            aln_seqs = [abutils.Sequence(s, id=n) for s, n in zip(df[region], names)]
+            aln = abutils.tl.muscle(aln_seqs)
             # aln_dict = {rec.id: str(rec.seq) for rec in aln}
             aln_dict = {}
             for rec in aln:
                 if not str(rec.seq).replace("-", "").replace("X", ""):
-                    aln_dict[rec.id] = " " + len(str(rec.seq))
+                    aln_dict[rec.id] = " " * len(str(rec.seq))
                 else:
                     aln_dict[rec.id] = str(rec.seq)
             df[f"{region}_aligned"] = [aln_dict[str(n)] for n in names]

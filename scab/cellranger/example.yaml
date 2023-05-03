@@ -1,0 +1,118 @@
+# SEQUENCING RUNS
+# ---------------
+# the name of the sequencing run can be whatever you want, but no spaces or punctuation
+# that would mess up file paths (scabranger names folders by sequencing run)
+#
+#
+# there are two ways to supply run data (at least one run is required):
+#   - url: the run data will be downloaded to the project folder from the supplied URL
+#   - path: path to a the Illumina run data folder
+#
+# NOTE: if supplying a path, it is best to use the full (absolute) path rather than
+# a relative path, since relative paths will be resolved to wherever scabranger is being
+# run, which may have unexpected consequences.
+#
+#
+# there are also two ways to supply run metadata (at least one is required per run):
+#   - simple_csv: path to a 10x Genomics-formatted simple CSV file for use with `cellranger mkfastq`
+#   - samplesheet: path to an Illumina samplesheet
+#
+#
+# additional options:
+#   - is_compressed: set to `False` to explicitly skip decompression. By default, runs
+#                    are assumed to be compressed unless they are a directory
+#   - copy_to_project: set to `False` to explicitly skip copying run data to the project folder.
+#                      ignored if the sequencing run is a URL, since it must be downloaded.
+
+sequencing_runs:
+  NS001:
+    url: s3://brineylab/run_data/ns001.tar.gz
+    samplesheet: /data/samplesheets/ns001.csv
+
+  NS002:
+    path: ./ns002_run-data/
+    is_compressed: False
+    simple_csv: ./ns002.csv
+    copy_to_project: False
+
+# SAMPLES
+# -------
+# for each sample, specify all library types and the associated library name
+# any library type accepted by CellRanger multi can be used:
+# https://support.10xgenomics.com/single-cell-vdj/software/pipelines/latest/using/multi)
+samples:
+  sample1:
+    Gene Expression: sample1_gex
+    Antibody Capture: sample1_features
+    VDJ-B: sample1_ig
+    VDJ-T: sample1_tcr
+    VDJ-T-GD: sample1_tcr-gd
+
+  sample2:
+    Gene Expression: sample2_gex
+    CRISPR Guide Capture: sample2_crispr
+
+# REFERENCES
+# ----------
+# "default" reference will be used on all samples unless otherwise specified
+gex_reference:
+  default: /path/to/default_transcriptome
+  sample1: /path/to/alternate_transcriptome
+
+  # paths to GEX references for different species are:
+  #   * human - /references/refdata-gex-GRCh38-2020-A
+  #   * macaque - /references/Mmul_10
+  #   * mouse - /references/refdata-cellranger-mm10-3.0.0
+
+vdj_reference:
+  default: /path/to/default_vdj_reference
+  sample1: /path/to/alternate_vdj_reference
+
+  # paths to VDJ references for different species are:
+  #   * human - /references/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0
+  #   * macaque - /references/refdata-cellranger-vdj-macaque-imgt-1.0.0
+  #   * mouse - /references/refdata-cellranger-vdj-GRCm38-alts-ensembl-3.1.0
+
+feature_reference:
+  default: /path/to/default_feature_reference
+
+# ADDITIONAL COMMAND LINE OPTIONS
+# -------------------------------
+# "default" will be used unless otherwise specified
+#
+# don't forget that mkfastq applies to runs and multi applies to samples, so:
+#   - RUN names should be used to specify additional CLI options for cellranger mkfastq,
+#   - SAMPLE names should be used to specifiy additional CLI options for cellranger multi
+cli_options:
+  mkfastq:
+    default: ""
+    NS002: "--rc-i2-override=true"
+
+  multi:
+    default: ""
+    sample1: "--expect-cells=5000 --no-bam=true"
+
+# COMPRESS
+# --------
+# following all cellranger activities, the resulting data can
+# be compressed using the configuration settings in this block
+#
+# if the block is empty, output data is not compressed
+#
+# by default, the entire project directory is compressed into its
+# parent directory (unless otherwise specificied using the
+# destination option)
+#
+# also by default, the run_data folder will be excluded
+# if the run_data folder should be included, set the
+# exclude_run_data option to False
+
+compress:
+  exclude_run_data: True
+  destination:
+
+# MISCELLENEOUS
+# -------------
+uiport: 40909 # port for the cellranger UI
+cellranger: cellranger # path to the cellranger binary
+

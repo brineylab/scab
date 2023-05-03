@@ -1,9 +1,10 @@
-abstar
-abutils>=0.2.5
+abstar>=0.5.9
+abutils>=0.2.10
 anndata
 dnachisel
 fastcluster
 harmonypy
+humanize
 leidenalg
 matplotlib
 mnemonic
@@ -13,6 +14,8 @@ pandas
 prettytable
 pytest
 python-Levenshtein
+pyyaml
+sample-sheet
 scanpy
 scanorama
 scipy

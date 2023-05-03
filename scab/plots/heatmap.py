@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-# filename: ut.py
+# filename: heatmap.py
 
 
 #
-# Copyright (c) 2021 Bryan Briney
+# Copyright (c) 2023 Bryan Briney
 # License: The MIT license (http://opensource.org/licenses/MIT)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -21,22 +21,3 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-
-
-def get_adata_values(adata, key, receptor="bcr", chain="heavy"):
-    try:
-        return adata.obs_vector(key)
-    except KeyError:
-        data = []
-        if receptor not in adata.obs:
-            raise ValueError(
-                f"Receptor {receptor} was not found in the supplied AnnData object"
-            )
-        vdjs = adata.obs[receptor]
-        for vdj in vdjs:
-            if (seq := getattr(vdj, chain)) is not None:
-                data.append(seq[key])
-            else:
-                data.append(None)
-        return data
-

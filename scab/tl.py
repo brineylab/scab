@@ -23,8 +23,9 @@
 #
 
 import os
-import sys
 import re
+import sys
+from typing import Optional, Union
 
 from natsort import natsorted
 
@@ -34,6 +35,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import scanpy as sc
+
+import anndata
 
 from sklearn.neighbors import KernelDensity
 
@@ -45,280 +48,462 @@ from scipy.signal import argrelextrema
 import statsmodels.api as sm
 
 from .io import read_10x_mtx
+from .tools.batch_correction import combat, mnn, scanorama
+from .tools.embeddings import umap, pca, dimensionality_reduction
 
 
-def dimensionality_reduction(
-    adata,
-    solver="arpack",
-    n_neighbors=20,
-    n_pcs=40,
-    ignore_ig=True,
-    paga=True,
-    use_rna_velocity=False,
-    use_rep=None,
-    random_state=None,
-    resolution=1.0,
-    verbose=True,
-):
-    """
-    Performs PCA, neighborhood graph construction and UMAP embedding. 
-    PAGA is optional, but is performed by default.  
+# def pca(
+#     adata: anndata.AnnData,
+#     solver: str = "arpack",
+#     n_pcs: int = 40,
+#     ignore_ig: bool = True,
+#     verbose: bool = True,
+# ) -> anndata.AnnData:
+#     """
+#     Performs PCA, neighborhood graph construction and UMAP embedding.
+#     PAGA is optional, but is performed by default.
 
-    Parameters
-    ----------
+#     Parameters
+#     ----------
 
-    adata : anndata.AnnData)
-        ``AnnData`` object containing gene counts data.  
+#     adata : anndata.AnnData
+#         ``AnnData`` object containing gene counts data.
 
-    solver : str, default='arpack'  
-        Solver to use for the PCA.  
+#     solver : str, default='arpack'
+#         Solver to use for the PCA.
 
-    n_neighbors : int, default=10
-        Number of neighbors to calculate for the neighbor graph.  
+#     n_pcs : int, default=40
+#         Number of principal components to use when computing the neighbor graph.
+#         Although the default value is generally appropriate, it is sometimes useful
+#         to empirically determine the optimal value for `n_pcs`.
 
-    n_pcs : int, default=40  
-        Number of principal components to use when computing the neighbor graph.
-        Although the default value is generally appropriate, it is sometimes useful
-        to empirically determine the optimal value for `n_pcs`.
-
-    paga : bool, default=True  
-        If ``True``, performs partition-based graph abstraction (PAGA_) prior to 
-        UMAP embedding.  
-
-    use_rna_velocity : bool, default=False  
-        If ``True``, uses RNA velocity information to compute PAGA. If ``False``, 
-        this option is ignored.  
-
-    use_rep : str, optional  
-        Representation to use when `computing neighbors`_. For example, if data have 
-        been batch normalized with ``scanorama``, the representation
-        should be ``'Scanorama'``. If not provided, ``scanpy``'s default 
-        representation is used.
-
-    random_state : int, optional  
-        Seed for the random state used by ``sc.tl.umap``.  
-
-    resolution : float, default=1.0  
-        Resolution for Leiden clustering.  
-
-    
-    Returns
-    -------
-    adata : ``anndata.AnnData``
+#     ignore_ig : bool, default=True
+#         Ignores immunoglobulin V, D and J genes when computing the PCA.
 
 
-    .. _PAGA: 
-        https://github.com/theislab/paga  
-    .. _computing neighbors: 
-        https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.neighbors.html
-
-    """
-    if verbose:
-        print("performing PCA...")
-    if ignore_ig:
-        _adata = adata.copy()
-        _adata.var['highly_variable'] = _adata.var['highly_variable'] & ~(_adata.var['ig'])
-        sc.tl.pca(_adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
-        adata.obsm['X_pca'] = _adata.obsm['X_pca']
-        adata.varm['PCs'] = _adata.varm['PCs']
-        adata.uns['pca'] = {'variance_ratio': _adata.uns['pca']['variance_ratio'],
-                            'variance': _adata.uns['pca']['variance']}
-    else:
-        sc.tl.pca(adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
-    if verbose:
-        print("calculating neighbors...")
-    sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, use_rep=use_rep)
-    if verbose:
-        print("leiden clustering...")
-    sc.tl.leiden(adata, resolution=resolution)
-    if paga:
-        if verbose:
-            print("paga...")
-        #         solid_edges = 'transitions_confidence' if use_rna_velocity else 'connectivities'
-        sc.tl.paga(adata, use_rna_velocity=use_rna_velocity)
-        if use_rna_velocity:
-            adata.uns["paga"]["connectivities"] = adata.uns["paga"][
-                "transitions_confidence"
-            ]
-        sc.pl.paga(adata, plot=False)
-        if verbose:
-            print("umap...")
-        sc.tl.umap(
-            adata, init_pos="paga", random_state=random_state,
-        )
-    else:
-        if verbose:
-            print("umap...")
-        sc.tl.umap(adata, random_state=random_state)
-    return adata
+#     Returns
+#     -------
+#     adata : ``anndata.AnnData``
 
 
-def combat(adata, batch_key="batch", covariates=None, dim_red=True):
-    """
-    Batch effect correction using ComBat_ [Johnson07]_.  
+#     .. _PAGA:
+#         https://github.com/theislab/paga
+#     .. _computing neighbors:
+#         https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.neighbors.html
 
-    .. seealso::
-        | W. Evan Johnson, Cheng Li, Ariel Rabinovic
-        | Adjusting batch effects in microarray expression data using empirical Bayes methods
-        | *Biostatistics* 2007, doi: 10.1093/biostatistics/kxj037
-
-
-    Parameters
-    ----------
-
-    adata : anndata.AnnData
-        ``AnnData`` object containing gene counts data.
-
-    batch_key : str, default='batch'  
-        Name of the column in adata.obs that corresponds to the batch.  
-
-    covariates : iterable object, optional  
-        List of additional covariates besides the batch variable such as adjustment variables 
-        or biological condition. Not including covariates may lead to the removal of real
-        biological signal.  
-
-    dim_red : bool, default=True  
-        If ``True``, dimentionality reduction will be performed on the post-integration data using 
-        ``scab.tl.dimensionality_reduction()``.  
-
-    Returns
-    -------
-    adata : ``anndata.AnnData``
+#     """
+#     if verbose:
+#         print("performing PCA...")
+#     if ignore_ig:
+#         _adata = adata.copy()
+#         _adata.var["highly_variable"] = _adata.var["highly_variable"] & ~(
+#             _adata.var["ig"]
+#         )
+#         sc.tl.pca(_adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
+#         adata.obsm["X_pca"] = _adata.obsm["X_pca"]
+#         adata.varm["PCs"] = _adata.varm["PCs"]
+#         adata.uns["pca"] = {
+#             "variance_ratio": _adata.uns["pca"]["variance_ratio"],
+#             "variance": _adata.uns["pca"]["variance"],
+#         }
+#     else:
+#         sc.tl.pca(adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
+#     return adata
 
 
-    .. _ComBat: 
-        https://github.com/brentp/combat.py
+# def umap(
+#     adata: anndata.AnnData,
+#     solver: str = "arpack",
+#     n_neighbors: int = 20,
+#     n_pcs: int = 40,
+#     force_pca: bool = False,
+#     ignore_ig: bool = True,
+#     paga: bool = True,
+#     use_rna_velocity: bool = False,
+#     use_rep: Optional[str] = None,
+#     random_state: Union[int, float, str] = 42,
+#     resolution: float = 1.0,
+#     verbose: bool = True,
+# ) -> anndata.AnnData:
+#     """
+#     Performs PCA, neighborhood graph construction and UMAP embedding.
+#     PAGA is optional, but is performed by default.
 
-    """
-    adata_combat = sc.AnnData(X=adata.raw.X, var=adata.raw.var, obs=adata.obs)
-    adata_combat.layers = adata.layers
-    adata_combat.raw = adata_combat
-    # run combat
-    sc.pp.combat(adata_combat, key=batch_key, covariates=covariates)
-    sc.pp.highly_variable_genes(adata_combat)
-    if dim_red:
-        adata_combat = dimensionality_reduction(adata_combat)
-    return adata_combat
+#     Parameters
+#     ----------
 
+#     adata : anndata.AnnData
+#         ``AnnData`` object containing gene counts data.
 
-def mnn(adata, batch_key="batch", min_hvg_batches=1, dim_red=True):
-    """
-    Data integration and batch correction using `mutual nearest neighbors`_ [Haghverdi19]_. Uses the 
-    ``scanpy.external.pp.mnn_correct()`` function.
+#     solver : str, default='arpack'
+#         Solver to use for the PCA.
 
-    .. seealso::
-        | Laleh Haghverdi, Aaron T L Lun, Michael D Morgan & John C Marioni
-        | Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors
-        | *Nature Biotechnology* 2019, doi: 10.1038/nbt.4091
+#     n_neighbors : int, default=10
+#         Number of neighbors to calculate for the neighbor graph.
 
-    Parameters
-    ----------
-    adata : anndata.AnnData  
-        ``AnnData`` object containing gene counts data.
+#     n_pcs : int, default=40
+#         Number of principal components to use when computing the neighbor graph.
+#         Although the default value is generally appropriate, it is sometimes useful
+#         to empirically determine the optimal value for `n_pcs`.
 
-    batch_key : str, default='batch'  
-        Name of the column in adata.obs that corresponds to the batch.  
+#     force_pca : bool, default=False
+#         Construct the PCA even if it has already been constructed (``"X_pcs"`` exists
+#         in ``adata.obsm``). Default is ``False``, which will use an existing PCA.
 
-    min_hvg_batches : int, default=1  
-        Minimum number of batches in which highly variable genes are found in order to be included
-        in the list of genes used for batch correction. Default is ``1``, which results in the use 
-        of all HVGs found in any batch.
-        
-    dim_red : bool, default=True  
-        If ``True``, dimentionality reduction will be performed on the post-integration data using 
-        ``scab.tl.dimensionality_reduction()``.  
+#     ignore_ig : bool, default=True
+#         Ignores immunoglobulin V, D and J genes when computing the PCA.
 
+#     paga : bool, default=True
+#         If ``True``, performs partition-based graph abstraction (PAGA_) prior to
+#         UMAP embedding.
 
-    Returns
-    -------
-    adata : ``anndata.AnnData``
+#     use_rna_velocity : bool, default=False
+#         If ``True``, uses RNA velocity information to compute PAGA. If ``False``,
+#         this option is ignored.
 
+#     use_rep : str, optional
+#         Representation to use when `computing neighbors`_. For example, if data have
+#         been batch normalized with ``scanorama``, the representation
+#         should be ``'Scanorama'``. If not provided, ``scanpy``'s default
+#         representation is used.
 
-    .. _mutual nearest neighbors:
-        https://github.com/chriscainx/mnnpy
+#     random_state : int, optional
+#         Seed for the random state used by ``sc.tl.umap``.
 
-    """
-    adata_mnn = adata.raw.to_adata()
-    adata_mnn.layers = adata.layers
-    # variable genes
-    sc.pp.highly_variable_genes(
-        adata_mnn, min_mean=0.0125, max_mean=3, min_disp=0.5, batch_key=batch_key
-    )
-    var_select = adata_mnn.var.highly_variable_nbatches >= min_hvg_batches
-    var_genes = var_select.index[var_select]
-    # split per batch into new objects.
-    batches = adata_mnn.obs[batch_key].cat.categories.tolist()
-    alldata = {}
-    for batch in batches:
-        alldata[batch] = adata_mnn[
-            adata_mnn.obs[batch_key] == batch,
-        ]
-    # run MNN correction
-    cdata = sc.external.pp.mnn_correct(
-        *[alldata[b] for b in batches],
-        svd_dim=50,
-        batch_key=batch_key,
-        save_raw=True,
-        var_subset=var_genes,
-    )
-    corr_data = cdata[0][:, var_genes]
-    if dim_red:
-        corr_data = dimensionality_reduction(corr_data)
-    return corr_data
+#     resolution : float, default=1.0
+#         Resolution for Leiden clustering.
 
 
-def scanorama(adata, batch_key="batch", dim_red=True):
-    """
-    Batch correction using Scanorama_ [Hie19]_. 
-
-    .. seealso::
-        | Brian Hie, Bryan Bryson, and Bonnie Berger 
-        | Efficient integration of heterogeneous single-cell transcriptomes using Scanorama 
-        | *Nature Biotechnology* 2019, doi: 10.1038/s41587-019-0113-3
-
-    Parameters
-    ----------
-
-    adata : anndata.AnnData  
-        ``AnnData`` object containing gene counts data.
-
-    batch_key : str, default='batch'  
-        Name of the column in ``adata.obs`` that corresponds to the batch.  
-
-    dim_red : bool, default=True  
-        If ``True``, dimentionality reduction will be performed on the post-integration data using 
-        ``scab.tl.dimensionality_reduction``.  
+#     Returns
+#     -------
+#     adata : ``anndata.AnnData``
 
 
-    Returns
-    -------
-    adata : ``anndata.AnnData``
+#     .. _PAGA:
+#         https://github.com/theislab/paga
+#     .. _computing neighbors:
+#         https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.neighbors.html
+
+#     """
+#     if verbose:
+#         print("")
+#         print("UMAP EMBEDDING")
+#         print("--------------")
+#     # PCA
+#     if any([force_pca, "X_pca" not in adata.obsm_keys()]):
+#         if verbose:
+#             print("  - computing PCA")
+#         adata = pca(
+#             adata, solver=solver, n_pcs=n_pcs, ignore_ig=ignore_ig, verbose=False
+#         )
+#     # neighbors
+#     if verbose:
+#         print("  - calculating neighbors")
+#     sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, use_rep=use_rep)
+#     # leiden clustering
+#     if verbose:
+#         print("  - leiden clustering")
+#     sc.tl.leiden(adata, resolution=resolution)
+#     # umap (with or without PAGA first)
+#     if paga:
+#         if verbose:
+#             print("  - paga")
+#         sc.tl.paga(adata, use_rna_velocity=use_rna_velocity)
+#         if use_rna_velocity:
+#             adata.uns["paga"]["connectivities"] = adata.uns["paga"][
+#                 "transitions_confidence"
+#             ]
+#         sc.pl.paga(adata, plot=False)
+#         init_pos = "paga"
+#     else:
+#         init_pos = "spectral"
+#     if verbose:
+#         print("  - umap")
+#     sc.tl.umap(adata, init_pos=init_pos, random_state=random_state)
+#     return adata
 
 
-    .. _Scanorama: 
-        https://github.com/brianhie/scanorama
-    
-    """
-    import scanorama
+# def dimensionality_reduction(
+#     adata: anndata.AnnData,
+#     solver: str = "arpack",
+#     n_neighbors=20,
+#     n_pcs=40,
+#     ignore_ig=True,
+#     paga=True,
+#     use_rna_velocity=False,
+#     use_rep=None,
+#     random_state=42,
+#     resolution=1.0,
+#     verbose=True,
+# ):
+#     """
+#     Performs PCA, neighborhood graph construction and UMAP embedding.
+#     PAGA is optional, but is performed by default.
 
-    adata_scanorama = adata.raw.to_adata()
-    adata_scanorama.layers = adata.layers
-    # split per batch into new objects.
-    batches = adata_scanorama.obs[batch_key].cat.categories.tolist()
-    alldata = {}
-    for batch in batches:
-        alldata[batch] = adata_scanorama[
-            adata_scanorama.obs[batch_key] == batch,
-        ]
-    adatas = [alldata[s] for s in alldata.keys()]
-    # run scanorama
-    scanorama.integrate_scanpy(adatas, dimred=50)
-    scanorama_int = [ad.obsm["X_scanorama"] for ad in adatas]
-    all_s = np.concatenate(scanorama_int)
-    adata_scanorama.obsm["Scanorama"] = all_s
-    if dim_red:
-        adata_scanorama = dimensionality_reduction(adata_scanorama, use_rep="Scanorama")
-    return adata_scanorama
+#     Parameters
+#     ----------
+
+#     adata : anndata.AnnData)
+#         ``AnnData`` object containing gene counts data.
+
+#     solver : str, default='arpack'
+#         Solver to use for the PCA.
+
+#     n_neighbors : int, default=10
+#         Number of neighbors to calculate for the neighbor graph.
+
+#     n_pcs : int, default=40
+#         Number of principal components to use when computing the neighbor graph.
+#         Although the default value is generally appropriate, it is sometimes useful
+#         to empirically determine the optimal value for `n_pcs`.
+
+#     paga : bool, default=True
+#         If ``True``, performs partition-based graph abstraction (PAGA_) prior to
+#         UMAP embedding.
+
+#     use_rna_velocity : bool, default=False
+#         If ``True``, uses RNA velocity information to compute PAGA. If ``False``,
+#         this option is ignored.
+
+#     use_rep : str, optional
+#         Representation to use when `computing neighbors`_. For example, if data have
+#         been batch normalized with ``scanorama``, the representation
+#         should be ``'Scanorama'``. If not provided, ``scanpy``'s default
+#         representation is used.
+
+#     random_state : int, optional
+#         Seed for the random state used by ``sc.tl.umap``.
+
+#     resolution : float, default=1.0
+#         Resolution for Leiden clustering.
+
+
+#     Returns
+#     -------
+#     adata : ``anndata.AnnData``
+
+
+#     .. _PAGA:
+#         https://github.com/theislab/paga
+#     .. _computing neighbors:
+#         https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.neighbors.html
+
+#     """
+#     if verbose:
+#         print("performing PCA...")
+#     if ignore_ig:
+#         _adata = adata.copy()
+#         _adata.var["highly_variable"] = _adata.var["highly_variable"] & ~(
+#             _adata.var["ig"]
+#         )
+#         sc.tl.pca(_adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
+#         adata.obsm["X_pca"] = _adata.obsm["X_pca"]
+#         adata.varm["PCs"] = _adata.varm["PCs"]
+#         adata.uns["pca"] = {
+#             "variance_ratio": _adata.uns["pca"]["variance_ratio"],
+#             "variance": _adata.uns["pca"]["variance"],
+#         }
+#     else:
+#         sc.tl.pca(adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
+#     if verbose:
+#         print("calculating neighbors...")
+#     sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, use_rep=use_rep)
+#     if verbose:
+#         print("leiden clustering...")
+#     sc.tl.leiden(adata, resolution=resolution)
+#     if paga:
+#         if verbose:
+#             print("paga...")
+#         #         solid_edges = 'transitions_confidence' if use_rna_velocity else 'connectivities'
+#         sc.tl.paga(adata, use_rna_velocity=use_rna_velocity)
+#         if use_rna_velocity:
+#             adata.uns["paga"]["connectivities"] = adata.uns["paga"][
+#                 "transitions_confidence"
+#             ]
+#         sc.pl.paga(adata, plot=False)
+#         if verbose:
+#             print("umap...")
+#         sc.tl.umap(
+#             adata,
+#             init_pos="paga",
+#             random_state=random_state,
+#         )
+#     else:
+#         if verbose:
+#             print("umap...")
+#         sc.tl.umap(adata, random_state=random_state)
+#     return adata
+
+
+# def combat(adata, batch_key="batch", covariates=None, dim_red=True):
+#     """
+#     Batch effect correction using ComBat_ [Johnson07]_.
+
+#     .. seealso::
+#         | W. Evan Johnson, Cheng Li, Ariel Rabinovic
+#         | Adjusting batch effects in microarray expression data using empirical Bayes methods
+#         | *Biostatistics* 2007, doi: 10.1093/biostatistics/kxj037
+
+
+#     Parameters
+#     ----------
+
+#     adata : anndata.AnnData
+#         ``AnnData`` object containing gene counts data.
+
+#     batch_key : str, default='batch'
+#         Name of the column in adata.obs that corresponds to the batch.
+
+#     covariates : iterable object, optional
+#         List of additional covariates besides the batch variable such as adjustment variables
+#         or biological condition. Not including covariates may lead to the removal of real
+#         biological signal.
+
+#     dim_red : bool, default=True
+#         If ``True``, dimentionality reduction will be performed on the post-integration data using
+#         ``scab.tl.dimensionality_reduction()``.
+
+#     Returns
+#     -------
+#     adata : ``anndata.AnnData``
+
+
+#     .. _ComBat:
+#         https://github.com/brentp/combat.py
+
+#     """
+#     adata_combat = sc.AnnData(X=adata.raw.X, var=adata.raw.var, obs=adata.obs)
+#     adata_combat.layers = adata.layers
+#     adata_combat.raw = adata_combat
+#     # run combat
+#     sc.pp.combat(adata_combat, key=batch_key, covariates=covariates)
+#     sc.pp.highly_variable_genes(adata_combat)
+#     if dim_red:
+#         adata_combat = dimensionality_reduction(adata_combat)
+#     return adata_combat
+
+
+# def mnn(adata, batch_key="batch", min_hvg_batches=1, dim_red=True):
+#     """
+#     Data integration and batch correction using `mutual nearest neighbors`_ [Haghverdi19]_. Uses the
+#     ``scanpy.external.pp.mnn_correct()`` function.
+
+#     .. seealso::
+#         | Laleh Haghverdi, Aaron T L Lun, Michael D Morgan & John C Marioni
+#         | Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors
+#         | *Nature Biotechnology* 2019, doi: 10.1038/nbt.4091
+
+#     Parameters
+#     ----------
+#     adata : anndata.AnnData
+#         ``AnnData`` object containing gene counts data.
+
+#     batch_key : str, default='batch'
+#         Name of the column in adata.obs that corresponds to the batch.
+
+#     min_hvg_batches : int, default=1
+#         Minimum number of batches in which highly variable genes are found in order to be included
+#         in the list of genes used for batch correction. Default is ``1``, which results in the use
+#         of all HVGs found in any batch.
+
+#     dim_red : bool, default=True
+#         If ``True``, dimentionality reduction will be performed on the post-integration data using
+#         ``scab.tl.dimensionality_reduction()``.
+
+
+#     Returns
+#     -------
+#     adata : ``anndata.AnnData``
+
+
+#     .. _mutual nearest neighbors:
+#         https://github.com/chriscainx/mnnpy
+
+#     """
+#     adata_mnn = adata.raw.to_adata()
+#     adata_mnn.layers = adata.layers
+#     # variable genes
+#     sc.pp.highly_variable_genes(
+#         adata_mnn, min_mean=0.0125, max_mean=3, min_disp=0.5, batch_key=batch_key
+#     )
+#     var_select = adata_mnn.var.highly_variable_nbatches >= min_hvg_batches
+#     var_genes = var_select.index[var_select]
+#     # split per batch into new objects.
+#     batches = adata_mnn.obs[batch_key].cat.categories.tolist()
+#     alldata = {}
+#     for batch in batches:
+#         alldata[batch] = adata_mnn[adata_mnn.obs[batch_key] == batch,]
+#     # run MNN correction
+#     cdata = sc.external.pp.mnn_correct(
+#         *[alldata[b] for b in batches],
+#         svd_dim=50,
+#         batch_key=batch_key,
+#         save_raw=True,
+#         var_subset=var_genes,
+#     )
+#     corr_data = cdata[0][:, var_genes]
+#     if dim_red:
+#         corr_data = dimensionality_reduction(corr_data)
+#     return corr_data
+
+
+# def scanorama(
+#     adata, batch_key="batch", scanorama_key="X_Scanorama", n_dim=50, dim_red=True
+# ):
+#     """
+#     Batch correction using Scanorama_ [Hie19]_.
+
+#     .. seealso::
+#         | Brian Hie, Bryan Bryson, and Bonnie Berger
+#         | Efficient integration of heterogeneous single-cell transcriptomes using Scanorama
+#         | *Nature Biotechnology* 2019, doi: 10.1038/s41587-019-0113-3
+
+#     Parameters
+#     ----------
+
+#     adata : anndata.AnnData
+#         ``AnnData`` object containing gene counts data.
+
+#     batch_key : str, default='batch'
+#         Name of the column in ``adata.obs`` that corresponds to the batch.
+
+#     dim_red : bool, default=True
+#         If ``True``, dimentionality reduction will be performed on the post-integration data using
+#         ``scab.tl.dimensionality_reduction``.
+
+
+#     Returns
+#     -------
+#     adata : ``anndata.AnnData``
+
+
+#     .. _Scanorama:
+#         https://github.com/brianhie/scanorama
+
+#     """
+#     import scanorama
+
+#     # make sure obs names are unique, since we'll need them to incorporate
+#     # Scanorama integrations into the original adata object
+#     # Also, Scanorama needs the raw gene counts, not normalized
+#     adata_scanorama = adata.raw.to_adata()
+#     adata_scanorama.layers = adata.layers
+#     # Scanorama needs the datasets to be dividied into individual batches
+#     # rather than just passing a batch key
+#     batch_names = adata_scanorama.obs[batch_key].cat.categories.tolist()
+#     adatas = [adata_scanorama[adata_scanorama.obs[batch_key] == b] for b in batch_names]
+#     # run Scanorama
+#     scanorama.integrate_scanpy(adatas, dimred=n_dim)
+#     # add the Scanorama to the "complete" adata object
+#     obs_names = [ad.obs_names for ad in adatas]
+#     integrations = [ad.obsm["X_Scanorama"] for ad in adatas]
+#     integrate_dict = {}
+#     for obs_name, integration in zip(obs_names, integrations):
+#         for o, i in zip(obs_names, integration):
+#             integrate_dict[o] = i
+#     all_s = np.array([integrate_dict[o] for o in adata.obs_names])
+#     adata.obsm["X_scanorama"] = all_s
+#     return adata
 
 
 def classify_specificity(
@@ -330,6 +515,7 @@ def classify_specificity(
     percentile=0.997,
     percentile_dict=None,
     update=True,
+    uns_batch=None,
     verbose=True,
 ):
     """
@@ -396,6 +582,21 @@ def classify_specificity(
         a Pandas ``DataFrame`` containg classifications will be returned and `adata` will 
         not be modified. 
 
+    uns_batch: str, default=None
+        If provided, `uns_batch` will add batch information to the percentile and threshold
+        data stored in ``adata.uns``. This results in an additional layer of nesting, which 
+        allows concateenating multiple ``AnnData`` objects represeting different batches for 
+        which classification is performed separately. If not provided, the data stored in ``uns`` 
+        would be formatted like::
+
+            adata.uns['agbc_percentiles'] = {agbc1: percentile1, ...}
+            adata.uns['agbc_thresholds'] = {agbc1: threshold1, ...}  
+
+        If `uns_batch` is provided, ``uns`` will be formatted like::
+
+            adata.ubs['agbc_percentiles'] = {uns_batch: {agbc1: percentile1, ...}}
+            adata.ubs['agbc_thresholds'] = {uns_batch: {agbc1: threshold1, ...}}
+
     verbose : bool, default=True  
         If ``True``, calculated threshold values are printed.  
             
@@ -444,6 +645,8 @@ def classify_specificity(
         print("")
         print("  THRESHOLDS  ")
         print("--------------")
+    uns_thresholds = {}
+    uns_percentiles = {}
     for group, barcodes in groups.items():
         # remove missing AgBCs
         in_adata = [b for b in barcodes if b in adata.obs]
@@ -478,6 +681,9 @@ def classify_specificity(
         raw_threshold = np.sum(list(raw_bc_thresholds.values()))
         threshold = np.log2(raw_threshold + 1)
         classifications[group_name] = adata_groups[group_name] > threshold
+        # update uns dicts
+        uns_thresholds[group] = threshold
+        uns_percentiles[group] = pctile
         if verbose:
             print(group_name)
             print(f"percentile: {pctile}")
@@ -489,6 +695,12 @@ def classify_specificity(
         for g, group_data in adata_groups.items():
             adata.obs[g] = group_data
             adata.obs[f"is_{g}"] = classifications[g]
+            if uns_batch is not None:
+                adata.uns["agbc_thresholds"] = {uns_batch: uns_thresholds}
+                adata.uns["agbc_percentiles"] = {uns_batch: uns_percentiles}
+            else:
+                adata.uns["agbc_thresholds"] = uns_thresholds
+                adata.uns["agbc_percentiles"] = uns_percentiles
         return adata
     else:
         return pd.DataFrame(classifications, index=adata.obs_names)
@@ -511,8 +723,8 @@ def calculate_agbc_confidence(
 
         adata (anndata.AnnData): ``AnnData`` object with AgBC count data (log2 transformed) located in ``adata.obs``.
 
-        control_adata (anndata.AnnData): ``AnnData`` object with AgBC count data (log2 transformed) located in 
-            ``control_adata.obs``. Should contain data from control cells (not antigen sorted) which will be used to 
+        control_adata (anndata.AnnData): ``AnnData`` object with AgBC count data (log2 transformed) located in
+            ``control_adata.obs``. Should contain data from control cells (not antigen sorted) which will be used to
             compute the confidence values
 
         agbcs (list): List of AgBC names. Each AgBC name must be present in both ``adata.obs`` and ``control_adata.obs``.
@@ -520,11 +732,11 @@ def calculate_agbc_confidence(
         update (bool): If ``True``, ``adata.obs`` is updated with confidence values (column names are ``f'{agbc}_confidence'``).
             If ``False``, a ``DataFrame`` is returned containing the confidence values. Default is ``True``.
 
-    
+
     Returns:
     --------
     Updated ``adata`` if ``update`` is ``True`` or a ``pandas.DataFrame`` if ``update`` is ``False``.
-    
+
     """
     conf_data = {}
     # check to make sure AgBCs are in both datasets
