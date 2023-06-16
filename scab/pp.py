@@ -24,30 +24,33 @@
 
 
 import re
+from typing import Optional, Union
 
 import scanpy as sc
 
+from anndata import AnnData
+
 
 def filter_and_normalize(
-    adata,
-    make_var_names_unique=True,
-    min_genes=200,
-    min_cells=None,
-    n_genes_by_counts=2500,
-    percent_mito=10,
-    percent_ig=100,
-    hvg_batch_key=None,
-    ig_regex_pattern="IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]",
-    regress_out_mt=False,
-    regress_out_ig=False,
-    target_sum=None,
-    n_top_genes=None,
-    normalization_flavor="cell_ranger",
-    log=True,
-    scale_max_value=None,
-    save_raw=True,
-    verbose=True,
-):
+    adata: AnnData,
+    make_var_names_unique: bool = True,
+    min_genes: int = 200,
+    min_cells: Optional[float] = None,
+    n_genes_by_counts: int = 2500,
+    percent_mito: Union[int, float] = 10,
+    percent_ig: Union[int, float] = 100,
+    hvg_batch_key: Optional[str] = None,
+    ig_regex_pattern: str = "IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]",
+    regress_out_mt: bool = False,
+    regress_out_ig: bool = False,
+    target_sum: Optional[int] = None,
+    n_top_genes: Optional[int] = None,
+    normalization_flavor: str = "cell_ranger",
+    log: bool = True,
+    scale_max_value: Optional[float] = None,
+    save_raw: bool = True,
+    verbose: bool = True,
+) -> AnnData:
     """
     performs quality filtering and normalization of 10x Genomics count data
 
@@ -178,7 +181,7 @@ def filter_and_normalize(
     return adata
 
 
-def scrublet(adata, verbose=True):
+def scrublet(adata: AnnData, verbose: bool = True) -> AnnData:
     """
     Predicts doublets using scrublet_ [Wolock19]_.
 
@@ -218,14 +221,14 @@ def scrublet(adata, verbose=True):
 
 
 def doubletdetection(
-    adata,
-    n_iters=25,
-    use_phenograph=False,
-    standard_scaling=True,
-    p_thresh=1e-16,
-    voter_thresh=0.5,
-    verbose=False,
-):
+    adata: AnnData,
+    n_iters: int = 25,
+    use_phenograph: bool = False,
+    standard_scaling: bool = True,
+    p_thresh: float = 1e-16,
+    voter_thresh: float = 0.5,
+    verbose: bool = False,
+) -> AnnData:
     """
     Predicts doublets using doubletdetection_ [Gayoso20]_.  
 
@@ -286,7 +289,11 @@ def doubletdetection(
     return adata
 
 
-def remove_doublets(adata, doublet_identification_method=None, verbose=True):
+def remove_doublets(
+    adata: AnnData,
+    doublet_identification_method: Optional[str] = None,
+    verbose: bool = True,
+) -> AnnData:
     """
     Removes doublets. If not already performed, doublet identification is performed 
     using either doubletdetection or scrublet.
