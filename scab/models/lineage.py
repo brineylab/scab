@@ -131,10 +131,10 @@ class LineageAssignment:
         self.assignment_dict = assignment_dict
         self.all_lineages = list(assignment_dict.values())
 
-    def __eq__(self, lineage_name) -> bool:
+    def __eq__(self, lineage_name: str) -> bool:
         return lineage_name in self.all_lineages
 
-    def get(self, lineage_name) -> Optional[abutils.Pair]:
+    def get(self, lineage_name: str) -> Optional[abutils.Pair]:
         """
         Gets the ``Pair`` that was assigned to a lineage. Note that if
         the original ``Pair`` object contained multiple heavy chains,
