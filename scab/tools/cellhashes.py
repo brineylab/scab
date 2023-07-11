@@ -154,7 +154,7 @@ def demultiplex(
     for hash_name in hash_names:
         if debug:
             print(hash_name)
-        thresholds[hash_name] = positive_feature_cutoff(
+        thresh = positive_feature_cutoff(
             adata.obs[hash_name].dropna(),
             threshold_minimum=threshold_minimum,
             threshold_maximum=threshold_maximum,
@@ -162,6 +162,9 @@ def demultiplex(
             kde_maximum=kde_maximum,
             debug=debug,
         )
+        if thresh is not None:
+            thresholds[hash_name] = thresh
+    hash_names = [h for h in hash_names if h in thresholds]
     if debug:
         print("THRESHOLDS")
         print("----------")
@@ -209,10 +212,13 @@ def positive_feature_cutoff(
                 for m in all_min
                 if s[m] <= threshold_maximum and s[m] >= threshold_minimum
             ]
-        )
-        min_vals = zip(_all_min, e[_all_min])
-        mi = sorted(min_vals, key=lambda x: x[1])[0][0]
-        cutoff = s[mi]
+        )        
+        if _all_min.shape[0]:
+            min_vals = zip(_all_min, e[_all_min])
+            mi = sorted(min_vals, key=lambda x: x[1])[0][0]
+            cutoff = s[mi]
+        else:
+            cutoff = None
     elif len(all_min) == 1:
         mi = all_min[0]
         cutoff = s[mi]
