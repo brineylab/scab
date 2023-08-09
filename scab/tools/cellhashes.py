@@ -47,11 +47,6 @@ from scipy.signal import argrelextrema
 __all__ = ["demultiplex", "assign_cellhashes"]
 
 
-# for backwards compatibility
-def assign_cellhashes(adata: AnnData, **kwargs):
-    return demultiplex(adata, **kwargs)
-
-
 def demultiplex(
     adata: AnnData,
     hash_names: Optional[Iterable] = None,
@@ -154,14 +149,22 @@ def demultiplex(
     for hash_name in hash_names:
         if debug:
             print(hash_name)
-        thresh = positive_feature_cutoff(
-            adata.obs[hash_name].dropna(),
-            threshold_minimum=threshold_minimum,
-            threshold_maximum=threshold_maximum,
-            kde_minimum=kde_minimum,
-            kde_maximum=kde_maximum,
-            debug=debug,
-        )
+        try:
+            thresh = positive_feature_cutoff(
+                adata.obs[hash_name].dropna(),
+                threshold_minimum=threshold_minimum,
+                threshold_maximum=threshold_maximum,
+                kde_minimum=kde_minimum,
+                kde_maximum=kde_maximum,
+                debug=debug,
+            )
+        except Exception as e:
+            thresh = None
+            if debug:
+                print("")
+                print(f"EXCEPTION: could not calculate a threshold for {hash_name}")
+                print(e)
+                print("")
         if thresh is not None:
             thresholds[hash_name] = thresh
     hash_names = [h for h in hash_names if h in thresholds]
@@ -212,7 +215,7 @@ def positive_feature_cutoff(
                 for m in all_min
                 if s[m] <= threshold_maximum and s[m] >= threshold_minimum
             ]
-        )        
+        )
         if _all_min.shape[0]:
             min_vals = zip(_all_min, e[_all_min])
             mi = sorted(min_vals, key=lambda x: x[1])[0][0]
@@ -290,3 +293,103 @@ def _bw_silverman(x):
     n = len(x)
     return 0.9 * A * n ** (-0.2)
 
+
+# for backwards compatibility
+def assign_cellhashes(
+    adata: AnnData,
+    hash_names: Optional[Iterable] = None,
+    cellhash_regex: str = "cell ?hash",
+    ignore_cellhash_case: bool = True,
+    rename: Optional[dict] = None,
+    assignment_key: str = "cellhash_assignment",
+    threshold_minimum: float = 4.0,
+    threshold_maximum: float = 10.0,
+    kde_minimum: float = 0.0,
+    kde_maximum: float = 15.0,
+    assignments_only: bool = False,
+    debug: bool = False,
+) -> Union[AnnData, Series]:
+    """
+    Demultiplexes cells using cell hashes.
+
+    Parameters
+    ----------
+
+    adata : anndata.Anndata  
+        ``AnnData`` object containing cellhash UMI counts in ``adata.obs``.
+        
+    hash_names : iterable object, optional  
+        List of hashnames, which correspond to column names in ``adata.obs``. 
+        Overrides cellhash name matching using `cellhash_regex`. If not provided, 
+        all columns in ``adata.obs`` that match `cellhash_regex` will be assumed 
+        to be hashnames and processed. 
+        
+    cellhash_regex : str, default='cell ?hash'  
+        A regular expression (regex) string used to identify cell hashes. The regex 
+        must be found in all cellhash names. The default is ``'cell ?hash'``, which 
+        combined with the default setting for `ignore_cellhash_regex_case`, will 
+        match ``'cellhash'`` or ``'cell hash'`` anywhere in the cell hash name and 
+        in any combination of upper or lower case letters.  
+
+    ignore_cellhash_regex_case : bool, default=True  
+        If ``True``, matching to `cellhash_regex` will ignore case.  
+        
+    rename : dict, optional  
+        A ``dict`` linking cell hash names (column names in ``adata.obs``) to the 
+        preferred batch name. For example, if the cell hash name ``'Cellhash1'`` 
+        corresponded to the sample ``'Sample1'``, an example `rename` argument 
+        would be::
+
+                {'Cellhash1': 'Sample1'}
+
+        This would result in all cells classified as positive for ``'Cellhash1'`` being
+        labeled as ``'Sample1'`` in the resulting assignment column (``adata.obs.sample`` 
+        by default, adjustable using `assignment_key`).
+
+    assignment_key : str, default='cellhash_assignment'  
+        Column name (in ``adata.obs``) into which cellhash assignments will be stored.  
+
+    threshold_minimum : float, default=4.0  
+        Minimum acceptable log2-normalized UMI count threshold. Potential thresholds 
+        below this cutoff value will be ignored.
+
+    threshold_maximum : float, default=10.0  
+        Maximum acceptable log2-normalized UMI count threshold. Potential thresholds 
+        above this cutoff value will be ignored.  
+
+    kde_maximum : float, default=15.0  
+        Upper limit of the KDE plot (in log2-normalized UMI counts). This should 
+        be less than `threshold_maximum`, or you may obtain strange results.  
+
+    assignments_only : bool, default=False  
+        If ``True``, return a pandas ``Series`` object containing only the group 
+        assignment. Suitable for appending to an existing dataframe. If ``False``,
+        an updated `adata` object is returned, containing cell hash group assignemnts
+        at ``adata.obs.assignment_key``
+
+    debug : bool, default=False  
+        If ``True``, saves cell hash KDE plots and prints intermediate information 
+        for debugging.  
+
+
+    Returns
+    -------
+    output : ``anndata.AnnData`` or ``pandas.Series``  
+        By default, an updated `adata` is returned with cell hash assignment groups \
+        stored in the `assignment_key` column of ``adata.obs``. If `assignments_only` \
+        is ``True``, a ``pandas.Series`` of lineage assignments is returned.
+
+    """
+    return demultiplex(
+        adata=adata,
+        hash_names=hash_names,
+        cellhash_regex=cellhash_regex,
+        ignore_cellhash_case=ignore_cellhash_case,
+        rename=rename,
+        assignment_key=assignment_key,
+        threshold_maximum=threshold_maximum,
+        threshold_minimum=threshold_minimum,
+        kde_maximum=kde_maximum,
+        assignments_only=assignments_only,
+        debug=debug,
+    )
