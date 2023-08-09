@@ -31,7 +31,7 @@ import scanpy as sc
 import anndata
 
 
-__all__ = ["pca", "umap"]
+__all__ = ["pca", "umap", "dimensionality_reduction"]
 
 
 def pca(

@@ -37,6 +37,9 @@ from anndata import AnnData
 from ..io import read_10x_mtx
 
 
+__all__ = ["classify_specificity"]
+
+
 def classify_specificity(
     adata: anndata.AnnData,
     raw: Union[AnnData, str],
@@ -244,4 +247,3 @@ def classify_specificity(
         return adata
     else:
         return pd.DataFrame(classifications, index=adata.obs_names)
-
