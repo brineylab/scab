@@ -33,10 +33,10 @@ from scipy.signal import argrelextrema
 
 import statsmodels.api as sm
 
-from .tools.batch_correction import combat, mnn, scanorama
-from .tools.cellhashes import assign_cellhashes, demultiplex
-from .tools.embeddings import umap, pca, dimensionality_reduction
-from .tools.specificity import classify_specificity
+from .tools.batch_correction import *
+from .tools.cellhashes import *
+from .tools.embeddings import *
+from .tools.specificity import *
 
 
 # def pca(
