@@ -150,7 +150,7 @@ def demultiplex(
         if debug:
             print(hash_name)
         try:
-            thresh = positive_feature_cutoff(
+            thresh = _get_feature_cutoff(
                 adata.obs[hash_name].dropna(),
                 threshold_minimum=threshold_minimum,
                 threshold_maximum=threshold_maximum,
@@ -162,7 +162,7 @@ def demultiplex(
             thresh = None
             if debug:
                 print("")
-                print(f"EXCEPTION: could not calculate a threshold for {hash_name}")
+                print(f"ERROR: could not calculate a threshold for {hash_name}")
                 print(e)
                 print("")
         if thresh is not None:
@@ -190,7 +190,7 @@ def demultiplex(
         return adata
 
 
-def positive_feature_cutoff(
+def _get_feature_cutoff(
     vals,
     threshold_maximum: float = 10.0,
     threshold_minimum: float = 4.0,
