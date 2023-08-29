@@ -25,6 +25,7 @@
 
 from collections import Counter
 import itertools
+import string
 import sys
 from typing import Union
 
@@ -51,6 +52,10 @@ def clonify(
     distance_cutoff: float = 0.32,
     shared_mutation_bonus: float = 0.65,
     length_penalty_multiplier: Union[int, float] = 2,
+    group_by_v: bool = True,
+    group_by_j: bool = True,
+    group_light_by_v: bool = True,
+    group_light_by_j: bool = True,
     preclustering: bool = False,
     preclustering_threshold: float = 0.65,
     preclustering_field: str = "cdr3_nt",
@@ -58,6 +63,7 @@ def clonify(
     lineage_size_field: str = "lineage_size",
     annotation_format: str = "airr",
     return_assignment_dict: bool = False,
+    pairs_only: bool = True,
     use_multiple_heavy_chains: bool = True,
 ) -> Union[dict, AnnData]:
     """
@@ -84,6 +90,30 @@ def clonify(
     length_penalty_multiplier : int, default=2  
         Multiplier for the CDR3 length penalty. Default is ``2``, resulting in CDR3s that 
         differ by ``n`` amino acids being penalized ``n * 2``.
+
+    group_by_v : bool, default=True
+        If ``True``, sequences are grouped by V-gene use prior to lineage assignment. This
+        option is additive with ``group_by_j``. For example, if ``group_by_v == True`` and
+        ``group_by_j == True``, sequences will be grouped by both V-gene and J-gene.
+        
+    group_by_j : bool, default=True
+        If ``True``, sequences are grouped by J-gene use prior to lineage assignment. This 
+        option is additive with ``group_by_v``. For example, if ``group_by_v == True`` and
+        ``group_by_j == True``, sequences will be grouped by both V-gene and J-gene.
+
+    group_light_by_v : bool, default=True
+        If ``True``, heavy chain sequences are grouped by their paired light chain V-gene 
+        prior to lineage assignment. The purpose is to ensure that light chains are coherent 
+        across an assigned lineage. Also, if multiple light chains are present, this option 
+        makes it easier to identify the "best" light chain by identifying the light chain 
+        that best fits the largest lineage. This option is additive with ``group_light_by_j``.
+        
+    group_light_by_j : bool, default=True
+        If ``True``, heavy chain sequences are grouped by their paired light chain J-gene 
+        prior to lineage assignment. The purpose is to ensure that light chains are coherent 
+        across an assigned lineage. Also, if multiple light chains are present, this option 
+        makes it easier to identify the "best" light chain by identifying the light chain 
+        that best fits the largest lineage. This option is additive with ``group_light_by_v``.
 
     preclustering : bool, default=False  
         If ``True``, V/J groups are pre-clustered on the `preclustering_field` sequence, 
@@ -123,6 +153,30 @@ def clonify(
 
     .. _clonify: https://github.com/briney/clonify    
     """
+    bcrs = adata.obs.bcr
+    if pairs_only:
+        bcrs = [b for b in bcrs if b.is_pair]
+
+    clonify_seqs = {}
+    bcr_lookup = {}
+    for bcr in bcrs:
+        for heavy in bcr.heavies:
+            for light in bcr.lights:
+                name = np.random_choice(string.ascii_letters + string.digits, size=10)
+                bcr_lookup[name] = {"pair": bcr, "heavy": heavy.id, "light": light.id}
+                if any([group_light_by_v, group_light_by_j]):
+                    l_group = ""
+                    if group_light_by_v:
+                        l_group += light.v_gene
+                    if group_light_by_j:
+                        l_group += light.j_gene
+                else:
+                    l_group = None
+
+
+
+                    
+
     # select the appropriate data fields
     if annotation_format.lower() == "airr":
         vgene_key = "v_gene"
