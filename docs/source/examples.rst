@@ -37,31 +37,34 @@ annotations. With this dataset, we'd like to do the following:
 
 .. code-block:: python
 
-   import scab
+    import scab
 
-   # read, integrate and annotate the input data
-   adata = scab.read_10x_mtx(mtx_path  = '/path/to/filtered_bc_matrix',
-                             bcr_file  = '/path/to/filtered_contigs.fasta',
-                             bcr_annot = '/path/to/filtered_summary.csv')
+    # read, integrate and annotate the input data
+    adata = scab.read_10x_mtx(
+        mtx_path  = '/path/to/filtered_bc_matrix',
+        bcr_file  = '/path/to/filtered_contigs.fasta',
+        bcr_annot = '/path/to/filtered_summary.csv'
+    )
 
-   # demultiplex the samples using cell hashes and rename the samples
-   sample_names = {'control1': 'CellHash1',
-                   'control2': 'CellHash2',
-                   'test1': 'CellHash3',
-                   'test2': 'CellHash4'}
-   adata = adata.tl.demultiplex(adata, rename=sample_names)
+    # demultiplex the samples using cell hashes and rename the samples
+    sample_names = {
+        'control1': 'CellHash1',
+        'control2': 'CellHash2',
+        'test1': 'CellHash3',
+        'test2': 'CellHash4'
+    }
+    adata = scab.tl.demultiplex(adata, rename=sample_names)
 
-   # filter out any cells without paired heavy/light chains
-   is_paired = [b.is_pair for b in adata.obs.bcr]
-   adata = adata[is_paired]
+    # filter out any cells that don't contain a single BCR pair
+    adata = adata[adata.obs.bcr_pairing == "single pair"]
 
-   # assign BCR clonal lineages
-   adata = scab.vdj.clonifuy(adata)
+    # assign BCR clonal lineages
+    adata = scab.vdj.clonifuy(adata)
 
-   # make a lineage donut plot for each sample, colored by VH gene use
-   for sample in adata.obs.sample.unique():
-     a = adata[adata.obs.sample == sample]
-     scab.pl.lineage_donut(a, hue='v_gene', chain='heavy')
+    # make a lineage donut plot for each sample, colored by VH gene use
+    for sample in adata.obs.sample.unique():
+        a = adata[adata.obs.sample == sample]
+        scab.pl.lineage_donut(a, hue='v_gene', chain='heavy')
 
 |
 |
@@ -72,53 +75,58 @@ Next, we have a more complex set of libraries, generated from multiplexed
 peripheral blood mononuclear cell (PBMC) samples. The PBMCs were labeled with 
 a panel of CITE-seq antibodies and we recovered BCR and TCR sequences, to produce 
 the following CellRanger outputs: 1) a counts matrix, including GEX, cell hash and 
-CITE-seq (feature barcode) counts; 2) assembled BCR contigs with associated summary 
+CITE-seq (feature barcode) UMI counts; 2) assembled BCR contigs with associated summary 
 annotations; and 3) assembled TCR contigs with associated summary annotations. With 
 this dataset, we'd like to:
 
   - read, annotate and integrate all of the input data 
-  - demultiplex the samples using cell hashes and rename the samples 
+  - demultiplex the samples using cell hashes, and rename the samples using a dictionary mapping 
+    sample names to cell hash names
   - preprocess the GEX data, including leiden clustering and UMAP embedding 
-  - for each CITE-seq antibody, make a pair of plots comparing transcription and cell surface quantity 
+  - for each CITE-seq antibody, make a pair of plots comparing transcription and cell surface abundance 
   - group TCR sequences into clonotypes 
   - select cells expressing a clonally expanded TCR 
 
 
 .. code-block:: python
 
-   import scab
+    import scab
 
-   # read, integrate and annotate the input data
-   adata = scab.read_10x_mtx(mtx_path  = '/path/to/filtered_bc_matrix',
-                             bcr_file  = '/path/to/BCR/filtered_contigs.fasta',
-                             bcr_annot = '/path/to/BCR/filtered_summary.csv',
-                             tcr_file  = '/path/to/TCR/filtered_contigs.fasta',
-                             tcr_annot = '/path/to/TCR/filtered_summary.csv')
+    # read, integrate and annotate the input data
+    adata = scab.read_10x_mtx(
+        mtx_path  = '/path/to/filtered_bc_matrix',
+        bcr_file  = '/path/to/BCR/filtered_contigs.fasta',
+        bcr_annot = '/path/to/BCR/filtered_summary.csv',
+        tcr_file  = '/path/to/TCR/filtered_contigs.fasta',
+        tcr_annot = '/path/to/TCR/filtered_summary.csv'
+    )
 
-   # demultiplex the samples using cell hashes and rename the samples
-   sample_names = {'donor123': 'CellHash1',
-                   'donor456': 'CellHash2',
-                   'donor789': 'CellHash3'}
-   adata = adata.tl.demultiplex(adata, rename=sample_names)
+    # demultiplex the samples using cell hashes and rename the samples
+    sample_names = {
+        'donor123': 'CellHash1',
+        'donor456': 'CellHash2',
+        'donor789': 'CellHash3'
+    }
+    adata = adata.tl.demultiplex(adata, rename=sample_names)
 
-   # preprocess the GEX data, including leiden clustering and UMAP embedding
-   adata = scab.pp.filter_and_normalize(adata)
-   adata = scab.tl.dimensionality_reduction(adata, 
-                                            n_neighbors=10,
-                                            n_pcs=50)
+    # preprocess the GEX data and compute the UMAP embedding
+    adata = scab.pp.filter_and_normalize(adata)
+    adata = scab.tl.umap(adata)
 
-   # for each CITE-seq antibody, make a pair of plots comparing transcription and expression
-   citeseq_names = {'gene_name1': 'citeseq_name1',
-                    ...
-                    'gene_nameN': 'citeseq_nameN'}
-   for gene, citeseq in citeseq_names.items():
-      scab.pl.umap(adata, colors=[gene, citeseq])
+    # for each CITE-seq antibody, make a pair of plots comparing transcription and expression
+    gene2citeseq = {
+        'gene_name1': 'citeseq_name1',
+        ...
+        'gene_nameN': 'citeseq_nameN'
+    }
+    for gene, citeseq in gene2citeseq.items():
+        scab.pl.umap(adata, colors=[gene, citeseq])
 
-   # group TCR sequences into clonotypes 
-   adata = scab.vdj.group_clonotypes(adata)
+    # group TCR sequences into clonotypes 
+    adata = scab.vdj.group_clonotypes(adata)
 
-   # select cells expressing a clonally expanded TCR
-   expanded = adata[adata.obs.clonotype_size > 1]
+    # select cells expressing a clonally expanded TCR
+    expanded = adata[adata.obs.clonotype_size > 1]
 
 
 

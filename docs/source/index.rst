@@ -45,6 +45,7 @@ analysis of adaptive immune cells and receptor repertoires.
    :maxdepth: 1
    :caption: usage
 
+   scabranger
    examples
    api
    
