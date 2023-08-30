@@ -16,6 +16,8 @@ runs. A typical workflow might look like this:
     ...
     $ cellranger multi --id sampleN --csv sampleN_config.csv
 
+|
+
 Each of these steps can take quite awhile to run, and if you have a lot of
 samples, you need to keep coming back to the terminal to start the next
 command. This is where ``scabranger`` comes in. It is a simple wrapper around 
@@ -25,6 +27,8 @@ across one or more sequencing runs. Running ``scabranger`` is as simple as:
 .. code-block:: console
 
     $ scabranger -p path/to/myproject -c config.yaml
+
+|
 
 A ``scabranger`` run is defined by a single YAML file that specifies the
 location of your sequencing run data, the samples to process, and the
@@ -74,9 +78,7 @@ libraries to use for each sample. Here is an example:
     uiport: 40909 # port for the cellranger UI
     cellranger: cellranger # cellranger invocation
 
-
-<br>  
-
+|   
 
 scabranger configuration
 ------------------------
@@ -87,6 +89,7 @@ sequencing run data, the samples to process, the libraries that have been genera
 for each sample, and any other options you want to pass to CellRanger. Let's walk 
 through each of these sections in a little more detail.
   
+|  
   
 sequencing runs
 ~~~~~~~~~~~~~~~
@@ -95,10 +98,10 @@ run. Each run is identified by a unique name -- you can pick whatever name you w
 names with spaces and/or special characters may cause unexpected problems. The following 
 options are available:  
 
-    - **``path``**: The path to the sequencing run data. This should be a local path to a 
+    - ``path``: The path to the sequencing run data. This should be a local path to a 
       directory containing the sequencing run data or to a compressed file containing
       the sequencing run data. This option is mutually exclusive with ``url``.
-    - **``url``**: A URL to a compressed file containing the sequencing run data. This option 
+    - ``url``: A URL to a compressed file containing the sequencing run data. This option 
       is mutually exclusive with ``path``.  
 
     .. note:: 
@@ -130,8 +133,9 @@ names in the ``samples`` configuration block.
     should be given identical names in the ``samplesheet`` or ``simple_csv`` files for each 
     run. If named in this way, ``scabranger`` can automatically combine the data from all
     applicable runs when running CellRanger.
-
-
+  
+|  
+  
 samples
 ~~~~~~~
 This section is required, and you must provide information for at least one sample. Each 
@@ -170,8 +174,9 @@ expression data for a sample, you can define the sample like this:
     samples:
         sample1:
             Gene Expression: sample1_gex
-
-
+  
+|  
+  
 references
 ~~~~~~~~~~
 This section is required, and you must provide at least one reference for each library type you 
@@ -187,6 +192,7 @@ reference than the default, you would specify it like this:
         default: /path/to/default_vdj_reference
         sample2: /path/to/alternate_vdj_reference
 
+|
 
 cli options
 ~~~~~~~~~~~
@@ -205,10 +211,19 @@ like this:
             default: ""
             sample2: "--expect-cells=5000 --no-bam=true"
 
+|
 
 miscellaneous options
 ~~~~~~~~~~~~~~~~~~~~~
+This section is optional, and you can provide a few additional options that probably aren't very
+common but are included for completeness. The following options are available:
 
+    - ``uiport``: The port to use for the `CellRanger runtime UI`_. The default value is ``40909``.
+    - ``cellranger``: The command to use to invoke CellRanger. The default value is ``cellranger``. 
+        This is useful if you have multiple versions of CellRanger installed and want to use a 
+        specific version for a particular run. If the command is not in your environment's ``PATH``, 
+        you must provide the full path to the command.
 
 
 .. _CellRanger: https://support.10xgenomics.com/single-cell-vdj/software/pipelines/latest/what-is-cell-ranger
+.. _CellRanger runtime UI: https://support.10xgenomics.com/single-cell-vdj/software/pipelines/latest/advanced/ui
