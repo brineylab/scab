@@ -78,7 +78,7 @@ libraries to use for each sample. Here is an example:
 
 scabranger configuration
 ------------------------
-The only thing you need to run `scabranger` (aside from data, of course) is a
+The only thing you need to run ``scabranger`` (aside from data, of course) is a
 YAML-formatted configuration file and the name of a project directory into which 
 the results will be deposited. The configuration file specifies the location of your
 sequencing run data, the samples to process, the libraries that have been generated 
@@ -89,22 +89,28 @@ through each of these sections in a little more detail.
 sequencing runs
 ~~~~~~~~~~~~~~~
 This section is required, and you must provide information for at least one sequencing
-run. Each run is identified by a unique name, and the following options are available:  
+run. Each run is identified by a unique name -- you can pick whatever name you want, but 
+names with spaces and/or special characters may cause unexpected problems. The following 
+options are available:  
 
-    - ``path``: The path to the sequencing run data. This should be a local path to a 
+    - **``path``**: The path to the sequencing run data. This should be a local path to a 
       directory containing the sequencing run data or to a compressed file containing
       the sequencing run data. This option is mutually exclusive with ``url``.
-    - ``url``: A URL to a compressed file containing the sequencing run data. This option 
+    - **``url``**: A URL to a compressed file containing the sequencing run data. This option 
       is mutually exclusive with ``path``.  
 
-.. note:: at least one of ``path`` or ``url`` must be provided.
+    .. note:: 
+        at least one of ``path`` or ``url`` must be provided.
+  
 
     - ``simple_csv``: A simple CSV file containing the sample name and the index sequences
       for each sample. This option is mutually exclusive with ``samplesheet``.
     - ``samplesheet``: A CSV file containing the sample name and the index sequences for 
       each sample. This option is mutually exclusive with ``simple_csv``.
 
-.. note:: at least one of ``simple_csv`` or ``samplesheet`` must be provided.
+    .. note:: 
+        at least one of ``simple_csv`` or ``samplesheet`` must be provided.
+  
 
     - ``is_compressed``: A boolean indicating whether the sequencing run data is compressed.
     - ``copy_to_project``: A boolean indicating whether the sequencing run data should be 
@@ -113,6 +119,93 @@ run. Each run is identified by a unique name, and the following options are avai
       provided, the linked data is downloaded into the project directory regardless of the 
       value of ``copy_to_project``. The default value is ``True``.
 
+The library names in the ``simple_csv`` or ``samplesheet`` files must match the library 
+names in the ``samples`` configuration block. 
+
+.. tip:: 
+    If libraries are present in more than one sequencing run (for example, the libraries 
+    were re-sequenced to increase the total amount of data generated), the matched libraries 
+    should be given identical names in the ``samplesheet`` or ``simple_csv`` files for each 
+    run. If named in this way, ``scabranger`` can automatically combine the data from all
+    applicable runs when running CellRanger.
+
+
+samples
+~~~~~~~
+This section is required, and you must provide information for at least one sample. Each 
+sample is identified by a unique name -- you can pick whatever name you want, but names 
+with spaces and/or special characters may cause unexpected problems. For each sample, you
+You must specify the libraries that have been generated using a key/value pair in which the 
+key is the name of the library type and the value is the name of the library. 
+
+.. warning:: 
+    While `samples` can be given arbitrary names, library names must match the name of a 
+    library present in the ``samplesheet`` or ``simple_csv`` files provided in the 
+    `sequencing runs` configuration block.
+
+The following library types are available: 
+
+    - ``Gene Expression``: The name of the library containing the gene expression data for 
+      this sample.
+    - ``VDJ-B``: The name of the library containing the B-cell VDJ data for this sample. 
+    - ``VDJ-T``: The name of the library containing the T-cell VDJ data for this sample.
+    - ``VDJ-T-GD``: The name of the library containing the T-cell VDJ data (gamma-delta chains) 
+      for this sample.
+    - ``Antibody Capture``: The name of the library containing the antibody capture data for 
+      this sample.
+    - ``Antigen Capture``: The name of the library containing Barcode Enabled Antigen Mapping
+      (BEAM) data for this sample.
+    - ``CRISPR Guide Capture``: The name of the library containing the CRISPR guide capture 
+      data for this sample.
+    - ``Custom``: The name of the library containing custom feature barcode data for this sample.
+
+At least one library must be provided for each sample. If you do not have data for a particular 
+library type, you can omit it from the sample definition. For example, if you only have gene
+expression data for a sample, you can define the sample like this:
+
+.. code-block:: yaml
+
+    samples:
+        sample1:
+            Gene Expression: sample1_gex
+
+
+references
+~~~~~~~~~~
+This section is required, and you must provide at least one reference for each library type you 
+are using. Each reference type (GEX, VDJ, and Feature) has a default reference that will be used 
+for all samples unless a sample-specific reference is provided. The default references are
+specified using the ``default`` key. Sample-specific references are specified using the sample
+name as the key. For example, if you have a sample named ``sample2`` that uses a different VDJ
+reference than the default, you would specify it like this:
+
+.. code-block:: yaml
+
+    vdj_reference:
+        default: /path/to/default_vdj_reference
+        sample2: /path/to/alternate_vdj_reference
+
+
+cli options
+~~~~~~~~~~~
+This section is optional, and you can provide options for any or all of the CellRanger commands 
+you want to run. Each command has a ``default`` option that will be used for all samples unless
+a sample-specific option is provided. Sample-specific options are specified using the sample name
+as the key. For example, if you have a sample named ``sample2`` that uses a different number of
+expected cells than the default and for which you would prefer that BAMs not be generated, you 
+would specify the additional options (which will be passed diretly to ``cellranger multi``) 
+like this:
+
+.. code-block:: yaml
+
+    cli_options:
+        multi:
+            default: ""
+            sample2: "--expect-cells=5000 --no-bam=true"
+
+
+miscellaneous options
+~~~~~~~~~~~~~~~~~~~~~
 
 
 
