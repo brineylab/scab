@@ -39,7 +39,8 @@ import anndata
 from anndata import AnnData
 
 # from anndata.compat import Literal
-from anndata._core.merge import StrategiesLiteral
+# from anndata._core.merge import StrategiesLiteral
+StrategiesLiteral = Literal["same", "unique", "first", "only"]
 
 import abstar
 from abutils.core.pair import Pair, assign_pairs
