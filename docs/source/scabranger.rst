@@ -75,16 +75,18 @@ libraries to use for each sample. Here is an example:
     cellranger: cellranger # cellranger invocation
 
 
+<br>  
+
 
 scabranger configuration
 ------------------------
 The only thing you need to run ``scabranger`` (aside from data, of course) is a
-YAML-formatted configuration file and the name of a project directory into which 
-the results will be deposited. The configuration file specifies the location of your
+YAML-formatted config file and the name of a project directory into which 
+the results will be deposited. The config file specifies the location of your
 sequencing run data, the samples to process, the libraries that have been generated 
 for each sample, and any other options you want to pass to CellRanger. Let's walk 
 through each of these sections in a little more detail.
-
+  
   
 sequencing runs
 ~~~~~~~~~~~~~~~
