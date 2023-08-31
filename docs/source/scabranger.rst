@@ -75,8 +75,8 @@ libraries to use for each sample. Here is an example:
             sample2: "--expect-cells=5000 --no-bam=true"
 
     # MISCELLENEOUS OPTIONS
-    uiport: 40909 # port for the cellranger UI
-    cellranger: cellranger # cellranger invocation
+    uiport: 40909
+    cellranger: cellranger
 
 |   
 
@@ -222,7 +222,14 @@ common but are included for completeness. The following options are available:
     - ``cellranger``: The command to use to invoke CellRanger. The default value is ``cellranger``. 
         This is useful if you have multiple versions of CellRanger installed and want to use a 
         specific version for a particular run. If the command is not in your environment's ``PATH``, 
-        you must provide the full path to the command.
+        you must provide the full path to the command. 
+        
+The following example shows how to update both the ``uiport`` and ``cellranger`` options:
+
+.. code-block:: yaml
+
+    uiport: 40404
+    cellranger: path/to/cellranger7.0
 
 
 .. _CellRanger: https://support.10xgenomics.com/single-cell-vdj/software/pipelines/latest/what-is-cell-ranger

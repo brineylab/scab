@@ -10,11 +10,11 @@ customizability are more than worth the tradeoff.
 
 The scab API is quite similar to that of scanpy_ [Wolf18]_. This is by design, as 
 we are big fans of the scanpy API and are also striving minimize the learning curve 
-for users already familiar with scanpy. Additoinally, scab builds on the ``AnnData`` 
+for users already familiar with scanpy. Additionally, scab builds on the ``AnnData`` 
 object at the core of scanpy to integrate BCR/TCR and antigen specificity data.  
 
 Below are a few hypothetical use cases, with functional code examples. The 
-`scab Github repository`_` includes interactive examples with sample datasets so that 
+`scab Github repository`_ includes interactive examples with sample datasets so that 
 users can take scab for a more comprehensive test drive. 
 
 

@@ -58,7 +58,7 @@ def classify_specificity(
     Classifies BCR specificity using antigen barcodes (**AgBCs**). Thresholds are computed by 
     analyzing background AgBC UMI counts in empty droplets.
 
-    .. note:: 
+    .. caution:: 
        In order to set accurate thresholds, we must remove all cell-containing droplets 
        from the ``raw`` counts matrix. Because ``adata`` comprises only cell-containing 
        droplets, we simply remove all of the droplet barcodes in ``adata`` from ``raw``. 

@@ -35,7 +35,7 @@ from anndata import AnnData
 
 import abutils
 
-from ..tl import dimensionality_reduction
+from ..tools.embeddings import umap as get_umap
 from ..ut import get_adata_values
 
 
@@ -363,7 +363,7 @@ def umap(
     # get x, y and hue data
     # check that the UMAP data exists
     if "X_umap" not in adata.obsm:
-        adata = dimensionality_reduction(adata)
+        adata = get_umap(adata)
 
     # parse hues (if provided)
     if hue is not None:

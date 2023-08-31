@@ -3,9 +3,22 @@ scab: single cell analysis of B cells
 ===================================================================
  
 scab provides a computational framework for integrating, analyzing and 
-visualizing single B cell multi-omics data. We have developed a simple, 
-straightforward API which should feel quite familiar to users of scanpy_ 
-and allows sophisticated analyses with just a few lines of code:  
+visualizing single B cell multi-omics data. The scab package consists of 
+two primary components: 
+
+:ref:`scabranger <scabranger>`
+   a command line interface (CLI) wrapper around CellRanger that allows 
+   customizable batch processing of multiple samples with data 
+   spread across one or more sequencing runs
+:ref:`scab API <api>`
+   a Python API for processing, analyzing, and visualizing single
+   cell datasets, with a focus on B cell receptor (BCR) repertoire analysis
+
+|
+
+We have tried to design a simple, straightforward API that should 
+feel quite familiar to users of scanpy_. scab allows sophisticated 
+analyses with just a few lines of code:  
 
 
 .. image:: images/scab_console-workflow.jpg
@@ -46,7 +59,7 @@ analysis of adaptive immune cells and receptor repertoires.
    :caption: usage
 
    scabranger
-   examples
+   api examples <examples>
    api
    
 
@@ -69,7 +82,6 @@ analysis of adaptive immune cells and receptor repertoires.
 
    abstar <https://github.com/briney/abstar>
    abutils <https://github.com/briney/abutils>
-   abcloud <https://github.com/briney/abcloud>
    clonify <https://github.com/briney/clonify-python>
 
 

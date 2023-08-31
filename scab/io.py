@@ -38,8 +38,6 @@ import scanpy as sc
 import anndata
 from anndata import AnnData
 
-# from anndata.compat import Literal
-# from anndata._core.merge import StrategiesLiteral
 StrategiesLiteral = Literal["same", "unique", "first", "only"]
 
 import abstar
@@ -94,8 +92,8 @@ def read_10x_mtx(
     cache: bool = True,
     verbose: bool = True,
 ) -> AnnData:
-    """
-    Reads and integrates output files from 10x Genomics' CellRanger into a single ``AnnData`` object.
+    """\
+    Reads 10x Genomics data into an integrated ``AnnData`` object.
 
     Datasets can include gene expression (GEX), cell hashes, antigen barcodes (AgBCs), feature
     barcodes, and assembled BCR or TCR contig sequences.
@@ -398,17 +396,17 @@ def read_10x_mtx(
 
 
 def read(h5ad_file: Union[str, pathlib.Path]) -> AnnData:
-    """
-    Reads a serialized ``AnnData`` object. Similar to ``scanpy.read()``, except that ``scanpy``
+    """\
+    Reads a serialized ``AnnData`` object. 
+    
+    Similar to ``scanpy.read()``, except that ``scanpy``
     does not support serialized BCR/TCR data. If BCR/TCR data is included in the serialized ``AnnData``
     file, it will be separately deserialized into the original ``abutils.Pair`` objects.
 
     Parameters
     ----------
     h5ad_file : str
-        Path to the output file. The output will be written in ``h5ad`` format and must
-        include ``'.h5ad'`` as the file extension. If it is not included, the extension will automatically
-        be added. Required.
+        Path to the serialized ``AnnData`` object. Must be an ``".h5ad"`` file. Required.
 
 
     Returns
@@ -430,11 +428,34 @@ def read(h5ad_file: Union[str, pathlib.Path]) -> AnnData:
     return adata
 
 
-def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
+def load(h5ad_file: Union[str, pathlib.Path]) -> AnnData:
+    """\
+    Loads a serialized ``AnnData`` object. 
+    
+    Similar to ``scanpy.read()``, except that ``scanpy``
+    does not support serialized BCR/TCR data. If BCR/TCR data is included in the serialized ``AnnData``
+    file, it will be separately deserialized into the original ``abutils.Pair`` objects.
+
+    Parameters
+    ----------
+    h5ad_file : str
+        Path to the serialized ``AnnData`` object. Must be an ``".h5ad"`` file. Required.
+
+
+    Returns
+    -------
+    adata : ``anndata.AnnData``
+
     """
-    Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to
-    ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
-    function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or
+    return read(h5ad_file)
+
+
+def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
+    """\
+    Serializes and writes an ``AnnData`` object to disk in ``h5ad`` format. 
+    
+    Similar to ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. 
+    This function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or
     ``adata.obs.tcr`` using ``pickle`` prior to writing the ``AnnData`` object to disk.
 
     Parameters
@@ -467,9 +488,10 @@ def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
 
 
 def save(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
-    """
-    Serialized and writes an ``AnnData`` object to disk in ``h5ad`` format. Similar to
-    ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
+    """\
+    Serializes and saves an ``AnnData`` object to disk in ``h5ad`` format. 
+    
+    Similar to ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. This
     function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or
     ``adata.obs.tcr`` using ``pickle`` prior to writing the ``AnnData`` object to disk.
 
@@ -503,7 +525,9 @@ def concat(
     pairwise: bool = False,
     obs_names_make_unique: bool = True,
 ) -> AnnData:
-    """Concatenates AnnData objects using ``anndata.concat()``.
+    """\
+    Concatenates ``AnnData`` objects using ``anndata.concat()``.
+    
     Documentation was copied almost verbatim from the ``anndata.concat()`` `docstring`_.
 
     The only major difference is that the default for `uns_merge` has been changed from

@@ -23,23 +23,12 @@ You can manually install the latest development version of scab with:
     $ git checkout development
     $ python setup.py install
 
-.. tip::  
-    If installing manually via setup.py and you don't already have scikit-bio installed, 
-    you may get an error when setuptools attempts to install scikit-bio. This can be fixed 
-    by first installing scikit-bio with pip:
-
-    .. code-block:: console
-
-        $ pip install scikit-bio
-
-    and then retrying the manual install of scab.  
-
 |
 
 Requirements
 ------------
 
-* Python 3.6+
+* Python 3.8+
 * abutils_
 * abstar_
 * anndata
