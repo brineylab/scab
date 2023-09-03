@@ -1,0 +1,5 @@
+.sphinx-autoapi table.autosummary td,
+.sphinx-autoapi table.autosummary th {
+    text-align: left !important;
+    margin-left: 0 !important;
+}

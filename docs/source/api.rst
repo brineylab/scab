@@ -1,11 +1,21 @@
 .. _api:
 
 
+.. eft justify tables in autosummary
+.. raw:: html
+
+    <style>
+    .sphinx-autoapi table.autosummary td, .sphinx-autoapi table.autosummary th {
+        text-align: left !important;
+    }
+    </style>
+
+
 api reference
 =============
 
 read and write: ``io``
----------------------
+-----------------------
 
 .. toctree::
     :hidden:
@@ -64,6 +74,7 @@ tools: ``tl``
 
 .. toctree::
     :hidden:
+    :maxdepth: 2
 
     modules/tl
 
@@ -94,6 +105,17 @@ cell hashes
    :nosignatures:
 
    demultiplex
+
+
+clonality
+~~~~~~~~~~~~~~~~
+
+.. currentmodule:: scab.tools.clonify
+
+.. autosummary::
+   :nosignatures:
+
+   clonify
 
 
 
@@ -148,3 +170,4 @@ specificity
 .. _ComBat: https://github.com/brentp/combat.py
 .. _mutual nearest neighbors: https://github.com/chriscainx/mnnpy
 .. _Scanorama: https://github.com/brianhie/scanorama
+.. _clonify: https://github.com/briney/clonify  

@@ -1,5 +1,6 @@
 .. _tl:
 
+
 tools: ``tl``
 ==================
 
@@ -10,6 +11,7 @@ batch correction
     :members:
     :autosummary:
     :autosummary-nosignatures:
+    :autosummary-no-titles:
 
 
 cellhashes
@@ -19,15 +21,17 @@ cellhashes
     :members: demultiplex
     :autosummary:
     :autosummary-nosignatures:
+    :autosummary-no-titles:
 
 
-clonify
+clonality
 ------------------
 
 .. automodule:: scab.tools.clonify
     :members:
     :autosummary:
     :autosummary-nosignatures:
+    :autosummary-no-titles:
 
 
 embeddings
@@ -37,6 +41,7 @@ embeddings
     :members:
     :autosummary:
     :autosummary-nosignatures:
+    :autosummary-no-titles:
 
 
 specificity
@@ -46,3 +51,4 @@ specificity
     :members:
     :autosummary:
     :autosummary-nosignatures:
+    :autosummary-no-titles:

@@ -46,6 +46,7 @@ analysis of adaptive immune cells and receptor repertoires.
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: getting started
 
    overview
@@ -56,10 +57,14 @@ analysis of adaptive immune cells and receptor repertoires.
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: usage
 
    scabranger
    api examples <examples>
+
+.. toctree::
+
    api
    
 
@@ -67,6 +72,7 @@ analysis of adaptive immune cells and receptor repertoires.
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: about
 
    references

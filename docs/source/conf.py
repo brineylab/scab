@@ -12,16 +12,16 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
+
+from datetime import datetime
 import os
-import shlex
-import sphinx_rtd_theme
-
-# from ...scab.version import __version__
-# from abstar.version import __version__
-
+from pathlib import Path
+import sys
 from unittest.mock import MagicMock
 
+from sphinx.application import Sphinx
+
+HERE = Path(__file__).parent
 
 if os.environ.get("READTHEDOCS", None) == "True":
     # class Mock(MagicMock):
@@ -87,6 +87,7 @@ if os.environ.get("READTHEDOCS", None) == "True":
         "abutils.utils.codons",
         "abutils.utils.pipeline",
         "abutils.utils.decorators",
+        "abutils.color",
         "abutils.core",
         "abutils.core.sequence",
         "abutils.core.pair",
@@ -97,6 +98,19 @@ if os.environ.get("READTHEDOCS", None) == "True":
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath("../../"))
+# sys.path[:0] = [str(HERE.parent), str(HERE / "extensions")]
+
+autosummary_generate = True
+autodoc_member_order = "bysource"
+# autodoc_default_flags = ['members']
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_use_rtype = True  # having a separate entry generally helps readability
+napoleon_use_param = True
+napoleon_custom_sections = [("Params", "Parameters")]
+todo_include_todos = False
+api_dir = HERE / "api"  # function_images
 
 # -- General configuration ------------------------------------------------
 
@@ -107,12 +121,13 @@ sys.path.insert(0, os.path.abspath("../../"))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
+    "sphinx_togglebutton",
+    "sphinx_design",
     "autodocsumm",
     # "sphinx_autodoc_typehints",  # needs to be after napoleon
 ]
@@ -133,7 +148,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "scab"
-copyright = "2022, Bryan Briney"
+copyright = f"{datetime.now():%Y}, the Scanpy development team."
 author = "Bryan Briney"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -201,6 +216,7 @@ todo_include_todos = False
 # html_theme = 'alabaster'
 # html_theme = 'sphinx_rtd_theme'
 html_theme = "furo"
+# html_theme = "sphinx_book_theme"
 # html_theme = 'pydata_sphinx_theme'
 # html_theme = 'sphinx_material'
 
@@ -212,6 +228,12 @@ html_theme = "furo"
 # documentation.
 # html_theme_options = {}
 
+# Set autosummary tables to be left-justified
+# html_theme_options = {
+#     "table_style": "left",
+# }
+
+
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
 # html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
@@ -219,6 +241,7 @@ html_theme = "furo"
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
 # html_title = None
+html_title = f"{project} v{release}"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 # html_short_title = None
@@ -235,7 +258,13 @@ html_theme = "furo"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+# html_static_path = []
+
+# html_static_path = ["_static"]
+# html_css_files = [
+#     "autosummary_table_justification.css",  # override CSS for autosummary tables here
+# ]
+
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
