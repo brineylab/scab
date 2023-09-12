@@ -44,12 +44,11 @@ def qc_metrics(
     ig_cutoff: float = 100.0,
     read_count_bounds: Iterable = [0, 5000],
     gene_count_bounds: Iterable = [0, 500],
+    plot_ig: bool = False,
     fig_dir: Optional[str] = None,
     fig_prefix: Optional[str] = None,
 ):
-    """
-    
-    """
+    """ """
     if "ig" not in adata.var:
         pattern = re.compile("IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]")
         adata.var["ig"] = [
@@ -65,37 +64,38 @@ def qc_metrics(
     hue_order = ["include", "exclude"]
 
     # plot Ig
-    ig_hue = [
-        "include" if i < ig_cutoff else "exclude" for i in adata.obs.pct_counts_ig
-    ]
-    ig_counter = Counter(ig_hue)
-    g = sns.JointGrid(data=adata.obs, x="total_counts", y="pct_counts_ig")
-    g.plot_joint(
-        sns.scatterplot,
-        s=10,
-        linewidth=0,
-        hue=ig_hue,
-        hue_order=hue_order,
-        palette=palette,
-    )
-    g.plot_marginals(sns.kdeplot, shade=True, color="#404040")
-    g.ax_joint.set_xlabel("total counts", fontsize=16)
-    g.ax_joint.set_ylabel("immunoglobulin counts (%)", fontsize=16)
-    g.ax_joint.tick_params(axis="both", labelsize=13)
-    handles, labels = g.ax_joint.get_legend_handles_labels()
-    labels = [f"{l} ({ig_counter[l]})" for l in labels]
-    g.ax_joint.legend(
-        handles, labels, title="ig filter", title_fontsize=14, fontsize=13
-    )
-    if fig_dir is not None:
-        plt.tight_layout()
-        if fig_prefix is not None:
-            fig_name = f"{fig_prefix}_pct-counts-ig.pdf"
+    if plot_ig:
+        ig_hue = [
+            "include" if i < ig_cutoff else "exclude" for i in adata.obs.pct_counts_ig
+        ]
+        ig_counter = Counter(ig_hue)
+        g = sns.JointGrid(data=adata.obs, x="total_counts", y="pct_counts_ig")
+        g.plot_joint(
+            sns.scatterplot,
+            s=10,
+            linewidth=0,
+            hue=ig_hue,
+            hue_order=hue_order,
+            palette=palette,
+        )
+        g.plot_marginals(sns.kdeplot, shade=True, color="#404040")
+        g.ax_joint.set_xlabel("total counts", fontsize=16)
+        g.ax_joint.set_ylabel("immunoglobulin counts (%)", fontsize=16)
+        g.ax_joint.tick_params(axis="both", labelsize=13)
+        handles, labels = g.ax_joint.get_legend_handles_labels()
+        labels = [f"{l} ({ig_counter[l]})" for l in labels]
+        g.ax_joint.legend(
+            handles, labels, title="ig filter", title_fontsize=14, fontsize=13
+        )
+        if fig_dir is not None:
+            plt.tight_layout()
+            if fig_prefix is not None:
+                fig_name = f"{fig_prefix}_pct-counts-ig.pdf"
+            else:
+                fig_name = "pct_counts_ig.pdf"
+            plt.savefig(os.path.join(fig_dir, fig_name))
         else:
-            fig_name = "pct_counts_ig.pdf"
-        plt.savefig(os.path.join(fig_dir, fig_name))
-    else:
-        plt.show()
+            plt.show()
 
     # plot mito
     mito_hue = [

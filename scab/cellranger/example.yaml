@@ -35,6 +35,20 @@ sequencing_runs:
     simple_csv: ./ns002.csv
     copy_to_project: False
 
+# FASTQS
+# ------
+# If the FASTQ files have already been generated (e.g. by Illumina bcl2fastq or cellranger mkfastq),
+# they can be supplied here. If not, scabranger will generate them using cellranger mkfastq.
+# This option also allows you to restart a run that failed after the successful completion
+# of cellranger mkfastq without having to re-run it.
+#
+# NOTE: if supplying a path to FASTQs, the SEQUENCING RUNS block will be ignored and
+# cellranger mkfastq will not be run.
+
+fastqs:
+  NS0001:
+    path: /path/to/fastqs
+
 # SAMPLES
 # -------
 # for each sample, specify all library types and the associated library name
@@ -89,7 +103,7 @@ cli_options:
     NS002: "--rc-i2-override=true"
 
   multi:
-    default: ""
+    default: "--localcores=32 --localmem=256"
     sample1: "--expect-cells=5000 --no-bam=true"
 
 # COMPRESS
