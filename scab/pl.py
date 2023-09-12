@@ -3132,101 +3132,107 @@ def lineage_donut(
         ]
     )
 
-    # hue
-    if hue is not None:
-        if isinstance(hue, dict):
-            _hue = [hue.get(l, None) for l in df["lineage"]]
-            df["hue"] = _hue
-        elif hue in adata.obs:
-            if all([isinstance(h, float) for h in adata.obs[hue]]):
-                _hue = []
-                for l in df["lineage"]:
-                    _adata = adata[adata.obs[lineage_key] == l]
-                    if _adata:
-                        h = np.mean(_adata.obs[hue])
-                        _hue.append(h)
-                    else:
-                        _hue.append(None)
+    # only process hue/color if there are expanded lineages
+    if df.shape[0] > 0:
+        # hue
+        if hue is not None:
+            if isinstance(hue, dict):
+                _hue = [hue.get(l, None) for l in df["lineage"]]
                 df["hue"] = _hue
-            elif all([isinstance(h, bool) for h in adata.obs[hue]]):
-                _hue = []
-                for l in df["lineage"]:
-                    _adata = adata[adata.obs[lineage_key] == l]
-                    if _adata:
-                        h = any(_adata.obs[hue])
-                        _hue.append(h)
-                    else:
-                        _hue.append(None)
-                df["hue"] = _hue
+            elif hue in adata.obs:
+                if all([isinstance(h, float) for h in adata.obs[hue]]):
+                    _hue = []
+                    for l in df["lineage"]:
+                        _adata = adata[adata.obs[lineage_key] == l]
+                        if _adata:
+                            h = np.mean(_adata.obs[hue])
+                            _hue.append(h)
+                        else:
+                            _hue.append(None)
+                    df["hue"] = _hue
+                elif all([isinstance(h, bool) for h in adata.obs[hue]]):
+                    _hue = []
+                    for l in df["lineage"]:
+                        _adata = adata[adata.obs[lineage_key] == l]
+                        if _adata:
+                            h = any(_adata.obs[hue])
+                            _hue.append(h)
+                        else:
+                            _hue.append(None)
+                    df["hue"] = _hue
+                else:
+                    _hue = []
+                    for l in df["lineage"]:
+                        _adata = adata[adata.obs[lineage_key] == l]
+                        if _adata:
+                            h = _adata.obs[hue].value_counts().index[0]
+                            _hue.append(h)
+                        else:
+                            _hue.append(None)
+                    df["hue"] = _hue
             else:
-                _hue = []
-                for l in df["lineage"]:
-                    _adata = adata[adata.obs[lineage_key] == l]
-                    if _adata:
-                        h = _adata.obs[hue].value_counts().index[0]
-                        _hue.append(h)
-                    else:
-                        _hue.append(None)
-                df["hue"] = _hue
+                err = "\nERROR: hue must either be the name of a column in adata.obs or a dictionary "
+                err += f"mapping lineage names to hue values. You provided {hue}.\n"
+                print(err)
+                sys.exit()
         else:
-            err = "\nERROR: hue must either be the name of a column in adata.obs or a dictionary "
-            err += f"mapping lineage names to hue values. You provided {hue}.\n"
-            print(err)
-            sys.exit()
-    else:
-        df["hue"] = df["lineage"]
-    # set hue type
-    if all([isinstance(h, float) for h in df["hue"]]) and not force_categorical_hue:
-        hue_type = "continuous"
-    elif all([isinstance(h, bool) for h in df["hue"]]):
-        hue_type = "boolean"
-    elif all([h in df["lineage"] for h in df["hue"]]):
-        hue_type = "lineage"
-    else:
-        hue_type = "categorical"
-
-    # color
-    if hue_type == "continuous":
-        if cmap is None:
-            color = color if color is not None else sns.color_palette()[0]
-        cmap = get_cmap(from_color=color) if cmap is None else get_cmap(cmap)
-        norm_hue = (df["hue"] - df["hue"].min()) / (df["hue"].max() - df["hue"].min())
-        df["color"] = [cmap(nh) for nh in norm_hue]
-    elif hue_type == "boolean":
-        if palette is None:
-            color = color if color is not None else sns.color_palette()[0]
-            pos = color
-            neg = alt_color
+            df["hue"] = df["lineage"]
+        # set hue type
+        if all([isinstance(h, float) for h in df["hue"]]) and not force_categorical_hue:
+            hue_type = "continuous"
+        elif all([isinstance(h, bool) for h in df["hue"]]):
+            hue_type = "boolean"
+        elif all([h in df["lineage"] for h in df["hue"]]):
+            hue_type = "lineage"
         else:
-            pos = palette[True]
-            neg = palette[False]
-        df["color"] = [pos if h else neg for h in df["hue"]]
-    else:
-        if palette is None:
-            if hue_type == "lineage":
-                hue_order = df["hue"]
-            else:
-                hue_order = (
-                    hue_order
-                    if hue_order is not None
-                    else natsorted(df["hue"].dropna().unique())
-                )
-            if color is not None:
-                colors = abutils.color.monochrome_palette(color, len(hue_order))
-                if shuffle_colors:
-                    primary = colors[0]
-                    secondary = colors[1:]
-                    np.random.seed(random_seed)
-                    np.random.shuffle(secondary)
-                    colors = [primary] + secondary
-            else:
-                colors = sns.hls_palette(n_colors=len(hue_order))
-            palette = {h: c for h, c in zip(hue_order, colors)}
-        df["color"] = [palette.get(h, alt_color) for h in df["hue"]]
+            hue_type = "categorical"
 
-    # concat the singletons and sort
-    df = pd.concat([df, singleton_df], ignore_index=True)
-    df = df.sort_values(by="order", ascending=False)
+        # color
+        if hue_type == "continuous":
+            if cmap is None:
+                color = color if color is not None else sns.color_palette()[0]
+            cmap = get_cmap(from_color=color) if cmap is None else get_cmap(cmap)
+            norm_hue = (df["hue"] - df["hue"].min()) / (
+                df["hue"].max() - df["hue"].min()
+            )
+            df["color"] = [cmap(nh) for nh in norm_hue]
+        elif hue_type == "boolean":
+            if palette is None:
+                color = color if color is not None else sns.color_palette()[0]
+                pos = color
+                neg = alt_color
+            else:
+                pos = palette[True]
+                neg = palette[False]
+            df["color"] = [pos if h else neg for h in df["hue"]]
+        else:
+            if palette is None:
+                if hue_type == "lineage":
+                    hue_order = df["hue"]
+                else:
+                    hue_order = (
+                        hue_order
+                        if hue_order is not None
+                        else natsorted(df["hue"].dropna().unique())
+                    )
+                if color is not None:
+                    colors = abutils.color.monochrome_palette(color, len(hue_order))
+                    if shuffle_colors:
+                        primary = colors[0]
+                        secondary = colors[1:]
+                        np.random.seed(random_seed)
+                        np.random.shuffle(secondary)
+                        colors = [primary] + secondary
+                else:
+                    colors = sns.hls_palette(n_colors=len(hue_order))
+                palette = {h: c for h, c in zip(hue_order, colors)}
+            df["color"] = [palette.get(h, alt_color) for h in df["hue"]]
+
+        # concat the singletons and sort
+        df = pd.concat([df, singleton_df], ignore_index=True)
+        df = df.sort_values(by="order", ascending=False)
+    else:
+        df = singleton_df
 
     # make the plot
     plt.figure(figsize=figsize)
