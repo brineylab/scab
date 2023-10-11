@@ -52,6 +52,8 @@ from abutils.utils.utilities import nested_dict_lookup
 
 from .models.lineage import Lineage
 
+from .tools.similarity import repertoire_similarity
+
 
 def merge(
     adata: AnnData,
@@ -72,7 +74,7 @@ def merge(
 ) -> AnnData:
     """
     Merge VDJ (either BCR or TCR) sequences into an ``AnnData`` object.
-    
+
     Parameters
     ----------
     adata : AnnData
@@ -141,7 +143,7 @@ def merge(
 
     .. _AIRR-formatted:
         https://docs.airr-community.org/en/stable/datarep/rearrangements.html
-    
+
     """
     vdj_format = vdj_format.lower()
     receptor = receptor.lower()
@@ -188,7 +190,8 @@ def merge(
 
     # pairing information
     adata.obs[f"{vdj_field}_pairing"] = get_pairing_info(
-        adata.obs[vdj_field], receptor=receptor,
+        adata.obs[vdj_field],
+        receptor=receptor,
     )
     adata.obs[f"is_{vdj_field}_pair"] = [p.is_pair for p in adata.obs[vdj_field]]
 
@@ -424,7 +427,7 @@ def get_pairing_info(pairs: Iterable[Pair], receptor: str) -> Iterable:
     Returns
     -------
     pair_status : Iterable
-    
+
     """
     pair_status = []
     if receptor.lower() == "bcr":
@@ -959,58 +962,58 @@ def to_fasta(
     pairing_status: Optional[Union[Iterable, str]] = None,
     fasta_file: Optional[str] = None,
 ) -> Optional[str]:
-    """ 
+    """
     Write BCR or TCR sequences to a FASTA file.
-    
+
     Parameters
     ----------
     adata : AnnData
         The input data, which should contain annotated BCR or TCR sequences.
-        
+
     name : str, optional
         Sequence name to be used. Can be either a column in ``adata.obs`` or the
         name of an annotation field present in each ``Pair`` object. If not provided,
         ``pair.name`` will be used.
-        
+
     receptor : str, default='bcr'
         Receptor type. Options are ``'bcr'`` and ``'tcr'``.
-        
+
     sequence_field : str, default='sequence'
         Field containing the sequence to be written to the FASTA file. Default is
         ``"sequence"``. Must be present in each BCR/TCR sequence annotation.
-        
+
     locus_field : str, default='locus'
         Field containing the sequence locus. Default is ``"locus"``. Must be present
         in each BCR/TCR sequence annotation.
-        
+
     pairs_only : bool, default=False
-        If ``True``, only paired sequences pair will be included. Pairing is determined 
+        If ``True``, only paired sequences pair will be included. Pairing is determined
         by calling ``Pair.is_pair``. Default is ``False``, meaning all sequences, even
         unpaired, will be included.
-        
+
     pairing_status : str or iterable, optional
-        Pairing status(es) to include. Options are any of the annotations produced by 
-        ``scab.vdj.get_pairing_info()``. Multiple statuses can be included as a list. 
+        Pairing status(es) to include. Options are any of the annotations produced by
+        ``scab.vdj.get_pairing_info()``. Multiple statuses can be included as a list.
         If not provided, all sequences will be included.
-        
+
     fasta_file : str, optional
         Path to the output FASTA file. If not provided, the FASTA sequences will be
         printed to the console.
-        
+
     Returns
     -------
     Output is written to ``fasta_file`` if provided. If not, the FASTA sequences are
-    printed to the console. 
-    
+    printed to the console.
+
     """
     # get sequences
     vdjs = adata.obs[receptor]
-    
+
     # pairing status
     if isinstance(pairing_status, str):
         pairing_status = [pairing_status]
     statuses = get_pairing_info(vdjs, receptor)
-    
+
     # parse names
     if name in adata.obs.columns:
         names = adata.obs[name]
@@ -1018,13 +1021,13 @@ def to_fasta(
         names = [getattr(v, name) for v in vdjs]
     else:
         names = [v.name for v in vdjs]
-        
+
     # build fastas
     fastas = []
     chain_types = {
-        "tcr": ['alpha', 'beta', 'delta', 'gamma'], 
-        'bcr': ['heavy', 'light']
-        }
+        "tcr": ["alpha", "beta", "delta", "gamma"],
+        "bcr": ["heavy", "light"],
+    }
     for name, vdj, status in zip(names, vdjs, statuses):
         if pairs_only and not vdj.is_pair:
             continue
@@ -1037,16 +1040,13 @@ def to_fasta(
                 locus = LOCUS_MAP.get(raw_locus, raw_locus)
                 if sequence is not None:
                     fastas.append(f">{name}_{locus}\n{sequence}")
-    
+
     # print or write
     if fasta_file is not None:
-        with open(fasta_file, 'w') as f:
+        with open(fasta_file, "w") as f:
             f.write("\n".join(fastas))
     else:
         print("\n".join(fastas))
-            
-        
-    
 
 
 GIBSON5 = {
