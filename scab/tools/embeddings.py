@@ -37,7 +37,7 @@ __all__ = ["pca", "umap", "dimensionality_reduction"]
 def pca(
     adata: anndata.AnnData,
     solver: str = "arpack",
-    n_pcs: int = 40,
+    n_pcs: int = 50,
     ignore_ig: bool = True,
     verbose: bool = True,
 ) -> anndata.AnnData:
@@ -54,7 +54,7 @@ def pca(
     solver : str, default='arpack'
         Solver to use for the PCA.
 
-    n_pcs : int, default=40
+    n_pcs : int, default=50
         Number of principal components to use when computing the neighbor graph.
         Although the default value is generally appropriate, it is sometimes useful
         to empirically determine the optimal value for `n_pcs`.
@@ -96,11 +96,12 @@ def pca(
 def umap(
     adata: anndata.AnnData,
     solver: str = "arpack",
-    n_neighbors: int = 20,
-    n_pcs: int = 40,
+    n_neighbors: Optional[int] = None,
+    n_pcs: Optional[int] = None,
     force_pca: bool = False,
     ignore_ig: bool = True,
     paga: bool = True,
+    batch_key: Optional[str] = None,
     use_rna_velocity: bool = False,
     use_rep: Optional[str] = None,
     random_state: Union[int, float, str] = 42,
@@ -139,6 +140,12 @@ def umap(
         If ``True``, performs partition-based graph abstraction (PAGA_) prior to
         UMAP embedding.
 
+    batch_key : str, optional
+        If ``adata`` contains batch information, this is the key in ``adata.obs``
+        that contains the batch information. If provided, neighbors will be computed
+        using `batch-balanced KNN`_ (``scanpy.external.pp.bbknn``) rather than
+        ``scanpy.pp.neighbors``.
+
     use_rna_velocity : bool, default=False
         If ``True``, uses RNA velocity information to compute PAGA. If ``False``,
         this option is ignored.
@@ -165,12 +172,20 @@ def umap(
         https://github.com/theislab/paga
     .. _computing neighbors:
         https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.neighbors.html
+    .. _batch-balanced KNN:
+        https://github.com/Teichlab/bbknn
 
     """
     if verbose:
         print("")
         print("UMAP EMBEDDING")
         print("--------------")
+    if batch_key is not None:
+        n_neighbors = n_neighbors if n_neighbors is not None else 3
+        n_pcs = n_pcs if n_pcs is not None else 50
+    else:
+        n_neighbors = n_neighbors if n_neighbors is not None else 15
+        n_pcs = n_pcs if n_pcs is not None else 40
     # PCA
     if any([force_pca, "X_pca" not in adata.obsm_keys()]):
         if verbose:
@@ -179,9 +194,25 @@ def umap(
             adata, solver=solver, n_pcs=n_pcs, ignore_ig=ignore_ig, verbose=False
         )
     # neighbors
-    if verbose:
-        print("  - calculating neighbors")
-    sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, use_rep=use_rep)
+    if batch_key is not None:
+        if verbose:
+            print("  - using BBKNN to calculate neighbors")
+        sc.external.pp.bbknn(
+            adata,
+            batch_key=batch_key,
+            n_pcs=n_pcs,
+            neighbors_within_batch=n_neighbors,
+            use_rep=use_rep,
+        )
+    else:
+        if verbose:
+            print("  - calculating neighbors")
+        sc.pp.neighbors(
+            adata,
+            n_neighbors=n_neighbors,
+            n_pcs=n_pcs,
+            use_rep=use_rep,
+        )
     # leiden clustering
     if verbose:
         print("  - leiden clustering")

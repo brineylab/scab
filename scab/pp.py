@@ -57,64 +57,64 @@ def filter_and_normalize(
     Parameters
     ----------
 
-    adata : anndata.AnnData  
+    adata : anndata.AnnData
         ``AnnData`` object containing gene count data.
 
-    make_var_names_unique : bool, default=True  
-        If ``True``, ``adata.var_names_make_unique()`` will be called before filtering and 
-        normalization.  
+    make_var_names_unique : bool, default=True
+        If ``True``, ``adata.var_names_make_unique()`` will be called before filtering and
+        normalization.
 
-    min_genes : int, default=200  
+    min_genes : int, default=200
         Minimum number of identified genes for a droplet to be considered a valid cell.
-        Passed to ``sc.pp.filter_cells()`` as the ``min_genes`` parameter.  
+        Passed to ``sc.pp.filter_cells()`` as the ``min_genes`` parameter.
 
-    min_cells : int, optional  
+    min_cells : int, optional
         Minimum number of cells in which a gene has been identified. Genes below this
-        threshold will be filtered. If not provided, a dynamic threshold equal to 
-        0.1% of the total number of cells in the dataset will be used. 
+        threshold will be filtered. If not provided, a dynamic threshold equal to
+        0.1% of the total number of cells in the dataset will be used.
 
-    n_genes_by_counts : int, default=2500  
-        Threshold for filtering cells based on the number of genes by counts.  
+    n_genes_by_counts : int, default=2500
+        Threshold for filtering cells based on the number of genes by counts.
 
-    percent_mito : int or float, default=10  
+    percent_mito : int or float, default=10
         Threshold for filtering cells based on the percentage of mitochondrial genes.
 
-    hvg_batch_key : str, optional  
+    hvg_batch_key : str, optional
         When processing an ``AnnData`` object containing multiple samples that may
         require integration and batch correction, `hvg_batch_key` will be passed to
         ``sc.pp.highly_variable_genes()`` to force separate identification of highly
-        variable genes for each batch. If not provided, variable genes will be computed 
+        variable genes for each batch. If not provided, variable genes will be computed
         on the entire dataset.
 
-    ig_regex_pattern : str, default='IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]'  
-        Regular expression pattern used to identify immunoglobulin genes. The default 
-        is designed to match all immunoglobulin germline gene segments (V, D and J). 
-        Constant region genes are not matched.  
+    ig_regex_pattern : str, default='IG[HKL][VDJ][1-9].+|TR[ABDG][VDJ][1-9]'
+        Regular expression pattern used to identify immunoglobulin genes. The default
+        is designed to match all immunoglobulin germline gene segments (V, D and J).
+        Constant region genes are not matched.
 
-    target_sum : int, optional  
-        Target read count for normalization, passed to ``sc.pp.normalize_total()``. If not 
+    target_sum : int, optional
+        Target read count for normalization, passed to ``sc.pp.normalize_total()``. If not
         provided, the median count of all cells (pre-normalization) is used.
 
-    n_top_genes : int, optional  
-        The number of top highly variable genes to retain. If not provided, the default 
-        number of genes for the selected normalization flavor is used.  
+    n_top_genes : int, optional
+        The number of top highly variable genes to retain. If not provided, the default
+        number of genes for the selected normalization flavor is used.
 
-    normalization_flavor : str, default='cell_ranger'  
-        Options are ``'cell_ranger'``, ``'seurat'`` or ``'seurat_v3'``.  
+    normalization_flavor : str, default='cell_ranger'
+        Options are ``'cell_ranger'``, ``'seurat'`` or ``'seurat_v3'``.
 
-    log : bool, default=True  
-        If ``True``, counts will be log-plus-1 transformed.  
+    log : bool, default=True
+        If ``True``, counts will be log-plus-1 transformed.
 
-    scale_max_value : float, optional  
-        Value at which normalized count values will be clipped. Default is no clipping.  
+    scale_max_value : float, optional
+        Value at which normalized count values will be clipped. Default is no clipping.
 
-    save_raw : bool, default=True  
+    save_raw : bool, default=True
         If ``True``, normalized and filtered data will be saved to ``adata.raw`` prior to
-        scaling and regressing out mitochondrial/immmunoglobulin genes.  
+        scaling and regressing out mitochondrial/immmunoglobulin genes.
 
-    verbose : bool, default=True  
-        If ``True``, progress updates will be printed.  
-    
+    verbose : bool, default=True
+        If ``True``, progress updates will be printed.
+
     """
 
     if make_var_names_unique:

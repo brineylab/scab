@@ -1,5 +1,5 @@
 abstar>=0.5.9
-abutils>=0.2.10
+abutils>=0.4.4
 anndata
 dnachisel
 fastcluster
