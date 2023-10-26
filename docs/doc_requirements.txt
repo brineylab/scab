@@ -11,3 +11,4 @@ sphinx_design
 autodocsumm
 # other requirements
 anndata
+numpy
