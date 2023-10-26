@@ -122,7 +122,10 @@ def repertoire_similarity(
     elif isinstance(features, str):
         features = [features]
     if len(features) == 0:
-        raise ValueError("No features provided for similarity calculation")
+        raise ValueError(
+            "No features provided for similarity calculation.",
+            "Please provide at least one feature.",
+        )
     # minimum reperoire size
     if minimum_batch_size is None:
         minimum_batch_size = 0
