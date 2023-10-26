@@ -10,5 +10,7 @@ sphinx_togglebutton
 sphinx_design
 autodocsumm
 # other requirements
-anndata
-numpy
+# scanpy
+# h5py
+# numpy
+# anndata

@@ -40,7 +40,7 @@ if os.environ.get("READTHEDOCS", None) == "True":
         "nwalign",
         "pandas",
         "scanpy",
-        # "anndata",
+        "anndata",
         "dnachisel",
         "fastcluster",
         "harmonypy",
