@@ -91,6 +91,10 @@ if os.environ.get("READTHEDOCS", None) == "True":
         "abutils.core",
         "abutils.core.sequence",
         "abutils.core.pair",
+        "abutils.tools",
+        "abutils.tools.alignment",
+        "abutils.tools.cluster",
+        "abutils.tools.similarity",
     ]
     sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
@@ -148,7 +152,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "scab"
-copyright = f"{datetime.now():%Y}, the Scanpy development team."
+copyright = f"{datetime.now():%Y}, the Briney lab."
 author = "Bryan Briney"
 
 # The version info for the project you're documenting, acts as replacement for
