@@ -59,7 +59,7 @@ annotations. With this dataset, we'd like to do the following:
     adata = adata[adata.obs.bcr_pairing == "single pair"]
 
     # assign BCR clonal lineages
-    adata = scab.vdj.clonifuy(adata)
+    adata = scab.vdj.clonify(adata)
 
     # make a lineage donut plot for each sample, colored by VH gene use
     for sample in adata.obs.sample.unique():
