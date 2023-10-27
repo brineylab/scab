@@ -1,16 +1,6 @@
 .. _api:
 
 
-.. eft justify tables in autosummary
-.. raw:: html
-
-    <style>
-    .sphinx-autoapi table.autosummary td, .sphinx-autoapi table.autosummary th {
-        text-align: left !important;
-    }
-    </style>
-
-
 api reference
 =============
 
@@ -32,9 +22,14 @@ multiple ``AnnData`` objects.
     done to make the API more consistent with scanpy. 
 
 Each function is designed to replicate the behavior of their scanpy or anndata equivalent, but 
-to add necessary fuctionality to accomodate BCR and/or TCR sequence data. For example, BCR/TCR 
-annotations cannot be writted to ``h5ad``-formatted files, so ``scab.save()`` will serialize them prior 
-to saving, and de-serialize when loading with ``scab.load()``.
+to add necessary fuctionality to accomodate BCR and/or TCR sequence data. Additionally, we have added two 
+additional functions -- ``load`` and ``save`` which are equivalent to ``read`` and ``write`` in Scanpy but 
+which we belive are named more descriptively. You can use ``scab.read()``// ``scab.load()`` and ``scab.write()``// 
+``scab.save()`` interchangably. Re-implementing these functions is necessary, because BCR/TCR 
+annotations cannot be writted to ``h5ad``-formatted files directly, so ``scab.save()`` serializes them prior 
+to saving, and de-serializes when loading with ``scab.load()``. This means that while ``scab.load()`` can be
+used to read files saved with ``scanpy.write()``, ``scanpy.read()`` will not properly load files containing 
+BCR/TCR annotations that were saved using ``scab.save()``.
 
 .. currentmodule:: scab.io
 
