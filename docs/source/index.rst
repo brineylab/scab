@@ -64,6 +64,8 @@ analysis of adaptive immune cells and receptor repertoires.
    api examples <examples>
 
 .. toctree::
+   :hidden:
+   :caption: api
 
    api
    

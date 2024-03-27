@@ -27,20 +27,16 @@ import copy
 from collections import Counter
 from typing import Optional
 
+import abutils
 import numpy as np
 import pandas as pd
-
-from natsort import natsorted
-
 import prettytable as pt
-
 from abstar.core.germline import get_imgt_germlines
 from abstar.utils.regions import (
-    IMGT_REGION_START_POSITIONS_AA,
     IMGT_REGION_END_POSITIONS_AA,
+    IMGT_REGION_START_POSITIONS_AA,
 )
-
-import abutils
+from natsort import natsorted
 
 
 class Lineage:
@@ -125,7 +121,9 @@ class LineageAssignment:
     """
 
     def __init__(
-        self, pair: abutils.Pair, assignment_dict: dict,
+        self,
+        pair: abutils.Pair,
+        assignment_dict: dict,
     ):
         self.pair = pair
         self.assignment_dict = assignment_dict
@@ -508,10 +506,14 @@ class LineageSummary:
             # aln_dict = {rec.id: str(rec.seq) for rec in aln}
             aln_dict = {}
             for rec in aln:
-                if not str(rec.seq).replace("-", "").replace("X", ""):
-                    aln_dict[rec.id] = " " * len(str(rec.seq))
+                if not str(rec.sequence).replace("-", "").replace("X", ""):
+                    aln_dict[rec.id] = " " * len(str(rec.sequence))
                 else:
-                    aln_dict[rec.id] = str(rec.seq)
+                    aln_dict[rec.id] = str(rec.sequence)
+                # if not str(rec.seq).replace("-", "").replace("X", ""):
+                #     aln_dict[rec.id] = " " * len(str(rec.seq))
+                # else:
+                #     aln_dict[rec.id] = str(rec.seq)
             df[f"{region}_aligned"] = [aln_dict[str(n)] for n in names]
         # make a dot alignment
         for region in ["cdr1", "cdr2"]:

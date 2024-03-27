@@ -25,14 +25,11 @@
 
 from typing import Iterable, Optional, Union
 
-from natsort import natsorted
-
 import abutils
-from abutils.tools.similarity import RepertoireSimilarity, RepertoireSimilarities
-
-import scanpy as sc
-
 import anndata
+import scanpy as sc
+from abutils.tools.similarity import RepertoireSimilarities, RepertoireSimilarity
+from natsort import natsorted
 
 
 def repertoire_similarity(
