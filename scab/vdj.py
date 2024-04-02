@@ -54,6 +54,12 @@ from .models.lineage import Lineage
 
 from .tools.similarity import repertoire_similarity
 
+from abstar.core.germline import get_imgt_germlines
+from abutils.utils.alignment import mafft
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import baltic as bt
+
 
 def merge(
     adata: AnnData,
@@ -1128,3 +1134,132 @@ JSON_SUMMARY_FIELDS = [
     "vdj_aa",
     "raw_input",
 ]
+
+
+def random_label(length=8):
+    import string
+    import random
+    """Generate a random label of a specified length."""
+    letters = string.ascii_letters + string.digits
+    return ''.join(random.choice(letters) for _ in range(length))
+
+
+def fasttree(alignment, tree_file, is_aa=False, quiet=True):
+    import subprocess as sp
+    if is_aa:
+        ft_cmd = "fasttree {} > {}".format(alignment, tree_file)
+    else:
+        ft_cmd = "fasttree -nt {} > {}".format(alignment, tree_file)
+    ft = sp.Popen(ft_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
+    stdout, stderr = ft.communicate()
+    if not quiet:
+        print(ft_cmd)
+        print(stdout)
+        print(stderr)
+    return tree_file
+    
+
+def root_tree(path_nw, root_id=None):
+    from Bio import Phylo
+    _tree = Phylo.read(path_nw, 'newick') 
+    _tree.root_with_outgroup(root_id)
+    Phylo.write(_tree, path_nw, 'newick')
+    
+
+def vdj_tree(adata, lineage: str|list, residues='nt', root=True, species='human', lineage_key='lineage', ax=None):
+    """ For a selected lineage, computes the phylogeny using Maximum Likelihood approach and plots the corresponding tree
+
+    Args:
+        adata: adata object
+        lineage: a string corresponding to the lineage name, or a list of strings corresponding to several lineage names. In this case, lineages will be merged and a single tree will be rendered
+        residues: specify residues to use for alignment computation. Use 'nt' for nucleotides, and 'aa' for amino-acids. Default value is 'nt'
+        root: bool. Enables tree rooting. Default value is True. Requires species
+        species: sepcies used to build outergroup when rooting tree. Default value is 'human'
+        lineage_key: specify if lineage info is stored under a different key. Default value is 'lineage'
+
+    Returns:
+        A figure. If ax is specified, returns a matplotlib.Axes element
+    """
+
+    # Preparing data
+    if isinstance(lineage, list):
+        _lineage = adata[adata.obs[lineage_key].isin(lineage)]
+    elif isinstance(lineage, str):
+        _lineage = adata[adata.obs[lineage_key] == lineage]
+
+    separator = 20 * "N"
+    fasta = str()
+    vh_genes = []
+    vl_genes = []
+
+    # Collecting sequences and merging heavy and light chains together
+    for i, cell in _lineage.obs.iterrows():
+        try:
+            vh_genes.append(cell.bcr.heavy.annotations['v_call'])
+            vl_genes.append(cell.bcr.light.annotations['v_call'])
+            if residues == "nt":
+                heavy = cell.bcr.heavy.annotations['sequence']
+                light = cell.bcr.light.annotations['sequence']
+            elif residues == "aa":
+                heavy = cell.bcr.heavy.annotations['sequence_aa']
+                light = cell.bcr.light.annotations['sequence_aa']
+            sequence = Sequence(heavy + separator + light, id=i).as_fasta()
+            fasta += sequence + '\n'
+        except:
+            pass
+
+    # Building outgroup sequence to root tree
+    if root:
+        top_vh = sorted(Counter(vh_genes), key=lambda x: x[1], reverse=True)[0]
+        seq_vh = get_imgt_germlines(species, 'V', gene=top_vh)
+        top_vl = sorted(Counter(vl_genes), key=lambda x: x[1], reverse=True)[0]
+        seq_vl = get_imgt_germlines(species, 'V', gene=top_vl)
+        fasta_h = Sequence(seq_vh.ungapped_nt_sequence, id=top_vh).sequence
+        try:
+            fasta_l = Sequence(seq_vl.ungapped_nt_sequence, id=top_vl).sequence
+        except:
+            fasta_l = ''
+        outergroup = Sequence(fasta_h + separator + fasta_l, id='outergroup').as_fasta()
+        fasta += outergroup + '\n'
+
+    # Computing alignment
+    aln_file = mafft(fasta, as_file=True, debug=False)
+    tree_file = f'/tmp/{random_label()}.nw'
+    tree = fasttree(aln_file, tree_file, is_aa=True if residues == 'aa' else False, quiet=True)
+    
+    # Rooting tree
+    if root:
+        root_tree(tree, 'outergroup')
+    
+    # Preparing tree plotting
+    if not ax:
+        fig = plt.figure()
+        ax = plt.gca()
+    tree = bt.loadNewick(tree, tip_regex='_([0-9\-]+)$', verbose=False)
+    cmap=mpl.cm.viridis
+    ct_func=lambda k: cmap(k.y/float(tree.ySpan))
+    
+    # plot tree
+    x_attr1=lambda k: k.height
+    tree.plotTree(ax, x_attr=x_attr1, width=2, colour='midnightblue')
+    tree.plotPoints(ax, x_attr=x_attr1, size=30, colour=ct_func, zorder=100)
+
+    # Rendering the root/outergroup
+    x_attr1_root = lambda k: k.height
+    c_func_root = lambda k: 'red' if k.name == 'outergroup' else 'black'
+    s_func_root1 = lambda k: 50 if k.name == 'outergroup' else 0
+    tree.plotPoints(ax, x_attr=x_attr1_root, size=s_func_root1, colour=c_func_root, zorder=100, )
+    for k in filter(lambda x: x.branchType == 'leaf', tree.Objects):
+        if k.name == 'outergroup' :
+            ax.text(k.x + 0.01, k.y, k.name, fontsize=14)
+
+    
+    # Decorating the plot
+    [ax.spines[loc].set_visible(False) for loc in ['top','right','left','bottom']]
+    ax.tick_params(axis='x',size=0)
+    ax.tick_params(axis='y',size=0)
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.set_ylim(-1,tree.ySpan+1)
+
+    return ax
