@@ -127,6 +127,7 @@ compress:
 
 # MISCELLENEOUS
 # -------------
-uiport: 40909 # port for the cellranger UI
-cellranger: cellranger # path to the cellranger binary
+platform: illumina  # sequencing platform, either "illumina" or "element"
+uiport: 40909  # port for the cellranger UI
+cellranger: cellranger  # path to the cellranger binary
 

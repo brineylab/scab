@@ -23,11 +23,7 @@
 #
 
 
-from argparse import ArgumentParser
 import csv
-from datetime import datetime
-import humanize
-from natsort import natsorted
 import os
 import pathlib
 import re
@@ -35,20 +31,18 @@ import shutil
 import subprocess as sp
 import sys
 import time
-from unicodedata import name
 import urllib
-
+from argparse import ArgumentParser
+from datetime import datetime
 from typing import Any, Callable, Collection, Dict, Mapping, Optional, Sequence, Union
+from unicodedata import name
 
+import humanize
 import yaml
-
-from natsort import natsorted
-
-from sample_sheet import SampleSheet
-
+from abutils.io import list_files, make_dir
 from abutils.utils import log
-from abutils.utils.pipeline import list_files, make_dir
-
+from natsort import natsorted
+from sample_sheet import SampleSheet
 
 from ..version import __version__
 
@@ -124,6 +118,8 @@ class Config:
             GEX, VDJ or Feature references. Each reference tuype must include
             a ``default`` reference, which will be used for all samples not
             specifically named in the dictionary.
+      - platform: sequencing platform used to generate the sequencing data.
+            Currently, "illumina" and "element" platforms are supported.
       - uiport: port for the cellranger UI. Default is 72647.
       - cellranger: path to the cellranger binary. Default is ``"cellranger"``, which
             assumes that the cellranger binary is on your $PATH.
@@ -135,6 +131,7 @@ class Config:
         self.gex_reference = None
         self.vdj_reference = None
         self.feature_reference = None
+        self.platform = None
         self.uiport = None
         self.cellranger = None
         self._runs = None
@@ -160,6 +157,7 @@ class Config:
         for k, v in self.feature_reference.items():
             if k != "default":
                 rlist.append("  - {}: {}".format(k, v))
+        rlist.append("platform: {}".format(self.platform))
         rlist.append("UI port: {}".format(self.uiport))
         rlist.append("cellranger binary: {}".format(self.cellranger))
         rlist.append("runs: {}".format([r.name for r in self.runs]))
@@ -228,15 +226,16 @@ class Config:
         sample_dict = config.get("samples", {})
         self.samples = [
             Sample(
-                name,
+                sample_name,
                 library_dict,
                 gex_reference=Config.get_ref(self.gex_reference, name),
                 vdj_reference=Config.get_ref(self.vdj_reference, name),
                 feature_reference=Config.get_ref(self.feature_reference, name),
             )
-            for name, library_dict in sample_dict.items()
+            for sample_name, library_dict in sample_dict.items()
         ]
         # general config options
+        self.platform = config.get("platform", "illumina").lower()
         self.uiport = config.get("uiport", 72647)
         self.cellranger = config.get("cellranger", "cellranger")
 
@@ -288,7 +287,9 @@ class Run:
     """
 
     def __init__(
-        self, name: str, config: dict,
+        self,
+        name: str,
+        config: dict,
     ):
         self.name = name
         self.config = config
@@ -300,12 +301,13 @@ class Run:
         self.simple_csv = (
             os.path.abspath(config["simple_csv"]) if "simple_csv" in config else None
         )
+        self.platform = config.get("platform", "illumina").lower()
         # self.is_compressed = config.get("is_compressed", True)
         # self.copy_to_project = config.get("copy_to_project", False)
         self.get_start = None
         self.get_finish = None
-        self.mkfastq_start = None
-        self.mkfastq_finish = None
+        self.make_fastq_start = None
+        self.make_fastq_finish = None
         self._successful_get = False
         self._fastq_path = None
         self._libraries = None
@@ -421,11 +423,11 @@ class Run:
             return True
 
     def print_splash(self):
-        l = len(self.name)
+        name_len = len(self.name)
         logger.info("")
         # logger.info('-' * (l + 4))
         logger.info("  " + self.name)
-        logger.info("-" * (l + 4))
+        logger.info("-" * (name_len + 4))
 
     def print_get_completion(self):
         if self.successful_get:
@@ -440,9 +442,9 @@ class Run:
             logger.info("check the logs to see if any errors occured")
         logger.info("")
 
-    def print_mkfastq_completion(self):
+    def print_make_fastq_completion(self):
         if self.successful_mkfastq:
-            delta = self.mkfastq_finish - self.mkfastq_start
+            delta = self.make_fastq_finish - self.make_fastq_start
             logger.info(
                 f"mkfastq completed successfully in {humanize.precisedelta(delta)}"
             )
@@ -483,10 +485,43 @@ class Run:
         self.successful_get = self._verify_get_success()
         self.get_finish = datetime.now()
 
+    def make_fastqs(
+        self,
+        fastq_dir: Union[str, pathlib.Path],
+        bin_path: Optional[str] = None,
+        uiport: Optional[int] = None,
+        log_dir: Optional[str] = None,
+        cli_options: Optional[str] = None,
+        debug: bool = False,
+    ) -> str:
+        """
+        docstring for make_fastqs()
+        """
+        self.make_fastq_start = datetime.now()
+        if self.platform == "illumina":
+            self.mkfastq(
+                fastq_dir=fastq_dir,
+                bin_path="cellranger" if bin_path is None else bin_path,
+                uiport=uiport,
+                log_dir=log_dir,
+                cli_options=cli_options,
+                debug=debug,
+            )
+        elif self.platform == "element":
+            self.bases2fastq(
+                fastq_dir=fastq_dir,
+                bin_path="bases2fastq" if bin_path is None else bin_path,
+                log_dir=log_dir,
+                cli_options=cli_options,
+                debug=debug,
+            )
+        self.make_fastq_finish = datetime.now()
+        return self.fastq_path
+
     def mkfastq(
         self,
         fastq_dir: Union[str, pathlib.Path],
-        cellranger: str = "cellranger",
+        bin_path: str = "cellranger",
         uiport: Optional[int] = None,
         log_dir: Optional[str] = None,
         cli_options: Optional[str] = None,
@@ -495,9 +530,8 @@ class Run:
         """
         docstring for mkfastq()
         """
-        self.mkfastq_start = datetime.now()
         logger.info("running cellranger mkfastq....")
-        mkfastq_cmd = f"cd '{fastq_dir}' && {cellranger} mkfastq"
+        mkfastq_cmd = f"cd '{fastq_dir}' && {bin_path} mkfastq"
         mkfastq_cmd += f" --id={self.name}"
         mkfastq_cmd += f" --run='{self.path}'"
         if self.samplesheet is not None:
@@ -552,15 +586,75 @@ class Run:
                     break
             if self.fastq_path is not None:
                 break
-        self.mkfastq_finish = datetime.now()
         return self.fastq_path
+
+    def bases2fastq(
+        self,
+        fastq_dir: Union[str, pathlib.Path],
+        bin_path: str = "bases2fastq",
+        log_dir: Optional[str] = None,
+        cli_options: Optional[str] = None,
+        debug: bool = False,
+    ) -> str:
+        """
+        docstring for bases2fastq()
+        """
+        logger.info("running bases2fastq....")
+        self._copy_simple_csv(fastq_dir)
+        manifest_path = self._build_bases2fastq_manifest(fastq_dir)
+        output_dir = os.path.join(fastq_dir, self.name)
+        make_dir(output_dir)
+        bases2fastq_cmd = f"{bin_path} --legacy-fastq"  # Illumina-formatted filenames
+        bases2fastq_cmd += f" --run-manifest='{manifest_path}'"
+        bases2fastq_cmd += f" '{self.path}' '{output_dir}'"
+        if cli_options is not None:
+            bases2fastq_cmd += f" {cli_options}"
+        p = sp.Popen(
+            bases2fastq_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True
+        )
+        o, e = p.communicate()
+        if debug:
+            logger.info("\nBASES2FASTQ")
+            logger.info(bases2fastq_cmd)
+            logger.info(o)
+            logger.info(e)
+            logger.info("\n")
+        if log_dir is not None:
+            log_subdir = os.path.join(log_dir, "bases2fastq")
+            make_dir(log_subdir)
+            write_log(self.name, log_subdir, stdout=o, stderr=e)
+        self.fastq_path = os.path.join(fastq_dir, f"{self.name}/Samples/DefaultProject")
+        return self.fastq_path
+
+    def _build_bases2fastq_manifest(self, destination_dir: Union[str, pathlib.Path]):
+        manifest_data = ["[SAMPLES],,", "SampleName,Index1,Index2"]
+        idx2seqs = self._load_index_sequences()
+        sample2idx = self._parse_indexes_from_simple_csv()
+        for sample, idx_name in sample2idx.items():
+            try:
+                idx_seqs = idx2seqs[idx_name]
+                index1 = idx_seqs["index1"]
+                index2 = idx_seqs["index2"]
+                sample_str = f"{sample},{index1},{index2}"
+                manifest_data.append(sample_str)
+            except KeyError:
+                logger.info(
+                    f"INDEX LOOKUP ERROR: index {idx_name} not found for sample {sample}"
+                )
+        manifest_path = os.path.join(
+            destination_dir, f"{self.name}_bases2fastq_manifest.csv"
+        )
+        with open(manifest_path, "w") as f:
+            f.write("\n".join(manifest_data))
+        return manifest_path
 
     def _copy(self, destination, log_dir=None, debug=False):
         shutil.copytree(self.path, destination)
         return destination
 
     def _copy_samplesheet(
-        self, d: Union[str, pathlib.Path],
+        self,
+        d: Union[str, pathlib.Path],
     ):
         """
         Copies the run's samplesheet to a different directory.
@@ -574,7 +668,8 @@ class Run:
         shutil.copy(self.samplesheet, dest)
 
     def _copy_simple_csv(
-        self, d: Union[str, pathlib.Path],
+        self,
+        d: Union[str, pathlib.Path],
     ):
         """
         Copies the run's simple CSV to a different directory.
@@ -704,6 +799,32 @@ class Run:
                     libraries.append(sample)
         return libraries
 
+    def _load_index_sequences(self):
+        idx_dict = {}
+        current_dir = os.path.dirname(__file__)
+        index_file = os.path.join(current_dir, "index_seqences.csv")
+        with open(index_file) as csvfile:
+            reader = csv.DictReader(csvfile)
+            for r in reader:
+                r = {k.lower(): v for k, v in r.items()}
+                idx_name = r["index_name"]
+                idx_dict[idx_name] = {
+                    "index1": r["index(i7)"],
+                    "index2": r["index2_workflow_a(i5)"],
+                }
+        return idx_dict
+
+    def _parse_indexes_from_simple_csv(self):
+        sample2idx = {}
+        with open(self.simple_csv) as csvfile:
+            reader = csv.DictReader(csvfile)
+            for r in reader:
+                r = {k.lower(): v for k, v in r.items()}
+                sample = r["sample"].strip()
+                idx = r["index"].strip()
+                sample2idx[sample] = idx
+        return sample2idx
+
 
 class Sample:
     """
@@ -751,13 +872,12 @@ class Sample:
         return self._libraries_by_type
 
     def print_splash(self) -> None:
-        l = len(self.name)
         logger.info("")
         logger.info("  " + self.name)
-        logger.info("-" * (l + 4))
+        logger.info("-" * (len(self.name) + 4))
         logger.info("libraries:")
-        for l in self.libraries:
-            logger.info(f"  - {l.name}")
+        for lib in self.libraries:
+            logger.info(f"  - {lib.name}")
         logger.info("references:")
         if self.gex_reference is not None:
             logger.info(f"  - gex: {self.gex_reference}")
@@ -1046,7 +1166,8 @@ def build_directory_structure(project_dir: Union[str, pathlib.Path], cfg: Config
     make_dir(project_dir)
     shutil.copy(cfg.config_file, os.path.join(project_dir, "config.yaml"))
     dirs["run"] = os.path.join(project_dir, "run_data")
-    dirs["mkfastq"] = os.path.join(project_dir, "cellranger/mkfastq")
+    # dirs["mkfastq"] = os.path.join(project_dir, "cellranger/mkfastq")
+    dirs["mkfastq"] = os.path.join(project_dir, "cellranger/make_fastq")
     dirs["multi"] = os.path.join(project_dir, "cellranger/multi")
     dirs["log"] = os.path.join(project_dir, "logs")
     for path in dirs.values():
@@ -1210,7 +1331,7 @@ def main(args: Args):
             cli_options=cfg.get_mkfastq_cli_options(run.name),
             debug=args.debug,
         )
-        run.print_mkfastq_completion()
+        run.print_make_fastq_completion()
         for sample in cfg.samples:
             for library in sample.libraries:
                 # if library.name in run.successful_mkfastq_libraries:
