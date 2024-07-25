@@ -787,7 +787,8 @@ class Sample:
         config = ""
         if self.gex_reference is not None:
             config += "[gene-expression]\n"
-            config += f"reference,{self.gex_reference}\n\n"
+            config += f"reference,{self.gex_reference}\n"
+            config += "create-bam,true\n\n"
         if self.vdj_reference is not None:
             config += "[vdj]\n"
             config += f"reference,{self.vdj_reference}\n\n"
