@@ -140,6 +140,7 @@ def repertoire_similarity(
     # similarity
     similarity = abutils.tl.repertoire_similarity(
         repertoires,
+        names=batches,
         method=method,
         features=features,
         n_iters=n_iters,
