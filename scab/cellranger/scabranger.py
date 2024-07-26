@@ -577,7 +577,7 @@ class Run:
         ## for some regex ideas of how to spot the flowcell ID.
         fastq_path = os.path.join(fastq_dir, f"{self.name}/outs/fastq_path")
         flowcell_pattern = re.compile(
-            "[[CHA][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$|[0-9]{4}[A-Z,0-9]{5}$]"
+            "[[CHA][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$|[0-9]{2}[A-Z,0-9]{7}$]"
         )  # first part of the pattern matches most flowcells, second part matches MiSeq, third part matches P4 flowcells on NextSeq 2000
         for root, subdirs, files in os.walk(fastq_path):
             for subdir in subdirs:
@@ -1326,7 +1326,7 @@ def main(args: Args):
         # mkfastq
         run.mkfastq(
             dirs["mkfastq"],
-            cellranger=cfg.cellranger,
+            bin_path=cfg.cellranger,
             log_dir=dirs["log"],
             cli_options=cfg.get_mkfastq_cli_options(run.name),
             debug=args.debug,
