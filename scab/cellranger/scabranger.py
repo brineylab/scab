@@ -1330,7 +1330,14 @@ def main(args: Args):
         if not run.successful_get:
             continue
         # mkfastq
-        run.mkfastq(
+        # run.mkfastq(
+        #     dirs["mkfastq"],
+        #     bin_path=cfg.cellranger,
+        #     log_dir=dirs["log"],
+        #     cli_options=cfg.get_mkfastq_cli_options(run.name),
+        #     debug=args.debug,
+        # )
+        run.make_fastqs(
             dirs["mkfastq"],
             bin_path=cfg.cellranger,
             log_dir=dirs["log"],
