@@ -455,7 +455,7 @@ class Run:
         else:
             logger.info("")
             logger.info(
-                f"mkfastq may have failed, because no FASTQ output files were found at the expected location"
+                "mkfastq may have failed, because no FASTQ output files were found at the expected location"
             )
             logger.info(f"  --> {self.fastq_path}")
             logger.info("check the logs to see if any errors occured")
@@ -576,10 +576,10 @@ class Run:
         ## see here: https://github.com/10XGenomics/supernova/blob/master/tenkit/lib/python/tenkit/illumina_instrument.py#L12-L45
         ## for some regex ideas of how to spot the flowcell ID.
         fastq_path = os.path.join(fastq_dir, f"{self.name}/outs/fastq_path")
-        print('fastq_path ')
+        print("fastq_path ")
         print(fastq_path)
         flowcell_pattern = re.compile(
-            #"[[CHA][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$|[0-9]{2}[A-Z,0-9]{7}$]"
+            # "[[CHA][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$|[0-9]{2}[A-Z,0-9]{7}$]"
             "([CHA][A-Z0-9]{8}$|[ABDG][A-Z0-9]{4}$|[0-9]{4}[A-Z0-9]{5}$)"
         )  # first part of the pattern matches most flowcells, second part matches MiSeq, third part matches P4 flowcells on NextSeq 2000
         for root, subdirs, files in os.walk(fastq_path):
@@ -973,7 +973,7 @@ def cellranger_multi(
     docstring for cellranger_multi()
     """
     start = datetime.now()
-    logger.info(f"making config CSV...")
+    logger.info("making config CSV...")
     # config_csv = os.path.join(output_dir, f"{sample.name}_config.csv")
     config_csv = sample.make_config_csv(output_dir)
     multi_cmd = f"cd '{output_dir}'"
@@ -982,7 +982,7 @@ def cellranger_multi(
         multi_cmd += f" --uiport {uiport}"
     if cli_options is not None:
         multi_cmd += f" {cli_options}"
-    logger.info(f"running cellranger multi..")
+    logger.info("running cellranger multi..")
     p = sp.Popen(multi_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
     time.sleep(3)
     uifile = os.path.join(output_dir, f"{sample.name}/_uiport")
@@ -1007,7 +1007,7 @@ def cellranger_multi(
     if "outs" not in os.listdir(sample_output_dir):
         logger.info("")
         logger.info(
-            f'cellranger multi may have failed, because the "outs" directory was not found at the expected location'
+            'cellranger multi may have failed, because the "outs" directory was not found at the expected location'
         )
         logger.info(f"  --> {sample_output_dir}")
         logger.info("check the logs to see if any errors occured")
@@ -1337,7 +1337,7 @@ def main(args: Args):
         if not run.successful_get:
             continue
         # mkfastq
-        run.mkfastq(
+        run.make_fastqs(
             dirs["mkfastq"],
             bin_path=cfg.cellranger,
             log_dir=dirs["log"],
