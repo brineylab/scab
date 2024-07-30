@@ -576,11 +576,16 @@ class Run:
         ## see here: https://github.com/10XGenomics/supernova/blob/master/tenkit/lib/python/tenkit/illumina_instrument.py#L12-L45
         ## for some regex ideas of how to spot the flowcell ID.
         fastq_path = os.path.join(fastq_dir, f"{self.name}/outs/fastq_path")
+        print('fastq_path ')
+        print(fastq_path)
         flowcell_pattern = re.compile(
-            "[[CHA][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$|[0-9]{2}[A-Z,0-9]{7}$]"
+            #"[[CHA][A-Z,0-9]{8}$|[ABDG][A-Z,0-9]{4}$|[0-9]{2}[A-Z,0-9]{7}$]"
+            "([CHA][A-Z0-9]{8}$|[ABDG][A-Z0-9]{4}$|[0-9]{4}[A-Z0-9]{5}$)"
         )  # first part of the pattern matches most flowcells, second part matches MiSeq, third part matches P4 flowcells on NextSeq 2000
         for root, subdirs, files in os.walk(fastq_path):
             for subdir in subdirs:
+                print("subdir ")
+                print(subdir)
                 if flowcell_pattern.match(subdir) is not None:
                     self.fastq_path = os.path.join(root, subdir)
                     break
