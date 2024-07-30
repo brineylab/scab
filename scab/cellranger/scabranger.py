@@ -917,8 +917,16 @@ class Sample:
         config += "[libraries]\n"
         config += "fastq_id,fastqs,feature_types\n"
         for library in self.libraries:
-            for fastq in library.fastq_paths:
-                config += f"{library.name},{fastq},{library.type}\n"
+            for fastq_path in library.fastq_paths:
+                # check to make sure the sample is actually in the FASTQ path
+                # cellranger will throw an error if it's not
+                if any(
+                    [
+                        os.path.basename(fastq).startswith(library.name)
+                        for fastq in list_files(fastq_path)
+                    ]
+                ):
+                    config += f"{library.name},{fastq_path},{library.type}\n"
         return config
 
 
