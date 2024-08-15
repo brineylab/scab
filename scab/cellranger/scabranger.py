@@ -37,10 +37,10 @@ from datetime import datetime
 from typing import Any, Callable, Collection, Dict, Mapping, Optional, Sequence, Union
 from unicodedata import name
 
+import abutils
 import humanize
 import yaml
 from abutils.io import list_files, make_dir
-from abutils.utils import log
 from natsort import natsorted
 from sample_sheet import SampleSheet
 
@@ -1313,6 +1313,68 @@ def print_samples_header():
 #     pass
 
 
+def cellranger_pipeline(project_path: str, config_file: str, debug: bool = False):
+    """
+    Run the cellranger pipeline. Function is called by the scab command line tool.
+    """
+    # parse the config file
+    cfg = Config(config_file)
+
+    # build directory structure
+    dirs = build_directory_structure(project_path, cfg)
+
+    # setup logging and print plan
+    run_log = os.path.join(dirs["log"], "batch_cellranger.log")
+    abutils.log.setup_logging(run_log, print_log_location=False, debug=debug)
+    global logger
+    logger = abutils.log.get_logger("cellranger")
+    print_plan(cfg)
+
+    # sequencing runs
+    print_runs_header()
+    for run in cfg.runs:
+        run.print_splash()
+        # get data
+        run.get(dirs["run"], log_dir=dirs["log"], debug=debug)
+        run.print_get_completion()
+        if not run.successful_get:
+            continue
+        # mkfastq
+        run.make_fastqs(
+            dirs["mkfastq"],
+            bin_path=cfg.cellranger,
+            log_dir=dirs["log"],
+            cli_options=cfg.get_mkfastq_cli_options(run.name),
+            debug=debug,
+        )
+        run.print_make_fastq_completion()
+        for sample in cfg.samples:
+            for library in sample.libraries:
+                # if library.name in run.successful_mkfastq_libraries:
+                if library.name in run.libraries:
+                    library.add_fastq_path(run.fastq_path)
+
+    # cellranger multi
+    print_samples_header()
+    for sample in cfg.samples:
+        if not sample.libraries:
+            continue
+        sample.print_splash()
+        # sample.make_config_csv(config_csv)
+        # config_csv = os.path.join(dirs['multi'], f"{sample.name}_config.csv")
+        cellranger_multi(
+            sample,
+            dirs["multi"],
+            cellranger=cfg.cellranger,
+            uiport=cfg.uiport,
+            log_dir=dirs["log"],
+            cli_options=cfg.get_multi_cli_options(sample.name),
+            debug=debug,
+        )
+    logger.info("")
+    logger.info("")
+
+
 def main(args: Args):
     # parse the config file
     cfg = Config(args.config_file)
@@ -1322,9 +1384,9 @@ def main(args: Args):
 
     # setup logging and print plan
     run_log = os.path.join(dirs["log"], "batch_cellranger.log")
-    log.setup_logging(run_log, print_log_location=False, debug=args.debug)
+    abutils.log.setup_logging(run_log, print_log_location=False, debug=args.debug)
     global logger
-    logger = log.get_logger("batch_cellranger")
+    logger = abutils.log.get_logger("batch_cellranger")
     print_plan(cfg)
 
     # sequencing runs
@@ -1371,96 +1433,97 @@ def main(args: Args):
     logger.info("")
     logger.info("")
 
-    # compress
-    # TODO
 
-    # upload to S3
-    # TODO
+# compress
+# TODO
 
-    # # operations (except aggr)
-    # opmap = {'vdj': cellranger_vdj,
-    #          'count': cellranger_count,
-    #          'features': cellranger_feature_barcoding}
+# upload to S3
+# TODO
 
-    # for op in ['vdj', 'count', 'features']:
-    #     print_op_splash(op)
-    #     opfunction = opmap[op]
-    #     for sample in cfg.samples:
-    #         if op not in sample.ops:
-    #             continue
-    #         opfunction(sample,
-    #                    dirs[op],
-    #                    cellranger=cfg.cellranger,
-    #                    uiport=cfg.uiport,
-    #                    log_dir=dirs['log'],
-    #                    debug=args.debug)
+# # operations (except aggr)
+# opmap = {'vdj': cellranger_vdj,
+#          'count': cellranger_count,
+#          'features': cellranger_feature_barcoding}
 
-    # vdj
-    # print_op_splash('vdj', cfg.samples)
-    # for sample in cfg.samples:
-    #     if 'vdj' not in sample.ops:
-    #         continue
-    #     path = cellranger_vdj(sample,
-    #                           dirs['vdj'],
-    #                           cellranger=cfg.cellranger,
-    #                           uiport=cfg.uiport,
-    #                           log_dir=dirs['log'],
-    #                           debug=args.debug)
-    #     sample.vdj_path = path
+# for op in ['vdj', 'count', 'features']:
+#     print_op_splash(op)
+#     opfunction = opmap[op]
+#     for sample in cfg.samples:
+#         if op not in sample.ops:
+#             continue
+#         opfunction(sample,
+#                    dirs[op],
+#                    cellranger=cfg.cellranger,
+#                    uiport=cfg.uiport,
+#                    log_dir=dirs['log'],
+#                    debug=args.debug)
 
-    # # count
-    # print_op_splash('count', cfg.samples)
-    # for group, sample_dict in cfg.ops['count']:
-    #     samples = [s for s in cfg.samples if s.name in sample_dict]
-    #     for s in samples:
-    #         s.op_type = sample_dict[s.name]
-    #     path = cellranger_count(samples,
-    #                             dirs['count'],
-    #                             cellranger=cfg.cellranger,
-    #                             uiport=cfg.uiport,
-    #                             log_dir=dirs['log'],
-    #                             debug=args.debug)
+# vdj
+# print_op_splash('vdj', cfg.samples)
+# for sample in cfg.samples:
+#     if 'vdj' not in sample.ops:
+#         continue
+#     path = cellranger_vdj(sample,
+#                           dirs['vdj'],
+#                           cellranger=cfg.cellranger,
+#                           uiport=cfg.uiport,
+#                           log_dir=dirs['log'],
+#                           debug=args.debug)
+#     sample.vdj_path = path
 
-    # for sample in cfg.samples:
-    #     if 'count' not in sample.ops:
-    #         continue
-    #     path = cellranger_count(sample,
-    #                             dirs['count'],
-    #                             cellranger=cfg.cellranger,
-    #                             uiport=cfg.uiport,
-    #                             log_dir=dirs['log'],
-    #                             debug=args.debug)
-    #     sample.count_path = path
+# # count
+# print_op_splash('count', cfg.samples)
+# for group, sample_dict in cfg.ops['count']:
+#     samples = [s for s in cfg.samples if s.name in sample_dict]
+#     for s in samples:
+#         s.op_type = sample_dict[s.name]
+#     path = cellranger_count(samples,
+#                             dirs['count'],
+#                             cellranger=cfg.cellranger,
+#                             uiport=cfg.uiport,
+#                             log_dir=dirs['log'],
+#                             debug=args.debug)
 
-    # # features
-    # print_op_splash('features', cfg.samples)
-    # for sample in cfg.samples:
-    #     if 'features' not in sample.ops:
-    #         continue
-    #     path = cellranger_feature_barcoding(sample,
-    #                                         dirs['features'],
-    #                                         cellranger=cfg.cellranger,
-    #                                         uiport=cfg.uiport,
-    #                                         log_dir=dirs['log'],
-    #                                         debug=args.debug)
-    #     sample.feature_path = path
+# for sample in cfg.samples:
+#     if 'count' not in sample.ops:
+#         continue
+#     path = cellranger_count(sample,
+#                             dirs['count'],
+#                             cellranger=cfg.cellranger,
+#                             uiport=cfg.uiport,
+#                             log_dir=dirs['log'],
+#                             debug=args.debug)
+#     sample.count_path = path
 
-    # # aggr
-    # print_aggr_splash(cfg.ops['aggr'])
-    # for group, sample_names in cfg.ops['aggr'].items():
-    #     samples = [s for s in cfg.samples if s.name in sample_names]
-    #     path = cellranger_aggr(samples,
-    #                            group,
-    #                            dirs['aggr'],
-    #                            normalize='mapped',
-    #                            cellranger=cfg.cellranger,
-    #                            uiport=cfg.uiport,
-    #                            log_dir=dirs['log'],
-    #                            debug=args.debug)
-    #     for s in samples:
-    #         s.aggr_path = path
+# # features
+# print_op_splash('features', cfg.samples)
+# for sample in cfg.samples:
+#     if 'features' not in sample.ops:
+#         continue
+#     path = cellranger_feature_barcoding(sample,
+#                                         dirs['features'],
+#                                         cellranger=cfg.cellranger,
+#                                         uiport=cfg.uiport,
+#                                         log_dir=dirs['log'],
+#                                         debug=args.debug)
+#     sample.feature_path = path
 
-    # compress
+# # aggr
+# print_aggr_splash(cfg.ops['aggr'])
+# for group, sample_names in cfg.ops['aggr'].items():
+#     samples = [s for s in cfg.samples if s.name in sample_names]
+#     path = cellranger_aggr(samples,
+#                            group,
+#                            dirs['aggr'],
+#                            normalize='mapped',
+#                            cellranger=cfg.cellranger,
+#                            uiport=cfg.uiport,
+#                            log_dir=dirs['log'],
+#                            debug=args.debug)
+#     for s in samples:
+#         s.aggr_path = path
+
+# compress
 
 
 if __name__ == "__main__":
