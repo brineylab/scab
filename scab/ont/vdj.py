@@ -31,6 +31,7 @@ def ont_vdj(
     alignment_algo: str = "famsa",
     alignment_kwargs: Optional[dict] = None,
     n_processes: Optional[int] = None,
+    chunksize: int = 1000,
     verbose: bool = True,
     debug: bool = False,
 ):
@@ -91,10 +92,42 @@ def ont_vdj(
     # copy inputs to project directory
     if copy_inputs_to_project:
         logger.info("copying input files to project directory")
+        copied_inputs = []
         inputs_directory = os.path.join(project_path, "inputs")
         abutils.io.make_dir(inputs_directory)
+        if verbose:
+            input_files = tqdm(
+                input_files, bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}"
+            )
         for input_file in input_files:
             shutil.copy(input_file, inputs_directory)
+            copied_inputs.append(
+                os.path.join(inputs_directory, os.path.basename(input_file))
+            )
+        input_files = copied_inputs
+    logger.info("")
+    logger.info("")
+
+    # set up temp directory for chunked inputs
+    chunked_inputs_directory = os.path.join(temp_directory, "chunked_inputs")
+    abutils.io.make_dir(chunked_inputs_directory)
+
+    # TODO: chunk the input files
+    logger.info("splitting input files into job-sized chunks")
+    chunked_inputs = []
+    if verbose:
+        input_files = tqdm(
+            input_files, bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}"
+        )
+    for input_file in input_files:
+        chunked_inputs.append(
+            abutils.io.split_fastx(
+                fastx_file=input_file,
+                output_directory=chunked_inputs_directory,
+                chunksize=chunksize,
+            )
+        )
+    input_files = chunked_inputs
     logger.info("")
     logger.info("")
 
@@ -109,9 +142,12 @@ def ont_vdj(
 
     # parse and correct barcodes/UMIs
     parquet_files = []
-    if verbose:
-        progress_bar = tqdm(total=len(input_files))
     logger.info("parsing/correcting barcodes")
+    if verbose:
+        progress_bar = tqdm(
+            total=len(input_files),
+            bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}",
+        )
     with ProcessPoolExecutor(max_workers=n_processes) as executor:
         parsing_kwargs = {
             "barcode_segments": barcode_segments,
@@ -174,7 +210,10 @@ def ont_vdj(
     logger.info("clustering and consensus building")
     all_consensus = []
     if verbose:
-        progress_bar = tqdm(total=len(barcode_parquet_files))
+        progress_bar = tqdm(
+            total=len(barcode_parquet_files),
+            bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}",
+        )
     with ProcessPoolExecutor(max_workers=n_processes) as executor:
         consensus_kwargs = {
             "log_directory": consensus_log_directory,
@@ -235,7 +274,6 @@ def _log_run_parameters(
     alignment_kwargs: Optional[dict],
     debug: bool,
 ) -> None:
-    logger.info("")
     # printing the splash line-by-line makes the log files look nicer
     for line in ONT_VDJ_SPLASH.split("\n"):
         logger.info(line)
@@ -249,19 +287,19 @@ def _log_run_parameters(
     logger.info(f"CLUSTERING THRESHOLD: {clustering_threshold}")
     logger.info(f"CLUSTERING DOWNSAMPLE: {clustering_downsample}")
     logger.info(f"CONSENSUS DOWNSAMPLE: {consensus_downsample}")
-    logger.info(f"ALIGNMENT ALGO: {alignment_algo}\n")
-    logger.info(f"ALIGNMENT KWARGS: {alignment_kwargs}\n")
+    logger.info(f"ALIGNMENT ALGO: {alignment_algo}")
+    logger.info(f"ALIGNMENT KWARGS: {alignment_kwargs}")
     logger.info(f"NUM PROCESSES: {n_processes if n_processes is not None else 'auto'}")
     logger.info(f"COPY INPUTS TO PROJECT: {copy_inputs_to_project}")
     logger.info(f"DEBUG: {debug}")
-    logger.info("\n")
+    logger.info("")
 
 
 def _log_inputfile_info(logger: logging.Logger, input_files: Iterable[str]) -> None:
     num_files = len(input_files)
     plural = "files" if num_files > 1 else "file"
-    logger.info("\n\n")
-    logger.info("FASTQ FILES")
+    logger.info("")
+    logger.info("INPUT FILES")
     logger.info("===========")
     logger.info(f"found {num_files} input {plural}:")
     if num_files < 6:
