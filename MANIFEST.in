@@ -2,8 +2,11 @@ include README.md
 include requirements*
 include bin/*
 include docs/*.txt
+
 include scab/*
 include scab/cellranger/*
 include scab/models/*
+include scab/ont/*
 include scab/plots/*
+include scab/scripts/*
 include scab/tools/*
