@@ -74,10 +74,12 @@ def cellranger(project_path: str, config_file: str, debug: bool = False):
 @click.argument(
     "input_path",
     type=str,
+    nargs=-1,  # allow multiple input paths
 )
 @click.argument(
     "project_path",
     type=str,
+    nargs=1,
 )
 @click.option(
     "--barcode-description",
