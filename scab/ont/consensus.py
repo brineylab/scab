@@ -11,7 +11,7 @@ from typing import Iterable, Optional
 import abutils
 import polars as pl
 from abutils import Sequence
-from abutils.log import SimpleLogger
+from abutils.tools.log import SimpleLogger
 
 
 def cluster_and_consensus(
@@ -87,7 +87,7 @@ def cluster_and_consensus(
     try:
         # clustering
         clusters = abutils.tl.cluster(
-            seqs, threshold=clustering_threshold, algo=clustering_algo
+            seqs, threshold=clustering_threshold, algo=clustering_algo, threads=1
         )
         logger.log("NUM CLUSTERS:", len(clusters))
         logger.log("CLUSTER_SIZES:", ", ".join([str(c.size) for c in clusters]))
@@ -100,6 +100,8 @@ def cluster_and_consensus(
 
         # make consensus sequences
         consensuses = []
+        # alignment for consensus generation should only use 1 thread
+        alignment_kwargs["threads"] = 1
         for i, cluster in enumerate(clusters, 1):
             try:
                 cluster_name = f"{barcode}_{i}"
@@ -143,7 +145,7 @@ def cluster_and_consensus(
     # write log file
     finally:
         logger.log("\n\n")
-        if log_directory is not None:
+        if logger.log_file is not None:
             logger.write()
 
     return consensuses
