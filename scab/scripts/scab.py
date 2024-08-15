@@ -180,7 +180,7 @@ def ont_vdj(
     Run the ONT-VDJ pipeline, which builds consensus VDJ sequences from Oxford Nanopore data.
 
     \b
-    INPUT_PATH can be a FASTQ file or a directory containing FASTQ files. Gzipped files are supported.
+    INPUT_PATH(s) can be a FASTQ file or a directory containing FASTQ files. Gzipped files are supported.
     PROJECT_PATH is the path to a directory in which tmp, log and output files will be deposited.
     """
     run_ont_vdj(
