@@ -122,7 +122,7 @@ def ont_vdj(
             input_files, bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}"
         )
     for input_file in input_files:
-        chunked_inputs.append(
+        chunked_inputs.extend(
             abutils.io.split_fastx(
                 fastx_file=input_file,
                 output_directory=chunked_inputs_directory,
