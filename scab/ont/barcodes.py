@@ -398,5 +398,5 @@ TXG_v2 = {
     "length": 16,
     "adapters": ["GATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT", "TTTCTTATATGGG"],
     "umi_length": 10,
-    "whitelist_file": os.path.join(WHITELIST_DIR, "737K-august-2016.txt"),
+    "whitelist_file": os.path.join(WHITELIST_DIR, "737K-august-2016.txt.gz"),
 }
