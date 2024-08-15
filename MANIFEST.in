@@ -7,6 +7,7 @@ include scab/*
 include scab/cellranger/*
 include scab/models/*
 include scab/ont/*
+include scab/ont/whitelists/*
 include scab/plots/*
 include scab/scripts/*
 include scab/tools/*
