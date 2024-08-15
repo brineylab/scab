@@ -37,6 +37,7 @@ def ont_vdj(
 ):
     """ """
     # setup project directory
+    project_path = os.path.abspath(project_path)
     abutils.io.make_dir(project_path)
     log_directory = os.path.join(project_path, "logs")
     temp_directory = os.path.join(project_path, "temp")
@@ -47,6 +48,7 @@ def ont_vdj(
     abutils.log.setup_logging(
         logfile=os.path.join(log_directory, "scab_ont-vdj.log"),
         add_stream_handler=verbose,
+        print_log_location=False,
     )
     logger = abutils.log.get_logger(log_directory)
     _log_run_parameters(
