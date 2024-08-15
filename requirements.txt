@@ -1,6 +1,7 @@
 abstar>=0.5.9
 abutils>=0.4.4
 anndata
+click
 dnachisel
 fastcluster
 harmonypy
