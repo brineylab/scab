@@ -65,7 +65,7 @@ def parse_barcodes(
     sequences = abutils.io.read_fastx(fastq_file)
     if not sequences:
         logger.log(f"INPUT ERROR: input file {fastq_file} has no sequences")
-        return 0
+        return None
 
     # parse barcode segments
     processed = []
@@ -153,7 +153,7 @@ def parse_barcodes(
     logger.log("NUM FAILED SEQUENCES:", len(failed))
 
     # write output and log files
-    output_df = pl.DataFrame(output_data)
+    output_df = pl.DataFrame(output_data, infer_schema_length=None)
     output_df.write_parquet(output_file)
     logger.write()
 

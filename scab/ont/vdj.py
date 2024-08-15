@@ -118,17 +118,40 @@ def ont_vdj(
     logger.info("splitting input files into job-sized chunks")
     chunked_inputs = []
     if verbose:
-        input_files = tqdm(
-            input_files, bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}"
+        progress_bar = tqdm(
+            total=len(input_files),
+            bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}",
         )
-    for input_file in input_files:
-        chunked_inputs.extend(
-            abutils.io.split_fastx(
-                fastx_file=input_file,
-                output_directory=chunked_inputs_directory,
-                chunksize=chunksize,
-            )
-        )
+    with ProcessPoolExecutor(max_workers=n_processes) as executor:
+        chunking_kwargs = {
+            "output_directory": chunked_inputs_directory,
+            "chunksize": chunksize,
+        }
+        futures = [
+            executor.submit(abutils.io.split_fastx, input_file, **chunking_kwargs)
+            for input_file in input_files
+        ]
+        for future in as_completed(futures):
+            chunked_inputs.extend(future.result())
+            if verbose:
+                progress_bar.update(1)
+    if verbose:
+        progress_bar.close()
+
+    # # single threaded version of the above chunking operation
+    # if verbose:
+    #     input_files = tqdm(
+    #         input_files, bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}"
+    #     )
+    # for input_file in input_files:
+    #     chunked_inputs.extend(
+    #         abutils.io.split_fastx(
+    #             fastx_file=input_file,
+    #             output_directory=chunked_inputs_directory,
+    #             chunksize=chunksize,
+    #         )
+    #     )
+
     input_files = chunked_inputs
     logger.info("")
     logger.info("")
@@ -163,7 +186,8 @@ def ont_vdj(
         ]
         for future in as_completed(futures):
             parquet_file = future.result()
-            parquet_files.append(parquet_file)
+            if parquet_file is not None:
+                parquet_files.append(parquet_file)
             if verbose:
                 progress_bar.update(1)
     if verbose:
