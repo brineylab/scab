@@ -27,20 +27,16 @@ import copy
 from collections import Counter
 from typing import Optional
 
+import abutils
 import numpy as np
 import pandas as pd
-
-from natsort import natsorted
-
 import prettytable as pt
-
-from abstar.core.germline import get_imgt_germlines
-from abstar.utils.regions import (
-    IMGT_REGION_START_POSITIONS_AA,
+from abstar.annotation.germline import get_germline
+from abstar.annotation.regions import (
     IMGT_REGION_END_POSITIONS_AA,
+    IMGT_REGION_START_POSITIONS_AA,
 )
-
-import abutils
+from natsort import natsorted
 
 
 class Lineage:
@@ -125,7 +121,9 @@ class LineageAssignment:
     """
 
     def __init__(
-        self, pair: abutils.Pair, assignment_dict: dict,
+        self,
+        pair: abutils.Pair,
+        assignment_dict: dict,
     ):
         self.pair = pair
         self.assignment_dict = assignment_dict
@@ -480,7 +478,20 @@ class LineageSummary:
         ).most_common(1)[0][0]
         v_gene = Counter([s["v_call"] for s in notnone_sequences]).most_common(1)[0][0]
         j_gene = Counter([s["j_call"] for s in notnone_sequences]).most_common(1)[0][0]
-        v_germ = get_imgt_germlines(dbname, "V", gene=v_gene)
+        try:
+            v_germ = get_germline(
+                germline_gene=v_gene, germdb_name=dbname, exact_match=True
+            )
+        except ValueError:
+            print(f"No germline found for {v_gene} in {dbname}")
+            print(
+                "This may be due to a version mismatch between the database used for sequence annotation and the current abstar database."
+            )
+            print(
+                "Try re-annotating the sequences with abstar's current germline database."
+            )
+            raise
+        # v_germ = get_imgt_germlines(dbname, "V", gene=v_gene)
         # j_germ = get_imgt_germlines(dbname, 'J', gene=j_gene)
         junction_v = ref["junction_germ_v_aa"]
         junction_j = ref["junction_germ_j_aa"]
