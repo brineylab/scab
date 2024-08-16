@@ -342,8 +342,14 @@ class BarcodeSegment:
                         f"Whitelist file {self.whitelist_file} not found"
                     )
                 # read the whitelist file
-                open_func = gzip.open if self.whitelist_file.endswith(".gz") else open
-                with open_func(self.whitelist_file) as f:
+                # open_func = gzip.open if self.whitelist_file.endswith(".gz") else open
+                if self.whitelist_file.endswith(".gz"):
+                    open_fn = gzip.open
+                    mode = "rt"
+                else:
+                    open_fn = open
+                    mode = "r"
+                with open_fn(self.whitelist_file, mode) as f:
                     for line in f:
                         if bc := line.strip():
                             whitelist.append(bc)
