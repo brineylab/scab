@@ -56,6 +56,7 @@ def ont_vdj(
         project_path,
         barcode_description,
         n_processes,
+        chunksize,
         copy_inputs_to_project,
         clustering_downsample,
         consensus_downsample,
@@ -290,6 +291,7 @@ def _log_run_parameters(
     project_path: str,
     barcode_description: str,
     n_processes: Optional[int],
+    chunksize: int,
     copy_inputs_to_project: bool,
     clustering_downsample: int,
     consensus_downsample: int,
@@ -316,6 +318,7 @@ def _log_run_parameters(
     logger.info(f"ALIGNMENT ALGO: {alignment_algo}")
     logger.info(f"ALIGNMENT KWARGS: {alignment_kwargs}")
     logger.info(f"NUM PROCESSES: {n_processes if n_processes is not None else 'auto'}")
+    logger.info(f"CHUNKSIZE: {chunksize}")
     logger.info(f"COPY INPUTS TO PROJECT: {copy_inputs_to_project}")
     logger.info(f"DEBUG: {debug}")
     logger.info("")

@@ -144,6 +144,12 @@ def cellranger(project_path: str, config_file: str, debug: bool = False):
     help="Number of processes to use for clustering, alignment, and consensus sequence generation. By default, the number of processes is set to the number of available CPU cores.",
 )
 @click.option(
+    "--chunksize",
+    type=int,
+    default=1000,
+    help="Number of sequences to include in each job-sized chunk.",
+)
+@click.option(
     "--verbose/--quiet",
     default=True,
     help="Whether to print verbose output",
@@ -173,6 +179,7 @@ def ont_vdj(
     alignment_algo: str = "famsa",
     alignment_kwargs: Optional[dict] = None,
     n_processes: Optional[int] = None,
+    chunksize: int = 1000,
     verbose: bool = True,
     debug: bool = False,
 ):
@@ -196,6 +203,7 @@ def ont_vdj(
         alignment_algo=alignment_algo,
         alignment_kwargs=alignment_kwargs,
         n_processes=n_processes,
+        chunksize=chunksize,
         verbose=verbose,
         debug=debug,
     )
