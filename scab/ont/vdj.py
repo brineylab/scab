@@ -258,22 +258,10 @@ def ont_vdj(
             "alignment_kwargs": alignment_kwargs,
         }
         # submit
-        logger.info("submitting jobs to executor")
-        futures = []
-        for i, f in enumerate(barcode_parquet_files):
-            futures.append(
-                executor.submit(cluster_and_consensus, f, **consensus_kwargs)
-            )
-            if i == 0:
-                logger.info("first job submitted")
-            if i == 1:
-                logger.info("second job submitted")
-        logger.info("all jobs submitted")
-
-        # futures = [
-        #     executor.submit(cluster_and_consensus, f, **consensus_kwargs)
-        #     for f in barcode_parquet_files
-        # ]
+        futures = [
+            executor.submit(cluster_and_consensus, f, **consensus_kwargs)
+            for f in barcode_parquet_files
+        ]
         # wait
         for future in as_completed(futures):
             consensus = future.result()
@@ -290,7 +278,7 @@ def ont_vdj(
             os.remove(pf)
 
     # write the consensus sequences to a file
-    logger.info("writing consensus sequences to file")
+    logger.info(f"writing {len(all_consensus)} consensus sequences to file")
     consensus_file = os.path.join(project_path, "consensus.fasta")
     with open(consensus_file, "w") as f:
         f.write("\n".join([c.fasta for c in all_consensus]))
