@@ -265,6 +265,7 @@ def ont_vdj(
                 logger.info("first job submitted")
             if i == 1:
                 logger.info("second job submitted")
+        logger.info("all jobs submitted")
 
         # futures = [
         #     executor.submit(cluster_and_consensus, f, **consensus_kwargs)

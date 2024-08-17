@@ -73,14 +73,27 @@ def cluster_and_consensus(
     logger.log("=" * len(bc_string))
     logger.log("")
 
+    logger.write()
+
     # get sequences
     df = pl.read_parquet(parquet_file)
+
+    logger.log("loaded parquet file")
+    logger.write(append=True)
+
     seqs = abutils.io.from_polars(df)
+
+    logger.log("loaded sequences")
+    logger.write(append=True)
+
     logger.log("TOTAL SEQUENCES:", len(seqs))
     if len(seqs) > clustering_downsample:
         logger.log(
             f"CLUSTERING DOWNSAMPLING: from {len(seqs)} to {clustering_downsample} sequences"
         )
+
+        logger.write(append=True)
+
         seqs = random.sample(seqs, clustering_downsample)
     logger.log("")
 
@@ -89,6 +102,10 @@ def cluster_and_consensus(
         clusters = abutils.tl.cluster(
             seqs, threshold=clustering_threshold, algo=clustering_algo, threads=1
         )
+
+        logger.log("clustering completed")
+        logger.write(append=True)
+
         logger.log("NUM CLUSTERS:", len(clusters))
         logger.log("CLUSTER_SIZES:", ", ".join([str(c.size) for c in clusters]))
 
