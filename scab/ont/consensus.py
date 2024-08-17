@@ -89,7 +89,9 @@ def cluster_and_consensus(
     logger.write(append=True)
 
     # seqs = abutils.io.from_polars(df)
-    seqs = abutils.io.from_pandas(df)
+    seqs = [
+        Sequence(row["sequence"], id=row["sequence_id"]) for _, row in df.iterrows()
+    ]
 
     logger.log("loaded sequences")
     logger.write(append=True)
