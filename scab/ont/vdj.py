@@ -206,8 +206,10 @@ def ont_vdj(
             os.remove(pf)
 
     # setup temp and log directories for clustering/consensus
+    clustering_temp_directory = os.path.join(temp_directory, "clustering")
     consensus_temp_directory = os.path.join(temp_directory, "consensus")
     consensus_log_directory = os.path.join(log_directory, "consensus")
+    abutils.io.make_dir(clustering_temp_directory)
     abutils.io.make_dir(consensus_temp_directory)
     abutils.io.make_dir(consensus_log_directory)
 
@@ -246,6 +248,7 @@ def ont_vdj(
     with ProcessPoolExecutor(max_workers=n_processes) as executor:
         consensus_kwargs = {
             "log_directory": consensus_log_directory,
+            "clustering_temp_directory": clustering_temp_directory,
             "clustering_algo": clustering_algo,
             "clustering_threshold": clustering_threshold,
             "clustering_downsample": clustering_downsample,

@@ -18,6 +18,7 @@ from abutils.tools.log import SimpleLogger
 def cluster_and_consensus(
     parquet_file: str,
     log_directory: Optional[str] = None,
+    temp_directory: Optional[str] = None,
     clustering_threshold: float = 0.6,
     min_cluster_size: int = 100,
     clustering_downsample: int = 5000,
@@ -107,7 +108,11 @@ def cluster_and_consensus(
     try:
         # clustering
         clusters = abutils.tl.cluster(
-            seqs, threshold=clustering_threshold, algo=clustering_algo, threads=1
+            seqs,
+            threshold=clustering_threshold,
+            algo=clustering_algo,
+            threads=1,
+            temp_dir=temp_directory,
         )
 
         logger.log("clustering completed")
