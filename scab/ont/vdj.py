@@ -226,7 +226,9 @@ def ont_vdj(
         .filter(pl.col("count") >= min_cluster_size)["barcode"]
     )
     if verbose:
-        passed_barcodes = tqdm(passed_barcodes)
+        passed_barcodes = tqdm(
+            passed_barcodes, bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}"
+        )
     for barcode in passed_barcodes:
         barcode_parquet_file = os.path.join(consensus_temp_directory, f"{barcode}")
         _df = df.filter(pl.col("barcode") == barcode)
