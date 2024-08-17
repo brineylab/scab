@@ -76,6 +76,10 @@ def cluster_and_consensus(
     logger.write()
 
     # get sequences
+
+    logger.log(f"loading parquet file: {parquet_file}")
+    logger.write(append=True)
+
     df = pl.read_parquet(parquet_file)
 
     logger.log("loaded parquet file")
