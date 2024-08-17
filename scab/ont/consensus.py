@@ -139,11 +139,13 @@ def cluster_and_consensus(
                 logger.log("")
                 logger.log(cluster_name)
                 logger.log("-" * len(cluster_name))
-                n_umis = (
-                    df.filter(pl.col("sequence_id").is_in(cluster.seq_ids))["umi"]
-                    .unique()
-                    .shape[0]
-                )
+
+                n_umis = df[df["sequence_id"].isin(cluster.seq_ids)]["umi"].nunique()
+                # n_umis = (
+                #     df.filter(pl.col("sequence_id").is_in(cluster.seq_ids))["umi"]
+                #     .unique()
+                #     .shape[0]
+                # )
                 n_reads = len(cluster.sequences)
                 consensus = abutils.tl.make_consensus(
                     cluster.sequences,
