@@ -255,10 +255,21 @@ def ont_vdj(
             "alignment_kwargs": alignment_kwargs,
         }
         # submit
-        futures = [
-            executor.submit(cluster_and_consensus, f, **consensus_kwargs)
-            for f in barcode_parquet_files
-        ]
+        logger.info("submitting jobs to executor")
+        futures = []
+        for i, f in enumerate(barcode_parquet_files):
+            futures.append(
+                executor.submit(cluster_and_consensus, f, **consensus_kwargs)
+            )
+            if i == 0:
+                logger.info("first job submitted")
+            if i == 1:
+                logger.info("second job submitted")
+
+        # futures = [
+        #     executor.submit(cluster_and_consensus, f, **consensus_kwargs)
+        #     for f in barcode_parquet_files
+        # ]
         # wait
         for future in as_completed(futures):
             consensus = future.result()
