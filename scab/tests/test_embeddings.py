@@ -1,9 +1,8 @@
-import pytest
 import anndata
-
 import numpy as np
+import pytest
 
-from ..tools.embeddings import pca, umap
+from ..tools.embeddings import dimensionality_reduction, pca, umap
 
 
 @pytest.fixture
@@ -51,7 +50,36 @@ def test_umap(adata):
         verbose=False,
     )
     # check that the shape of the data matrix is unchanged
-    assert adata.X.shape == (4, 2)
+    assert adata.X.shape == (100, 200)
+    # check that the PCA coordinates are present in the obsm attribute
+    assert "X_pca" in adata.obsm.keys()
+    # check that the neighbor graph is present in the uns attribute
+    assert "neighbors" in adata.uns.keys()
+    # check that the leiden clustering is present in the obs attribute
+    assert "leiden" in adata.obs.keys()
+    # check that the UMAP coordinates are present in the obsm attribute
+    assert "X_umap" in adata.obsm.keys()
+
+
+def test_dimensionality_reduction(adata):
+    # run the dimensionality_reduction function, which is deprecated and
+    # should just call umap() with all of the supplied args/kwargs
+    adata = dimensionality_reduction(
+        adata,
+        solver="arpack",
+        n_neighbors=2,
+        n_pcs=2,
+        force_pca=True,
+        ignore_ig=True,
+        paga=False,
+        use_rna_velocity=False,
+        use_rep=None,
+        random_state=42,
+        resolution=1.0,
+        verbose=False,
+    )
+    # check that the shape of the data matrix is unchanged
+    assert adata.X.shape == (100, 200)
     # check that the PCA coordinates are present in the obsm attribute
     assert "X_pca" in adata.obsm.keys()
     # check that the neighbor graph is present in the uns attribute

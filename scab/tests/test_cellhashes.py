@@ -1,11 +1,9 @@
 import numpy as np
-
 import pandas as pd
+from anndata import AnnData
 from pandas.testing import assert_series_equal
 
-from anndata import AnnData
-
-from ..tools.cellhashes import _bw_silverman, positive_feature_cutoff, demultiplex
+from ..tools.cellhashes import _bw_silverman, _get_feature_cutoff, demultiplex
 
 
 def test_bw_silverman():
@@ -19,11 +17,11 @@ def test_bw_silverman():
     assert bw > 0
 
 
-def test_positive_feature_cutoff():
+def test_get_feature_cutoff():
     # create an example array
     vals = np.array([1, 1, 1, 2, 2, 2, 3, 4, 4, 4, 5, 5, 5])
     # calculate the positive feature cutoff using the positive_feature_cutoff function
-    cutoff = positive_feature_cutoff(
+    cutoff = _get_feature_cutoff(
         vals,
         threshold_maximum=5.0,
         threshold_minimum=2.0,
@@ -42,11 +40,11 @@ def test_positive_feature_cutoff():
     #     assert cutoff >= 2.0 and cutoff <= 8.0
 
 
-def test_positive_feature_cutoff_no_minima():
+def test_get_feature_cutoff_no_minima():
     # create an example array without any minima
     vals = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5])
     # calculate the positive feature cutoff using the positive_feature_cutoff function
-    cutoff = positive_feature_cutoff(
+    cutoff = _get_feature_cutoff(
         vals,
         threshold_maximum=5.0,
         threshold_minimum=2.0,
@@ -61,11 +59,11 @@ def test_positive_feature_cutoff_no_minima():
     assert cutoff is None
 
 
-def test_positive_feature_cutoff_out_of_bounds():
+def test_get_feature_cutoff_out_of_bounds():
     # create an example array with a cutoff that is out of bounds
     vals = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 8, 8, 8])
     # calculate the positive feature cutoff using the positive_feature_cutoff function
-    cutoff = positive_feature_cutoff(
+    cutoff = _get_feature_cutoff(
         vals,
         threshold_maximum=5.0,
         threshold_minimum=2.0,
