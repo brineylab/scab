@@ -277,7 +277,7 @@ def ont_vdj(
         # wait
         for future in as_completed(futures):
             consensus = future.result()
-            all_consensus.append(consensus)
+            all_consensus.extend(consensus)
             if verbose:
                 progress_bar.update(1)
     if verbose:
