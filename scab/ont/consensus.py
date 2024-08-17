@@ -10,7 +10,8 @@ from typing import Iterable, Optional
 
 import abutils
 import pandas as pd
-import polars as pl
+
+# import polars as pl
 from abutils import Sequence
 from abutils.tools.log import SimpleLogger
 
@@ -75,35 +76,24 @@ def cluster_and_consensus(
     logger.log("=" * len(bc_string))
     logger.log("")
 
-    logger.write()
-
     # get sequences
-
-    logger.log(f"loading parquet file: {parquet_file}")
-    logger.write(append=True)
-
-    # df = pl.read_parquet(parquet_file)
+    # we originally used polars, but it's incompatible with multiprocessing
+    # using fork on Unix, so we need to use pandas instead
+    # see: https://docs.pola.rs/user-guide/misc/multiprocessing/
+    # it's possible that we can use polars if we use "spawn" instead of "fork",
+    # so we can look into that in the future.
     df = pd.read_parquet(parquet_file)
+    # df = pl.read_parquet(parquet_file)
 
-    logger.log("loaded parquet file")
-    logger.write(append=True)
-
-    # seqs = abutils.io.from_polars(df)
     seqs = [
         Sequence(row["sequence"], id=row["sequence_id"]) for _, row in df.iterrows()
     ]
-
-    logger.log("loaded sequences")
-    logger.write(append=True)
-
+    # seqs = abutils.io.from_polars(df)
     logger.log("TOTAL SEQUENCES:", len(seqs))
     if len(seqs) > clustering_downsample:
         logger.log(
             f"CLUSTERING DOWNSAMPLING: from {len(seqs)} to {clustering_downsample} sequences"
         )
-
-        logger.write(append=True)
-
         seqs = random.sample(seqs, clustering_downsample)
     logger.log("")
 
@@ -116,13 +106,9 @@ def cluster_and_consensus(
             threads=1,
             temp_dir=temp_directory,
         )
-
-        logger.log("clustering completed")
-        logger.write(append=True)
-
         logger.log("NUM CLUSTERS:", len(clusters))
         logger.log("CLUSTER_SIZES:", ", ".join([str(c.size) for c in clusters]))
-
+        # filter clusters by size
         clusters = [c for c in clusters if c.size >= min_cluster_size]
         logger.log(
             "CLUSTER SIZE FILTERING:",
@@ -141,11 +127,9 @@ def cluster_and_consensus(
                 logger.log("-" * len(cluster_name))
 
                 n_umis = df[df["sequence_id"].isin(cluster.seq_ids)]["umi"].nunique()
-                # n_umis = (
-                #     df.filter(pl.col("sequence_id").is_in(cluster.seq_ids))["umi"]
-                #     .unique()
-                #     .shape[0]
-                # )
+                # n_umis = df.filter(
+                #     pl.col("sequence_id").is_in(cluster.seq_ids)
+                # ).n_unique("umi")
                 n_reads = len(cluster.sequences)
                 consensus = abutils.tl.make_consensus(
                     cluster.sequences,
