@@ -194,6 +194,7 @@ def ont_vdj(
     if verbose:
         progress_bar.close()
     logger.info("")
+    logger.info("")
 
     # concat the output Parquet files
     concat_parquet = os.path.join(project_path, "parsed_barcodes.parquet")
@@ -271,6 +272,7 @@ def ont_vdj(
     if verbose:
         progress_bar.close()
     logger.info("")
+    logger.info("")
 
     # remove temp barcode parquet files only if not in debug mode
     if not debug:
@@ -332,9 +334,9 @@ def _log_run_parameters(
 def _log_inputfile_info(logger: logging.Logger, input_files: Iterable[str]) -> None:
     num_files = len(input_files)
     plural = "files" if num_files > 1 else "file"
-    logger.info("")
-    logger.info("INPUT FILES")
-    logger.info("===========")
+    # logger.info("")
+    # logger.info("INPUT FILES")
+    # logger.info("===========")
     logger.info(f"found {num_files} input {plural}:")
     if num_files < 6:
         for f in input_files:
@@ -343,6 +345,7 @@ def _log_inputfile_info(logger: logging.Logger, input_files: Iterable[str]) -> N
         for f in input_files[:5]:
             logger.info(f"  {os.path.basename(f)}")
         logger.info(f"  ... and {num_files - 5} more")
+    logger.info("")
     logger.info("")
 
 
