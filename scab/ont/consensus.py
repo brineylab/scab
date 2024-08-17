@@ -9,6 +9,7 @@ import traceback
 from typing import Iterable, Optional
 
 import abutils
+import pandas as pd
 import polars as pl
 from abutils import Sequence
 from abutils.tools.log import SimpleLogger
@@ -80,12 +81,14 @@ def cluster_and_consensus(
     logger.log(f"loading parquet file: {parquet_file}")
     logger.write(append=True)
 
-    df = pl.read_parquet(parquet_file)
+    # df = pl.read_parquet(parquet_file)
+    df = pd.read_parquet(parquet_file)
 
     logger.log("loaded parquet file")
     logger.write(append=True)
 
-    seqs = abutils.io.from_polars(df)
+    # seqs = abutils.io.from_polars(df)
+    seqs = abutils.io.from_pandas(df)
 
     logger.log("loaded sequences")
     logger.write(append=True)
