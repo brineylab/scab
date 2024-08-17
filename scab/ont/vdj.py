@@ -237,6 +237,8 @@ def ont_vdj(
         _df = df.filter(pl.col("barcode") == barcode)
         _df.write_parquet(barcode_parquet_file)
         barcode_parquet_files.append(barcode_parquet_file)
+    logger.info("")
+    logger.info("")
 
     # cluster and build consensus sequences
     logger.info("clustering and consensus building")
