@@ -10,8 +10,7 @@ from typing import Iterable, Optional
 
 import abutils
 import pandas as pd
-
-# import polars as pl
+import polars as pl
 from abutils import Sequence
 from abutils.tools.log import SimpleLogger
 
@@ -82,13 +81,13 @@ def cluster_and_consensus(
     # see: https://docs.pola.rs/user-guide/misc/multiprocessing/
     # it's possible that we can use polars if we use "spawn" instead of "fork",
     # so we can look into that in the future.
-    df = pd.read_parquet(parquet_file)
-    # df = pl.read_parquet(parquet_file)
+    # df = pd.read_parquet(parquet_file)
+    df = pl.read_parquet(parquet_file)
 
-    seqs = [
-        Sequence(row["sequence"], id=row["sequence_id"]) for _, row in df.iterrows()
-    ]
-    # seqs = abutils.io.from_polars(df)
+    # seqs = [
+    #     Sequence(row["sequence"], id=row["sequence_id"]) for _, row in df.iterrows()
+    # ]
+    seqs = abutils.io.from_polars(df)
     logger.log("TOTAL SEQUENCES:", len(seqs))
     if len(seqs) > clustering_downsample:
         logger.log(
@@ -126,10 +125,10 @@ def cluster_and_consensus(
                 logger.log(cluster_name)
                 logger.log("-" * len(cluster_name))
 
-                n_umis = df[df["sequence_id"].isin(cluster.seq_ids)]["umi"].nunique()
-                # n_umis = df.filter(
-                #     pl.col("sequence_id").is_in(cluster.seq_ids)
-                # ).n_unique("umi")
+                # n_umis = df[df["sequence_id"].isin(cluster.seq_ids)]["umi"].nunique()
+                n_umis = df.filter(
+                    pl.col("sequence_id").is_in(cluster.seq_ids)
+                ).n_unique("umi")
                 n_reads = len(cluster.sequences)
                 consensus = abutils.tl.make_consensus(
                     cluster.sequences,

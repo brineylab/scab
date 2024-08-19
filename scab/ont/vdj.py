@@ -248,7 +248,9 @@ def ont_vdj(
             total=len(barcode_parquet_files),
             bar_format="{desc:<2.5}{percentage:3.0f}%|{bar:25}{r_bar}",
         )
-    with ProcessPoolExecutor(max_workers=n_processes) as executor:
+    with ProcessPoolExecutor(
+        max_workers=n_processes, mp_context=mp.get_context("spawn")
+    ) as executor:
         consensus_kwargs = {
             "log_directory": consensus_log_directory,
             "temp_directory": clustering_temp_directory,
