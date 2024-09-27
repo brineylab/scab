@@ -120,7 +120,7 @@ def cluster_and_consensus(
         alignment_kwargs["threads"] = 1
         for i, cluster in enumerate(clusters, 1):
             try:
-                cluster_name = f"{barcode}_{i}"
+                cluster_name = f"{barcode}-1_contig_{i}"
                 logger.log("")
                 logger.log(cluster_name)
                 logger.log("-" * len(cluster_name))
