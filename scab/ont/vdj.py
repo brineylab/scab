@@ -196,6 +196,13 @@ def ont_vdj(
     logger.info("")
     logger.info("")
 
+    # filtering out empty barcode files
+    for f in abutils.io.list_files(barcode_temp_directory):
+        lazyframe = pl.scan_parquet(f)
+        if len(lazyframe.columns) == 0:
+            abutils.io.delete_files(f)
+            parquet_files.remove(f)
+
     # concat the output Parquet files
     concat_parquet = os.path.join(project_path, "parsed_barcodes.parquet")
     dfs = [pl.scan_parquet(pq_file) for pq_file in parquet_files]
