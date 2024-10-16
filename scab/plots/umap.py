@@ -23,17 +23,14 @@
 #
 
 
-from typing import Optional, Iterable, Union
-
-import numpy as np
-import pandas as pd
-
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-
-from anndata import AnnData
+from typing import Iterable, Optional, Union
 
 import abutils
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from anndata import AnnData
 
 from ..tools.embeddings import umap as get_umap
 from ..ut import get_adata_values
@@ -69,6 +66,7 @@ def umap(
     highlight_alpha: float = 0.9,
     plot_kwargs: Optional[dict] = None,
     legend_marker_alpha: Optional[float] = None,
+    legend_marker_scale: Optional[float] = None,
     legend_on_data: bool = False,
     legend_fontsize: Union[int, float] = 12,
     legend_fontweight: str = "bold",
@@ -252,6 +250,9 @@ def umap(
         Opacity for legend markers (or legend labels if `legend_on_data` is ``True``).
         By default, legend markers will use `alpha` and legend labels will be completely
         opaque, equivalent to `legend_marker_alpha` of ``1.0``.
+
+    legend_marker_scale : float, default=None
+        Scale for legend markers.
 
     legend_label_position_offsets : dict, default=None
         A ``dict`` mapping legend labels to ``(x,y)`` coordinates used to offset legend labels.
@@ -442,6 +443,7 @@ def umap(
             highlight_alpha=highlight_alpha,
             plot_kwargs=plot_kwargs,
             legend_marker_alpha=legend_marker_alpha,
+            legend_marker_scale=legend_marker_scale,
             legend_on_data=legend_on_data,
             legend_fontsize=legend_fontsize,
             legend_fontweight=legend_fontweight,
