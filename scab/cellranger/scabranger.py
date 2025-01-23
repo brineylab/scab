@@ -542,13 +542,18 @@ class Run:
             mkfastq_cmd += f" --csv='{self.simple_csv}'"
         if uiport is not None:
             mkfastq_cmd += f" --uiport={uiport}"
+            # with open(os.path.join(fastq_dir, f"{self.name}/_uiport"), "w") as f:
+            #     f.write(str(uiport))
         if cli_options is not None:
             mkfastq_cmd += f" {cli_options}"
         p = sp.Popen(mkfastq_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
         time.sleep(5)
-        uifile = os.path.join(fastq_dir, f"{self.name}/_uiport")
-        with open(uifile) as f:
-            uistring = f.read().strip()
+        if uiport is not None:
+            uistring = f"port:{uiport}"
+        else:
+            uifile = os.path.join(fastq_dir, f"{self.name}/_uiport")
+            with open(uifile) as f:
+                uistring = f.read().strip()
         external_ip = (
             urllib.request.urlopen("https://api.ipify.org").read().decode("utf8")
         )
@@ -1402,6 +1407,7 @@ def main(args: Args):
         run.make_fastqs(
             dirs["mkfastq"],
             bin_path=cfg.cellranger,
+            uiport=cfg.uiport,
             log_dir=dirs["log"],
             cli_options=cfg.get_mkfastq_cli_options(run.name),
             debug=args.debug,
