@@ -917,7 +917,8 @@ class Sample:
         config = ""
         if self.gex_reference is not None:
             config += "[gene-expression]\n"
-            config += f"reference,{self.gex_reference}\n\n"
+            config += f"reference,{self.gex_reference}\n"
+            config += "create-bam,true\n\n"
         if self.vdj_reference is not None:
             config += "[vdj]\n"
             config += f"reference,{self.vdj_reference}\n\n"
@@ -990,9 +991,12 @@ def cellranger_multi(
     logger.info("running cellranger multi..")
     p = sp.Popen(multi_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, text=True)
     time.sleep(3)
-    uifile = os.path.join(output_dir, f"{sample.name}/_uiport")
-    with open(uifile) as f:
-        uistring = f.read().strip()
+    if uiport is not None:
+        uistring = f"port:{uiport}"
+    else:
+        uifile = os.path.join(output_dir, f"{sample.name}/_uiport")
+        with open(uifile) as f:
+            uistring = f.read().strip()
     external_ip = urllib.request.urlopen("https://api.ipify.org").read().decode("utf8")
     uistring = f"http://{external_ip}:{uistring.split(':')[-1]}"
     logger.info(f"  --> cellranger UI: {uistring}")
