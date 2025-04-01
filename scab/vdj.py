@@ -35,11 +35,11 @@ import numpy as np
 import pandas as pd
 from abutils import Pair, Sequence
 from abutils.io import read_airr, read_parquet
-from abutils.tl import assign_pairs
+from abutils.tl import assign_pairs, cluster
 
 # from abutils.core.pair import Pair, assign_pairs
 # from abutils.core.sequence import Sequence, read_airr, read_parquet
-from abutils.utils.cluster import cluster
+# from abutils.utils.cluster import cluster
 from abutils.utils.utilities import nested_dict_lookup
 from anndata import AnnData
 from Levenshtein import distance
