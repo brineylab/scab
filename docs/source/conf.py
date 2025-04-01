@@ -13,10 +13,10 @@
 # serve to show the default.
 
 
-from datetime import datetime
 import os
-from pathlib import Path
 import sys
+from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from sphinx.application import Sphinx

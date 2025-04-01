@@ -31,6 +31,7 @@ import abutils
 import numpy as np
 import pandas as pd
 import prettytable as pt
+
 from abstar.annotation.germline import get_germline
 from abstar.annotation.regions import (
     IMGT_REGION_END_POSITIONS_AA,
@@ -519,10 +520,14 @@ class LineageSummary:
             # aln_dict = {rec.id: str(rec.seq) for rec in aln}
             aln_dict = {}
             for rec in aln:
-                if not str(rec.seq).replace("-", "").replace("X", ""):
-                    aln_dict[rec.id] = " " * len(str(rec.seq))
+                if not str(rec.sequence).replace("-", "").replace("X", ""):
+                    aln_dict[rec.id] = " " * len(str(rec.sequence))
                 else:
-                    aln_dict[rec.id] = str(rec.seq)
+                    aln_dict[rec.id] = str(rec.sequence)
+                # if not str(rec.seq).replace("-", "").replace("X", ""):
+                #     aln_dict[rec.id] = " " * len(str(rec.seq))
+                # else:
+                #     aln_dict[rec.id] = str(rec.seq)
             df[f"{region}_aligned"] = [aln_dict[str(n)] for n in names]
         # make a dot alignment
         for region in ["cdr1", "cdr2"]:
