@@ -23,36 +23,31 @@
 #
 
 
-from collections import Counter
 import itertools
 import sys
-from typing import Optional, Literal, Iterable, Union, Callable
-
-import pandas as pd
-import numpy as np
-
-from Levenshtein import distance
-
-import fastcluster as fc
-from scipy.cluster.hierarchy import fcluster
-
-from mnemonic import Mnemonic
-
-import dnachisel as dc
-
-from anndata import AnnData
-
-from natsort import natsorted, natsort_keygen
+from collections import Counter
+from typing import Callable, Iterable, Literal, Optional, Union
 
 import abstar
-from abutils.core.pair import Pair, assign_pairs
-from abutils.core.sequence import Sequence, read_csv, read_fasta, read_json
-from abutils.utils.cluster import cluster
+import dnachisel as dc
+import fastcluster as fc
+import numpy as np
+import pandas as pd
+from abutils import Pair, Sequence
+from abutils.io import read_airr, read_parquet
+from abutils.tl import assign_pairs, cluster
+
+# from abutils.core.pair import Pair, assign_pairs
+# from abutils.core.sequence import Sequence, read_airr, read_parquet
+# from abutils.utils.cluster import cluster
 from abutils.utils.utilities import nested_dict_lookup
+from anndata import AnnData
+from Levenshtein import distance
+from mnemonic import Mnemonic
+from natsort import natsorted
+from scipy.cluster.hierarchy import fcluster
 
 from .models.lineage import Lineage
-
-from .tools.similarity import repertoire_similarity
 
 
 def merge(
@@ -60,15 +55,15 @@ def merge(
     vdj_file: Optional[str] = None,
     vdj_annot: Optional[str] = None,
     vdj_field: str = "bcr",
-    vdj_format: Literal["fasta", "delimited", "json"] = "fasta",
-    vdj_delimiter: str = "\t",
+    vdj_format: Literal["fasta", "fastq", "airr", "parquet"] = "fasta",
+    # vdj_delimiter: str = "\t",
     vdj_id_key: str = "sequence_id",
     vdj_sequence_key: str = "sequence",
     vdj_id_delimiter: str = "_",
     vdj_id_delimiter_num: int = 1,
     receptor: str = "bcr",
     chain_selection_func: Optional[Callable] = None,
-    abstar_output_format: Literal["airr", "json"] = "airr",
+    # abstar_output_format: Literal["airr", "json"] = "airr",
     abstar_germ_db: str = "human",
     verbose: bool = False,
 ) -> AnnData:
@@ -84,11 +79,9 @@ def merge(
     vdj_file : str, optional
         Path to a file containing BCR data. The file can be in one of several formats:
 
-                - FASTA-formatted file, as output by CellRanger
-
-                - delimited text file, containing annotated BCR sequences
-
-                - JSON-formatted file, containing annotated BCR sequences
+            - FASTA/Q-formatted file, as output by CellRanger
+            - AIRR-formatted text file containing BCR/TCR sequence annotations (tab-delimited)
+            - Parquet file, containing AIRR-compatible BCR/TCR sequence annotations
 
     vdj_annot : str, optional
         Path to the CSV-formatted BCR annotations file produced by CellRanger. Matching the
@@ -96,14 +89,9 @@ def merge(
         `vdj_file`, then ``'all_contig_annotations.csv'`` is the appropriate annotation file.
 
     vdj_format : str, default='fasta'
-        Format of the input `vdj_file`. Options are: ``'fasta'``, ``'delimited'``, and
-        ``'json'``. If `vdj_format` is ``'fasta'``, `abstar`_
-        will be run on the input data to obtain annotated BCR data. By default, abstar will
-        produce `AIRR-formatted`_  (tab-delimited) annotations.
-
-    vdj_delimiter : str, default='\t'
-        Delimiter used in `vdj_file`. Only used if `vdj_format` is ``'delimited'``.
-        Default is ``'\t'``, which conforms to AIRR-C data standards.
+        Format of the input `[bcr|tcr]_file`. Options are: ``'fasta'``, ``'fastq'`` ``'airr'``, and
+        ``'parquet'``. If `[bcr|tcr]_format` is ``'fasta'``, `abstar`_
+        will be run on the input data to obtain annotated BCR/TCR data.
 
     vdj_id_key : str, default='sequence_id'
         Name of the column or field in `vdj_file` that corresponds to the sequence ID.
@@ -118,10 +106,6 @@ def merge(
 
     vdj_id_delimiter_num : str, default=1
         The occurance (1-based numbering) of the `vdj_id_delimiter`.
-
-    abstar_output_format : str, default='airr'
-        Format for abstar annotations. Only used if `bcr_format` is ``'fasta'``.
-        Options are ``'airr'``, ``'json'`` and ``'tabular'``.
 
     abstar_germ_db : str, default='human'
         Germline database to be used for annotation of BCR data. Built-in abstar options
@@ -147,35 +131,30 @@ def merge(
     """
     vdj_format = vdj_format.lower()
     receptor = receptor.lower()
-    if vdj_format == "delimited":
-        delim_renames = {"\t": "tab", ",": "comma"}
+    # AIRR-formatted VDJ data
+    if vdj_format.lower() == "airr":
         if verbose:
-            d = delim_renames.get(vdj_delimiter, f"'{vdj_delimiter}'")
-            print(f"reading {d}-delimited {vdj_field.upper()} data...")
-        sequences = read_csv(
-            vdj_file,
-            delimiter=vdj_delimiter,
-            id_key=vdj_id_key,
-            sequence_key=vdj_sequence_key,
-        )
-    elif vdj_format == "json":
+            print(f"reading AIRR-formatted {vdj_field.upper()} data...")
+        sequences = read_airr(vdj_file)
+    # Parquet-formatted VDJ data
+    elif vdj_format.lower() == "parquet":
         if verbose:
-            print(f"reading JSON-formatted {vdj_field.upper()} data...")
-        sequences = read_json(
+            print(f"reading Parquet-formatted {vdj_field.upper()} data...")
+        sequences = read_parquet(
             vdj_file, id_key=vdj_id_key, sequence_key=vdj_sequence_key
         )
-    elif vdj_format == "fasta":
-        if verbose:
-            print(f"reading FASTA-formatted {vdj_field.upper()} data...")
-        raw_seqs = read_fasta(vdj_file)
+    # FASTA/Q-formatted VDJ data
+    elif vdj_format in ["fasta", "fastq"]:
+        # if verbose:
+        #     print(f"reading {vdj_format.upper()}-formatted {vdj_field.upper()} data...")
+        # raw_seqs = read_fasta(vdj_file)
         if verbose:
             print(f"annotating {vdj_field.upper()} sequences with abstar...")
         sequences = abstar.run(
-            raw_seqs,
-            output_type=abstar_output_format,
-            germ_db=abstar_germ_db,
-            verbose=verbose,
+            vdj_file,
+            germline_database=abstar_germ_db,
             receptor=receptor,
+            verbose=verbose,
         )
     pairs = assign_pairs(
         sequences,
@@ -202,14 +181,14 @@ def merge_bcr(
     adata: AnnData,
     bcr_file: Optional[str] = None,
     bcr_annot: Optional[str] = None,
-    bcr_format: Literal["fasta", "delimited", "json"] = "fasta",
-    bcr_delimiter: str = "\t",
+    bcr_format: Literal["fasta", "fastq", "airr", "parquet"] = "fasta",
+    # bcr_delimiter: str = "\t",
     bcr_id_key: str = "sequence_id",
     bcr_sequence_key: str = "sequence",
     bcr_id_delimiter: str = "_",
     bcr_id_delimiter_num: int = 1,
     chain_selection_func: Optional[Callable] = None,
-    abstar_output_format: Literal["airr", "json"] = "airr",
+    # abstar_output_format: Literal["airr", "json"] = "airr",
     abstar_germ_db: str = "human",
     verbose: bool = True,
 ) -> AnnData:
@@ -225,11 +204,9 @@ def merge_bcr(
     bcr_file : str, optional
         Path to a file containing BCR data. The file can be in one of several formats:
 
-                - FASTA-formatted file, as output by CellRanger
-
-                - delimited text file, containing annotated BCR sequences
-
-                - JSON-formatted file, containing annotated BCR sequences
+            - FASTA/Q-formatted file, as output by CellRanger
+            - AIRR-formatted text file containing BCR/TCR sequence annotations (tab-delimited)
+            - Parquet file, containing AIRR-compatible BCR/TCR sequence annotations
 
     bcr_annot : str, optional
         Path to the CSV-formatted BCR annotations file produced by CellRanger. Matching the
@@ -292,14 +269,14 @@ def merge_bcr(
         vdj_annot=bcr_annot,
         vdj_field="bcr",
         vdj_format=bcr_format,
-        vdj_delimiter=bcr_delimiter,
+        # vdj_delimiter=bcr_delimiter,
         vdj_id_key=bcr_id_key,
         vdj_sequence_key=bcr_sequence_key,
         vdj_id_delimiter=bcr_id_delimiter,
         vdj_id_delimiter_num=bcr_id_delimiter_num,
         receptor="bcr",
         chain_selection_func=chain_selection_func,
-        abstar_output_format=abstar_output_format,
+        # abstar_output_format=abstar_output_format,
         abstar_germ_db=abstar_germ_db,
         verbose=verbose,
     )
@@ -309,14 +286,14 @@ def merge_tcr(
     adata: AnnData,
     tcr_file: Optional[str] = None,
     tcr_annot: Optional[str] = None,
-    tcr_format: Literal["fasta", "delimited", "json"] = "fasta",
-    tcr_delimiter: str = "\t",
+    tcr_format: Literal["fasta", "fastq", "airr", "parquet"] = "fasta",
+    # tcr_delimiter: str = "\t",
     tcr_id_key: str = "sequence_id",
     tcr_sequence_key: str = "sequence",
     tcr_id_delimiter: str = "_",
     tcr_id_delimiter_num: int = 1,
     chain_selection_func: Optional[Callable] = None,
-    abstar_output_format: Literal["airr", "json"] = "airr",
+    # abstar_output_format: Literal["airr", "json"] = "airr",
     abstar_germ_db: str = "human",
     verbose: bool = True,
 ) -> AnnData:
@@ -332,11 +309,9 @@ def merge_tcr(
     tcr_file : str, optional
         Path to a file containing TCR data. The file can be in one of several formats:
 
-                - FASTA-formatted file, as output by CellRanger
-
-                - delimited text file, containing annotated TCR sequences
-
-                - JSON-formatted file, containing annotated TCR sequences
+            - FASTA/Q-formatted file, as output by CellRanger
+            - AIRR-formatted text file containing BCR/TCR sequence annotations (tab-delimited)
+            - Parquet file, containing AIRR-compatible BCR/TCR sequence annotations
 
     tcr_annot : str, optional
         Path to the CSV-formatted TCR annotations file produced by CellRanger. Matching the
@@ -399,14 +374,14 @@ def merge_tcr(
         vdj_annot=tcr_annot,
         vdj_field="tcr",
         vdj_format=tcr_format,
-        vdj_delimiter=tcr_delimiter,
+        # vdj_delimiter=tcr_delimiter,
         vdj_id_key=tcr_id_key,
         vdj_sequence_key=tcr_sequence_key,
         vdj_id_delimiter=tcr_id_delimiter,
         vdj_id_delimiter_num=tcr_id_delimiter_num,
         receptor="tcr",
         chain_selection_func=chain_selection_func,
-        abstar_output_format=abstar_output_format,
+        # abstar_output_format=abstar_output_format,
         abstar_germ_db=abstar_germ_db,
         verbose=verbose,
     )

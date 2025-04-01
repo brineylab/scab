@@ -1,37 +1,129 @@
-import gzip
 import os
-import tempfile
 
-import numpy as np
-from scipy.sparse import coo_matrix
+import pytest
 
 from ..io import read_10x_mtx
 
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "test_data")
 
-# def test_read_10x_mtx():
-#     # create an example 10x mtx file
-#     data = np.array([1, 2, 3, 4, 5])
-#     row = np.array([0, 0, 1, 2, 2])
-#     col = np.array([1, 1, 1, 0, 1])
-#     mtx = coo_matrix((data, (row, col)))
-#     # write the mtx file to disk
-#     mtx_dir = tempfile.mkdtemp()
-#     mtx = os.path.join(mtx_dir, "matrix.mtx")
-#     compressed = mtx + ".gz"
-#     with open(mtx, "wb") as f:
-#         np.savetxt(f, np.array([3, 2, 5]), fmt="%d")
-#         np.savetxt(f, np.column_stack((row, col, data)), fmt="%d")
-#     # compress the mtx filem, remove the uncompressed mtx file
-#     with open(mtx, "rb") as f_in:
-#         with gzip.open(compressed, "wb") as f_out:
-#             f_out.writelines(f_in)
-#     os.remove(mtx)
-#     # read the mtx file using the read_10x_mtx function
-#     adata = read_10x_mtx(mtx_dir)
-#     # check that the resulting AnnData object has the correct shape
-#     assert adata.shape == (3, 2)
-#     # check that the resulting AnnData object has the correct values
-#     expected_X = np.array([[1, 2], [0, 3], [4, 5]])
-#     assert np.allclose(adata.X.toarray(), expected_X)
-#     # clean up the test files
-#     os.remove(compressed)
+
+@pytest.fixture
+def sc5p_mtx_path():
+    return os.path.join(TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/filtered_feature_bc_matrix")
+
+
+@pytest.fixture
+def sc5p_bcr_fasta_path():
+    return os.path.join(TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/bcr/filtered_contig.fasta")
+
+
+@pytest.fixture
+def sc5p_bcr_fastq_path():
+    return os.path.join(TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/bcr/filtered_contig.fastq")
+
+
+@pytest.fixture
+def sc5p_bcr_airr_path():
+    return os.path.join(TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/bcr/airr_rearrangement.tsv")
+
+
+@pytest.fixture
+def sc5p_bcr_parquet_path():
+    return os.path.join(
+        TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/bcr/airr_rearrangement.parquet"
+    )
+
+
+@pytest.fixture
+def sc5p_bcr_annot_path():
+    return os.path.join(
+        TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/bcr/filtered_contig_annotations.csv"
+    )
+
+
+@pytest.fixture
+def sc5p_tcr_fasta_path():
+    return os.path.join(TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/bcr/filtered_contig.fasta")
+
+
+@pytest.fixture
+def sc5p_tcr_fastq_path():
+    return os.path.join(TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/bcr/filtered_contig.fastq")
+
+
+@pytest.fixture
+def sc5p_tcr_annot_path():
+    return os.path.join(
+        TEST_DATA_DIR, "sc5p_v2_hs_PBMC_1k/bcr/filtered_contig_annotations.csv"
+    )
+
+
+def test_read_10x_mtx(sc5p_mtx_path):
+    # create an example 10x mtx file
+    adata = read_10x_mtx(sc5p_mtx_path)
+    assert adata is not None
+    assert adata.shape[0] > 0
+    assert adata.shape[1] > 0
+    assert adata.X.shape == (adata.shape[0], adata.shape[1])
+
+
+def test_read_10x_mtx_with_bcr_fasta(
+    sc5p_mtx_path, sc5p_bcr_fasta_path, sc5p_bcr_annot_path
+):
+    adata = read_10x_mtx(
+        mtx_path=sc5p_mtx_path,
+        bcr_file=sc5p_bcr_fasta_path,
+        bcr_annot=sc5p_bcr_annot_path,
+    )
+    assert adata is not None
+    assert adata.shape[0] > 0
+    assert adata.shape[1] > 0
+    assert adata.X.shape == (adata.shape[0], adata.shape[1])
+    assert "bcr" in adata.obs.columns
+
+
+def test_read_10x_mtx_with_bcr_fastq(
+    sc5p_mtx_path, sc5p_bcr_fastq_path, sc5p_bcr_annot_path
+):
+    adata = read_10x_mtx(
+        mtx_path=sc5p_mtx_path,
+        bcr_file=sc5p_bcr_fastq_path,
+        bcr_annot=sc5p_bcr_annot_path,
+    )
+    assert adata is not None
+    assert adata.shape[0] > 0
+    assert adata.shape[1] > 0
+    assert adata.X.shape == (adata.shape[0], adata.shape[1])
+    assert "bcr" in adata.obs.columns
+
+
+def test_read_10x_mtx_with_bcr_airr(
+    sc5p_mtx_path, sc5p_bcr_airr_path, sc5p_bcr_annot_path
+):
+    adata = read_10x_mtx(
+        mtx_path=sc5p_mtx_path,
+        bcr_file=sc5p_bcr_airr_path,
+        bcr_annot=sc5p_bcr_annot_path,
+        bcr_format="airr",
+    )
+    assert adata is not None
+    assert adata.shape[0] > 0
+    assert adata.shape[1] > 0
+    assert adata.X.shape == (adata.shape[0], adata.shape[1])
+    assert "bcr" in adata.obs.columns
+
+
+def test_read_10x_mtx_with_bcr_parquet(
+    sc5p_mtx_path, sc5p_bcr_parquet_path, sc5p_bcr_annot_path
+):
+    adata = read_10x_mtx(
+        mtx_path=sc5p_mtx_path,
+        bcr_file=sc5p_bcr_parquet_path,
+        bcr_annot=sc5p_bcr_annot_path,
+        bcr_format="parquet",
+    )
+    assert adata is not None
+    assert adata.shape[0] > 0
+    assert adata.shape[1] > 0
+    assert adata.X.shape == (adata.shape[0], adata.shape[1])
+    assert "bcr" in adata.obs.columns

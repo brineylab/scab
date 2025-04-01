@@ -24,18 +24,16 @@
 
 
 import codecs
-from collections.abc import Iterable
 import pathlib
 import pickle
 import re
 import typing
+from collections.abc import Iterable
 from typing import Any, Callable, Collection, Dict, Literal, Optional, Union
 
-import numpy as np
-
-import scanpy as sc
-
 import anndata
+import numpy as np
+import scanpy as sc
 from anndata import AnnData
 
 StrategiesLiteral = Literal["same", "unique", "first", "only"]
@@ -53,21 +51,21 @@ def read_10x_mtx(
     bcr_file: Optional[str] = None,
     bcr_annot: Optional[str] = None,
     bcr_format: Literal["fasta", "delimited", "json"] = "fasta",
-    bcr_delimiter: str = "\t",
+    # bcr_delimiter: str = "\t",
     bcr_id_key: str = "sequence_id",
     bcr_sequence_key: str = "sequence",
     bcr_id_delimiter: str = "_",
     bcr_id_delimiter_num: int = 1,
     tcr_file: Optional[str] = None,
     tcr_annot: Optional[str] = None,
-    tcr_format: Literal["fasta", "delimited", "json"] = "fasta",
-    tcr_delimiter: str = "\t",
+    tcr_format: Literal["fasta", "fastq", "airr", "parquet"] = "fasta",
+    # tcr_delimiter: str = "\t",
     tcr_id_key: str = "sequence_id",
     tcr_sequence_key: str = "sequence",
     tcr_id_delimiter: str = "_",
     tcr_id_delimiter_num: int = 1,
     chain_selection_func: Optional[Callable] = None,
-    abstar_output_format: Literal["airr", "json"] = "airr",
+    # abstar_output_format: Literal["airr", "json"] = "airr",
     abstar_germ_db: str = "human",
     gex_only: bool = False,
     hashes: Optional[Iterable] = None,
@@ -107,11 +105,9 @@ def read_10x_mtx(
     [bcr|tcr]_file : str, optional
         Path to a file containing BCR/TCR data. The file can be in one of several formats:
 
-                - FASTA-formatted file, as output by CellRanger
-
-                - delimited text file, containing annotated BCR/TCR sequences
-
-                - JSON-formatted file, containing annotated BCR/TCR sequences
+            - FASTA/Q-formatted file, as output by CellRanger
+            - tab-delimited text file, containing AIRR-formatted BCR/TCR sequence annotations
+            - Parquet file, containing AIRR-formatted BCR/TCR sequence annotations
 
     [bcr|tcr]_annot : str, optional
         Path to the CSV-formatted BCR/TCR annotations file produced by CellRanger. Matching the
@@ -119,14 +115,13 @@ def read_10x_mtx(
         `[bcr|tcr]_file`, then ``'all_contig_annotations.csv'`` is the appropriate annotation file.
 
     [bcr|tcr]_format : str, default='fasta'
-        Format of the input `[bcr|tcr]_file`. Options are: ``'fasta'``, ``'delimited'``, and
-        ``'json'``. If `[bcr|tcr]_format` is ``'fasta'``, `abstar`_
-        will be run on the input data to obtain annotated BCR/TCR data. By default, abstar will
-        produce `AIRR-formatted`_  (tab-delimited) annotations.
+        Format of the input `[bcr|tcr]_file`. Options are: ``'fasta'``, ``'airr'``, and
+        ``'parquet'``. If `[bcr|tcr]_format` is ``'fasta'``, `abstar`_
+        will be run on the input data to obtain annotated BCR/TCR data.
 
-    [bcr|tcr]_delimiter : str, default='\t'
-        Delimiter used in `[bcr|tcr]_file`. Only used if `[bcr|tcr]_format` is ``'delimited'``.
-        Default is ``'\t'``, which conforms to AIRR-C data standards.
+    # [bcr|tcr]_delimiter : str, default='\t'
+    #     Delimiter used in `[bcr|tcr]_file`. Only used if `[bcr|tcr]_format` is ``'delimited'``.
+    #     Default is ``'\t'``, which conforms to AIRR-C data standards.
 
     [bcr|tcr]_id_key : str, default='sequence_id'
         Name of the column or field in `[bcr|tcr]_file` that corresponds to the sequence ID.
@@ -142,9 +137,9 @@ def read_10x_mtx(
     [bcr|tcr]_id_delimiter_num : str, default=1
         The occurance (1-based numbering) of the `[bcr|tcr]_id_delimiter`.
 
-    abstar_output_format : str, default='airr'
-        Format for abstar annotations. Only used if `[bcr|tcr]_format` is ``'fasta'``.
-        Options are ``'airr'``, ``'json'`` and ``'tabular'``.
+    # abstar_output_format : str, default='airr'
+    #     Format for abstar annotations. Only used if `[bcr|tcr]_format` is ``'fasta'``.
+    #     Options are ``'airr'``, ``'json'`` and ``'tabular'``.
 
     abstar_germ_db : str, default='human'
         Germline database to be used for annotation of BCR/TCR data. Built-in abstar options
@@ -272,13 +267,13 @@ def read_10x_mtx(
             bcr_file=bcr_file,
             bcr_annot=bcr_annot,
             bcr_format=bcr_format,
-            bcr_delimiter=bcr_delimiter,
+            # bcr_delimiter=bcr_delimiter,
             bcr_id_key=bcr_id_key,
             bcr_sequence_key=bcr_sequence_key,
             bcr_id_delimiter=bcr_id_delimiter,
             bcr_id_delimiter_num=bcr_id_delimiter_num,
             chain_selection_func=chain_selection_func,
-            abstar_output_format=abstar_output_format,
+            # abstar_output_format=abstar_output_format,
             abstar_germ_db=abstar_germ_db,
             verbose=verbose,
         )
@@ -288,13 +283,13 @@ def read_10x_mtx(
             tcr_file=tcr_file,
             tcr_annot=tcr_annot,
             tcr_format=tcr_format,
-            tcr_delimiter=tcr_delimiter,
+            # tcr_delimiter=tcr_delimiter,
             tcr_id_key=tcr_id_key,
             tcr_sequence_key=tcr_sequence_key,
             tcr_id_delimiter=tcr_id_delimiter,
             tcr_id_delimiter_num=tcr_id_delimiter_num,
             chain_selection_func=chain_selection_func,
-            abstar_output_format=abstar_output_format,
+            # abstar_output_format=abstar_output_format,
             abstar_germ_db=abstar_germ_db,
             verbose=verbose,
         )

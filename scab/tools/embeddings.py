@@ -23,13 +23,11 @@
 #
 
 
-from typing import Optional, Union
 import warnings
-
-import scanpy as sc
+from typing import Optional, Union
 
 import anndata
-
+import scanpy as sc
 
 __all__ = ["pca", "umap", "dimensionality_reduction"]
 
@@ -78,8 +76,8 @@ def pca(
         print("performing PCA...")
     if ignore_ig:
         _adata = adata.copy()
-        _adata.var["highly_variable"] = _adata.var["highly_variable"] & ~(
-            _adata.var["ig"]
+        _adata.var["highly_variable"] = (
+            _adata.var["highly_variable"] & ~(_adata.var["ig"])
         )
         sc.tl.pca(_adata, svd_solver=solver, n_comps=n_pcs, use_highly_variable=True)
         adata.obsm["X_pca"] = _adata.obsm["X_pca"]
@@ -236,12 +234,12 @@ def umap(
     return adata
 
 
-def dimensionality_reduction(**kwargs) -> anndata.AnnData:
+def dimensionality_reduction(*args, **kwargs) -> anndata.AnnData:
     """
-    Deprecated, but retained for backwards compatibility. Use ``scab.tl.umap`` instead.
+    Deprecated, but retained for backwards compatibility. Use ``scab.tl.umap()`` instead.
     """
     warnings.warn(
-        "dimensionality_reduction is deprecated, use scab.tl.umap instead",
+        "scab.tl.dimensionality_reduction() is deprecated, use scab.tl.umap() instead",
         DeprecationWarning,
     )
-    return umap(**kwargs)
+    return umap(*args, **kwargs)

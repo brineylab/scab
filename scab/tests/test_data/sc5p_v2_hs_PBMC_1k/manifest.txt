@@ -1,0 +1,28 @@
+Human PBMC from a Healthy Donor, 1k cells (v2)
+==============================================
+
+
+downloaded from: https://www.10xgenomics.com/datasets/human-pbmc-from-a-healthy-donor-1-k-cells-v-2-2-standard-4-0-0
+download date: 2024-08-16
+
+
+Summary (from 10X Genomics)
+---------------------------
+
+Human peripheral blood mononuclear cells (PBMCs) of a healthy male donor aged 27 were obtained by 10x Genomics from AllCells.
+
+Gene Expression, Feature Barcode, BCR Enriched, and TCR Enriched libraries were generated from 1,690 cells 
+(91% viable, expected cell recovery 922) as described in the Chromium Next GEM Single Cell 5' Reagent Kits v2 (Dual Index) 
+User Guide with Feature Barcode technology for Cell Surface Protein and Immune Receptor Mapping (CG000330 Rev A) and sequenced 
+on an Illumina NovaSeq 6000.
+
+Sequencing Configuration:
+
+  - Gene Expression: Paired-end (26X90), dual-indexed sequencing. Read 1: 26 cycles, i7 index: 10 cycles, i5 index: 10 cycles, Read 2: 90 cycles
+  - BCR Enriched: Paired-end (26X90), dual-indexed sequencing. Read 1: 26 cycles, i7 index: 10 cycles, i5 index: 10 cycles, Read 2: 90 cycles
+  - TCR Enriched: Paired-end (26X90), dual-indexed sequencing. Read 1: 26 cycles, i7 index: 10 cycles, i5 index: 10 cycles, Read 2: 90 cycles
+  - Feature Barcoding: Paired-end (26X90), dual-indexed sequencing. Read 1: 26 cycles, i7 index: 10 cycles, i5 index: 10 cycles, Read 2: 90 cycles
+
+Analysis Settings:
+
+  - Gene Expression: --expect-cells=1000
