@@ -9,7 +9,7 @@ humanize
 leidenalg
 matplotlib
 mnemonic
-mnnpy
+# mnnpy
 natsort
 numpy
 pandas
