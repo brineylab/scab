@@ -157,7 +157,7 @@ def merge(
             germline_database=abstar_germ_db,
             receptor=receptor,
             verbose=verbose,
-            concise_output=concise_output,
+            concise_logging=concise_output,
         )
     pairs = assign_pairs(
         sequences,
