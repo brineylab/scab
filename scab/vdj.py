@@ -148,13 +148,16 @@ def merge(
         # if verbose:
         #     print(f"reading {vdj_format.upper()}-formatted {vdj_field.upper()} data...")
         # raw_seqs = read_fasta(vdj_file)
+        concise_output = False
         if verbose:
             print(f"annotating {vdj_field.upper()} sequences with abstar...")
+            concise_output = True
         sequences = abstar.run(
             vdj_file,
             germline_database=abstar_germ_db,
             receptor=receptor,
             verbose=verbose,
+            concise_output=concise_output,
         )
     pairs = assign_pairs(
         sequences,
