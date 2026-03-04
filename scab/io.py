@@ -33,6 +33,8 @@ from typing import Any, Callable, Collection, Dict, Literal, Optional, Union
 
 import anndata
 import numpy as np
+from scab.tests.test_embeddings import adata
+from scab.tests.test_embeddings import adata
 import scanpy as sc
 from anndata import AnnData
 
@@ -388,6 +390,190 @@ def read_10x_mtx(
     for f in feature_df:
         gex.obs[rename_features.get(f, f)] = feature_df[f]
     return gex
+
+
+def read_pairplex(
+    pairplex_pairs: str,
+    pairplex_annotations: Optional[str] = None,
+    hashes: Optional[Iterable] = None,
+    cellhash_regex: str = "cell ?hash",
+    ignore_cellhash_case: bool = True,
+    agbcs: Optional[Iterable] = None,
+    agbc_regex: str = "agbc",
+    ignore_agbc_case: bool = True,
+    log_transform_cellhashes: bool = True,
+    ignore_zero_quantile_cellhashes: bool = True,
+    rename_cellhashes: Optional[Dict[str, str]] = None,
+    log_transform_agbcs: bool = True,
+    ignore_zero_quantile_agbcs: bool = True,
+    rename_agbcs: Optional[Dict[str, str]] = None,
+    log_transform_features: bool = True,
+    ignore_zero_quantile_features: bool = True,
+    rename_features: Optional[Dict[str, str]] = None,
+    feature_suffix: str = "_FBC",
+    cellhash_quantile: Union[float, int] = 0.95,
+    agbc_quantile: Union[float, int] = 0.95,
+    feature_quantile: Union[float, int] = 0.95,
+    cache: bool = True,
+    verbose: bool = True,
+) -> AnnData:
+
+    """\
+    Reads in PairPlex data from a pairplex output file containing serialized ``abutils.Pair`` objects and an optional
+    annotations file. The pairplex output file is expected to be a tab-delimited text file with two columns: 
+    the first column contains cell barcodes and the second column contains serialized ``abutils.Pair`` objects.    
+    If an annotations file is provided, it is expected to be a CSV-formatted file containing at least one column of 
+    cell barcodes that match those in the pairplex output file. The annotations are merged with the pairplex data 
+    based on matching cell barcodes.
+    
+    Parameters
+    ----------
+    pairplex_pairs : str
+        Path to the pairplex output file containing serialized ``abutils.Pair`` objects. The file must be a tab-delimited
+        text file with two columns: the first column contains cell barcodes and the second column contains serialized
+        ``abutils.Pair`` objects.
+    pairplex_annotations : str, optional
+        Path to an optional annotations file. The file must be a CSV-formatted file containing at least one column of cell 
+        barcodes that match those in the pairplex output file. The annotations are merged with the pairplex data based on 
+        matching cell barcodes.
+
+    Returns
+    -------
+    adata : ``anndata.AnnData``
+        An ``AnnData`` object containing the deserialized ``abutils.Pair`` objects in the ``adata.obs`` DataFrame, along with any
+        additional annotations from the optional annotations file.
+    """
+
+    import pandas as pd
+    import polars as pl
+    from abutils.core.pair import pairs_from_polars
+    from abutils.utils.path import list_files
+    from .vdj import get_pairing_info
+
+    # read pairplex output file (parquet file or directory of parquet files)
+    if verbose:
+        print("reading pairplex pairs...")
+    p = pathlib.Path(pairplex_pairs)
+    if p.is_dir():
+        parquet_files = list_files(str(p), extension=".parquet")
+        if not parquet_files:
+            raise ValueError(f"No parquet files found in {pairplex_pairs}")
+        pair_df = pl.concat([pl.read_parquet(f) for f in parquet_files])
+        pairs = pairs_from_polars(pair_df)
+    else:
+        from abutils.io import read_parquet as _read_parquet
+        pairs = _read_parquet(str(p))
+    pair_dict = {pair.name: pair for pair in pairs}
+    barcodes = list(pair_dict.keys())
+
+    # read the annotations file if provided (CSV file or directory of CSV files)
+    if pairplex_annotations is not None:
+        if verbose:
+            print("reading pairplex annotations...")
+        annot_path = pathlib.Path(pairplex_annotations)
+        if annot_path.is_dir():
+            csv_files = list_files(str(annot_path), extension=".csv")
+            if not csv_files:
+                raise ValueError(f"No CSV files found in {pairplex_annotations}")
+            annot_df = pd.concat([pd.read_csv(f, index_col=0) for f in csv_files])
+        else:
+            annot_df = pd.read_csv(str(annot_path), index_col=0)
+    else:
+        annot_df = None
+
+    # merge the pairplex data and annotations based on matching cell barcodes
+    if verbose:
+        print("merging pairplex data with annotations...")
+    obs_df = pd.DataFrame(index=barcodes)
+    if annot_df is not None:
+        obs_df = obs_df.join(annot_df, how="left").fillna(0)
+    feature_cols = list(obs_df.columns)
+
+    # build AnnData
+    if feature_cols:
+        fbc = AnnData(
+            X=obs_df[feature_cols].values.astype(float),
+            obs=pd.DataFrame(index=obs_df.index),
+            var=pd.DataFrame(index=pd.Index(feature_cols)),
+        )
+        fbc.var["gene_ids"] = feature_cols
+    else:
+        fbc = AnnData(obs=pd.DataFrame(index=pd.Index(barcodes)))
+
+    # add BCR pair objects to obs
+    fbc.obs["bcr"] = [pair_dict.get(b, Pair([])) for b in fbc.obs_names]
+    fbc.obs["bcr_pairing"] = get_pairing_info(fbc.obs["bcr"], receptor="bcr")
+    fbc.obs["is_bcr_pair"] = [p.is_pair for p in fbc.obs["bcr"]]
+
+    if not feature_cols:
+        return fbc
+
+    # parse out features and cellhashes
+    if ignore_cellhash_case:
+        cellhash_pattern = re.compile(cellhash_regex, flags=re.IGNORECASE)
+    else:
+        cellhash_pattern = re.compile(cellhash_regex)
+    if ignore_agbc_case:
+        agbc_pattern = re.compile(agbc_regex, flags=re.IGNORECASE)
+    else:
+        agbc_pattern = re.compile(agbc_regex)
+    hash_cols = [c for c in feature_cols if re.search(cellhash_pattern, c) is not None]
+    agbc_cols = [c for c in feature_cols if re.search(agbc_pattern, c) is not None]
+    other_feature_cols = [
+        c for c in feature_cols
+        if re.search(cellhash_pattern, c) is None and re.search(agbc_pattern, c) is None
+    ]
+
+    # process cellhash data
+    if verbose:
+        print("processing cellhash data...")
+    hash_df = obs_df[hash_cols].copy()
+    if ignore_zero_quantile_cellhashes:
+        hash_df = hash_df[
+            [h for h in hash_df.columns if hash_df[h].quantile(q=cellhash_quantile) > 0]
+        ]
+    if log_transform_cellhashes:
+        hash_df += 1
+        hash_df = hash_df.apply(np.log2)
+    if rename_cellhashes is None:
+        rename_cellhashes = {}
+    for h in hash_df:
+        fbc.obs[rename_cellhashes.get(h, h)] = hash_df[h]
+
+    # process AgBC data
+    if verbose:
+        print("processing AgBC data...")
+    agbc_df = obs_df[agbc_cols].copy()
+    if ignore_zero_quantile_agbcs:
+        agbc_df = agbc_df[
+            [a for a in agbc_df.columns if agbc_df[a].quantile(q=agbc_quantile) > 0]
+        ]
+    if log_transform_agbcs:
+        agbc_df += 1
+        agbc_df = agbc_df.apply(np.log2)
+    if rename_agbcs is None:
+        rename_agbcs = {}
+    for a in agbc_df:
+        fbc.obs[rename_agbcs.get(a, a)] = agbc_df[a]
+
+    # process feature barcode data
+    if verbose:
+        print("processing feature barcode data...")
+    feature_df = obs_df[other_feature_cols].copy()
+    if ignore_zero_quantile_features:
+        feature_df = feature_df[
+            [f for f in feature_df.columns if feature_df[f].quantile(q=feature_quantile) > 0]
+        ]
+    if log_transform_features:
+        feature_df += 1
+        feature_df = feature_df.apply(np.log2)
+    if rename_features is None:
+        rename_features = {f: f"{f}{feature_suffix}" for f in feature_df}
+    for f in feature_df:
+        fbc.obs[rename_features.get(f, f)] = feature_df[f]
+
+    return fbc
+
 
 
 def read(h5ad_file: Union[str, pathlib.Path]) -> AnnData:
