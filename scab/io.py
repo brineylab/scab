@@ -394,7 +394,7 @@ def read_10x_mtx(
 
 def read_pairplex(
     pairplex_pairs: str,
-    pairplex_annotations: Optional[str] = None,
+    pairplex_annotations: str = None,
     hashes: Optional[Iterable] = None,
     cellhash_regex: str = "cell ?hash",
     ignore_cellhash_case: bool = True,
@@ -419,29 +419,28 @@ def read_pairplex(
 ) -> AnnData:
 
     """\
-    Reads in PairPlex data from a pairplex output file containing serialized ``abutils.Pair`` objects and an optional
-    annotations file. The pairplex output file is expected to be a tab-delimited text file with two columns: 
-    the first column contains cell barcodes and the second column contains serialized ``abutils.Pair`` objects.    
-    If an annotations file is provided, it is expected to be a CSV-formatted file containing at least one column of 
-    cell barcodes that match those in the pairplex output file. The annotations are merged with the pairplex data 
-    based on matching cell barcodes.
-    
+    Reads PairPlex data into an ``AnnData`` object.
+
+    Both ``pairplex_pairs`` and ``pairplex_annotations`` accept either a single file/directory
+    or a parent directory containing multiple files/directories, and are processed independently.
+    For example, 96 parquet files (one per well) can be combined with a single MTX directory
+    (one sequencing run covering all wells).
+
     Parameters
     ----------
     pairplex_pairs : str
-        Path to the pairplex output file containing serialized ``abutils.Pair`` objects. The file must be a tab-delimited
-        text file with two columns: the first column contains cell barcodes and the second column contains serialized
-        ``abutils.Pair`` objects.
+        Path to a parquet file, a directory of parquet files, or a parent directory
+        containing subdirectories of parquet files. All parquet files found are concatenated.
     pairplex_annotations : str, optional
-        Path to an optional annotations file. The file must be a CSV-formatted file containing at least one column of cell 
-        barcodes that match those in the pairplex output file. The annotations are merged with the pairplex data based on 
-        matching cell barcodes.
+        Path to a CellRanger MTX directory, or a parent directory containing multiple MTX
+        directories (each identified by the presence of ``matrix.mtx.gz``). All MTX
+        datasets found are concatenated. Barcodes are matched to ``pairplex_pairs`` data.
 
     Returns
     -------
     adata : ``anndata.AnnData``
-        An ``AnnData`` object containing the deserialized ``abutils.Pair`` objects in the ``adata.obs`` DataFrame, along with any
-        additional annotations from the optional annotations file.
+        An ``AnnData`` object containing the deserialized ``abutils.Pair`` objects in
+        ``adata.obs``, along with any feature barcode annotations from the MTX data.
     """
 
     import pandas as pd
@@ -450,7 +449,31 @@ def read_pairplex(
     from abutils.utils.path import list_files
     from .vdj import get_pairing_info
 
-    # read pairplex output file (parquet file or directory of parquet files)
+    def _find_mtx_dirs(root: pathlib.Path) -> list:
+        """Return MTX directories under root. Root itself counts if it contains matrix.mtx.gz."""
+        mtx_markers = {"matrix.mtx.gz", "matrix.mtx"}
+        if any((root / m).exists() for m in mtx_markers):
+            return [root]
+        return sorted(d for d in root.iterdir() if d.is_dir() and any((d / m).exists() for m in mtx_markers))
+
+    # read 10x matrix file(s) for annotations
+    if pairplex_annotations is not None:
+        if verbose:
+            print("reading 10x Genomics matrix file(s)...")
+        mtx_dirs = _find_mtx_dirs(pathlib.Path(pairplex_annotations))
+        if not mtx_dirs:
+            raise ValueError(f"No CellRanger MTX directories found in {pairplex_annotations}")
+        annot_dfs = []
+        for mtx_dir in mtx_dirs:
+            a = sc.read_10x_mtx(str(mtx_dir), gex_only=False, cache=cache)
+            if "feature_types" in a.var.columns:
+                a = a[:, a.var.feature_types != "Gene Expression"]
+            annot_dfs.append(a.to_df())
+        annot_df = pd.concat(annot_dfs)
+    else:
+        annot_df = None
+
+    # read pairplex pairs (single parquet file or directory/directories of parquet files)
     if verbose:
         print("reading pairplex pairs...")
     p = pathlib.Path(pairplex_pairs)
@@ -465,21 +488,6 @@ def read_pairplex(
         pairs = _read_parquet(str(p))
     pair_dict = {pair.name: pair for pair in pairs}
     barcodes = list(pair_dict.keys())
-
-    # read the annotations file if provided (CSV file or directory of CSV files)
-    if pairplex_annotations is not None:
-        if verbose:
-            print("reading pairplex annotations...")
-        annot_path = pathlib.Path(pairplex_annotations)
-        if annot_path.is_dir():
-            csv_files = list_files(str(annot_path), extension=".csv")
-            if not csv_files:
-                raise ValueError(f"No CSV files found in {pairplex_annotations}")
-            annot_df = pd.concat([pd.read_csv(f, index_col=0) for f in csv_files])
-        else:
-            annot_df = pd.read_csv(str(annot_path), index_col=0)
-    else:
-        annot_df = None
 
     # merge the pairplex data and annotations based on matching cell barcodes
     if verbose:
@@ -573,7 +581,6 @@ def read_pairplex(
         fbc.obs[rename_features.get(f, f)] = feature_df[f]
 
     return fbc
-
 
 
 def read(h5ad_file: Union[str, pathlib.Path]) -> AnnData:
