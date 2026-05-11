@@ -495,7 +495,7 @@ def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
         _adata.obs["bcr"] = [
             codecs.encode(pickle.dumps(b), "base64").decode() for b in _adata.obs.bcr
         ]
-    if "tcr" in adata.obs:
+    if "tcr" in _adata.obs:
         # pickle TCR data
         _adata.obs["tcr"] = [
             codecs.encode(pickle.dumps(t), "base64").decode() for t in _adata.obs.tcr
