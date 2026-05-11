@@ -445,6 +445,26 @@ def load(h5ad_file: Union[str, pathlib.Path]) -> AnnData:
     return read(h5ad_file)
 
 
+def _sanitize_for_h5ad_write(adata: AnnData) -> AnnData:
+    """\
+    Convert any pyarrow-backed string arrays in ``obs``/``var`` to numpy object dtype.
+
+    pandas ≥ 3.0 defaults to ``ArrowStringArray`` for string columns when PyArrow is
+    installed, but anndata's h5ad writer has no registered serializer for that type and
+    raises an ``IORegistryError``.  Converting to ``object`` (plain Python strings) is
+    the safe, lossless fix.
+
+    Called on the working copy inside :func:`write` so the caller's object is unchanged.
+    """
+    adata.obs_names = adata.obs_names.astype(object)
+    adata.var_names = adata.var_names.astype(object)
+    for df in (adata.obs, adata.var):
+        for col in df.columns:
+            if "pyarrow" in str(df[col].dtype):
+                df[col] = df[col].astype(object)
+    return adata
+
+
 def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
     """\
     Serializes and writes an ``AnnData`` object to disk in ``h5ad`` format. 
@@ -469,6 +489,7 @@ def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
     if not h5ad_file.endswith("h5ad"):
         h5ad_file += ".h5ad"
     _adata = adata.copy()
+    _adata = _sanitize_for_h5ad_write(_adata)
     if "bcr" in _adata.obs:
         # pickle BCR data
         _adata.obs["bcr"] = [
