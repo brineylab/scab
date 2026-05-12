@@ -33,6 +33,7 @@ from typing import Any, Callable, Collection, Dict, Literal, Optional, Union
 
 import anndata
 import numpy as np
+import pandas as pd
 import scanpy as sc
 from anndata import AnnData
 
@@ -446,30 +447,77 @@ def load(h5ad_file: Union[str, pathlib.Path]) -> AnnData:
 
 
 def _sanitize_for_h5ad_write(adata: AnnData) -> AnnData:
-    """\
-    Convert any pyarrow-backed string arrays in ``obs``/``var`` to numpy object dtype.
+    """
+    Convert any pyarrow-backed arrays in ``obs``/``var``/``uns`` to numpy object dtype.
 
     pandas ≥ 3.0 defaults to ``ArrowStringArray`` for string columns when PyArrow is
     installed, but anndata's h5ad writer has no registered serializer for that type and
-    raises an ``IORegistryError``.  Converting to ``object`` (plain Python strings) is
+    raises an ``IORegistryError``. Converting to ``object`` (plain Python strings) is
     the safe, lossless fix.
 
     Called on the working copy inside :func:`write` so the caller's object is unchanged.
     """
+    import pandas as pd
+
+    def _is_arrow_backed(series: pd.Series) -> bool:
+        """Detect any pyarrow-backed dtype or array."""
+        dtype = series.dtype
+        # Direct ArrowDtype
+        if hasattr(pd, "ArrowDtype") and isinstance(dtype, pd.ArrowDtype):
+            return True
+        # Categorical with arrow-backed categories
+        if isinstance(dtype, pd.CategoricalDtype):
+            cat = series.cat.categories
+            if hasattr(cat, "array") and "pyarrow" in type(cat.array).__name__.lower():
+                return True
+            if hasattr(pd, "ArrowDtype") and isinstance(cat.dtype, pd.ArrowDtype):
+                return True
+        # Underlying array type
+        arr_type = type(series.array).__name__
+        if "pyarrow" in arr_type.lower() or "arrow" in arr_type.lower():
+            return True
+        # Dtype string representation
+        dtype_str = str(dtype).lower()
+        if "pyarrow" in dtype_str or "arrow" in dtype_str:
+            return True
+        return False
+
+    def _convert_series(s: pd.Series) -> pd.Series:
+        if isinstance(s.dtype, pd.CategoricalDtype):
+            # Convert categories to object, then rebuild categorical from values
+            new_cats = s.cat.categories.astype(object)
+            return pd.Categorical(s.astype(object), categories=new_cats)
+        return s.astype(object)
+
+    def _sanitize_df(df: pd.DataFrame) -> pd.DataFrame:
+        for col in df.columns:
+            if _is_arrow_backed(df[col]):
+                df[col] = _convert_series(df[col])
+        return df
+
+    # --- obs / var ---
     adata.obs_names = adata.obs_names.astype(object)
     adata.var_names = adata.var_names.astype(object)
-    for df in (adata.obs, adata.var):
-        for col in df.columns:
-            if "pyarrow" in str(df[col].dtype):
-                df[col] = df[col].astype(object)
+    adata.obs = _sanitize_df(adata.obs.copy())
+    adata.var = _sanitize_df(adata.var.copy())
+
+    # --- uns ---
+    if adata.uns is not None:
+        for key in list(adata.uns.keys()):
+            val = adata.uns[key]
+            if isinstance(val, pd.DataFrame):
+                adata.uns[key] = _sanitize_df(val.copy())
+            elif isinstance(val, pd.Series) and _is_arrow_backed(val):
+                adata.uns[key] = _convert_series(val)
+
     return adata
 
 
 def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
     """\
-    Serializes and writes an ``AnnData`` object to disk in ``h5ad`` format. 
-    
-    Similar to ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data. 
+    Serializes and writes an ``AnnData`` object to disk in ``h5ad`` format.
+
+    Similar to ``scanpy.write()``, except that ``scanpy`` does not support serializing BCR/TCR data.
     This function serializes ``abutils.Pair`` objects stored in either ``adata.obs.bcr`` or
     ``adata.obs.tcr`` using ``pickle`` prior to writing the ``AnnData`` object to disk.
 
@@ -489,18 +537,21 @@ def write(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
     if not h5ad_file.endswith("h5ad"):
         h5ad_file += ".h5ad"
     _adata = adata.copy()
-    _adata = _sanitize_for_h5ad_write(_adata)
     if "bcr" in _adata.obs:
-        # pickle BCR data
-        _adata.obs["bcr"] = [
+        # pickle BCR data; assign as Categorical to prevent pandas 3.0 from
+        # re-inferring the base64 strings as ArrowStringArray
+        _adata.obs["bcr"] = pd.Categorical([
             codecs.encode(pickle.dumps(b), "base64").decode() for b in _adata.obs.bcr
-        ]
+        ])
     if "tcr" in _adata.obs:
         # pickle TCR data
-        _adata.obs["tcr"] = [
+        _adata.obs["tcr"] = pd.Categorical([
             codecs.encode(pickle.dumps(t), "base64").decode() for t in _adata.obs.tcr
-        ]
-    _adata.write(h5ad_file)
+        ])
+    # sanitize after pickling so BCR/TCR columns are already Categorical and
+    # any remaining pyarrow-backed string columns in obs/var are also converted
+    _adata = _sanitize_for_h5ad_write(_adata)
+    _adata.write(h5ad_file, convert_strings_to_categoricals=False)
 
 
 def save(adata: AnnData, h5ad_file: Union[str, pathlib.Path]):
